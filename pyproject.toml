@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cryptograph-secure"
+version = "0.1.0"
+description = "A cybersecurity-focused deep learning framework analyzing cryptocurrency shock propagation and anomaly resilience using Temporal Graph Neural Networks."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "CryptoGraph-Secure Team" }
+]
+keywords = [
+    "cryptocurrency",
+    "graph-neural-networks",
+    "spatio-temporal",
+    "cybersecurity",
+    "anomaly-detection",
+    "adversarial-robustness",
+    "spillover-effects"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Office/Business :: Financial :: Investment"
+]
+
+dependencies = [
+    "torch>=2.0.0",
+    "torch-geometric>=2.3.0",
+    "torch-geometric-temporal>=0.54.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scipy>=1.10.0",
+    "networkx>=3.0",
+    "ccxt>=4.0.0",
+    "yfinance>=0.2.30",
+    "statsmodels>=0.14.0",
+    "scikit-learn>=1.3.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "streamlit>=1.28.0",
+    "plotly>=5.17.0",
+    "pyvis>=0.3.2",
+    "tqdm>=4.66.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "black>=23.9.0",
+    "ipykernel>=6.25.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

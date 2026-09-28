@@ -1,0 +1,21 @@
+# Adversarial Perturbation & Robustness Stress Testing
+feature_attacks:
+  pgd:
+    eps: 0.05
+    alpha: 0.01
+    steps: 10
+  fgsm:
+    eps: 0.05
+  gaussian_noise:
+    mean: 0.0
+    std: 0.05
+
+topology_attacks:
+  dice:
+    ratio_add: 0.1
+    ratio_remove: 0.1
+  random_edge_flip:
+    flip_prob: 0.05
+
+evaluation:
+  metric_drop_targets: ["mse", "mae", "r2", "spillover_stability"]

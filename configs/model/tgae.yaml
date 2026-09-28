@@ -1,0 +1,10 @@
+# Anomaly Detection: Temporal Graph Autoencoder (T-GAE) Configuration
+model_name: "TemporalGAE"
+in_features: 8
+hidden_dim: 64
+latent_dim: 32
+dropout: 0.1
+
+detection:
+  threshold_percentile: 98.0  # Anomaly alert threshold on reconstruction error
+  contamination: 0.02
