@@ -1,0 +1,12 @@
+date,name,description,source_url,is_crisis
+2017-12-17,2017 bubble peak,Bitcoin hits historic peak around $19783 marking CME futures debut and retail frenzy,https://www.reuters.com/article/technology/bitcoin-hits-record-high-on-cme-futures-debut-idUSKBN1EB076/,True
+2018-02-05,2018 crash capitulation,Bitcoin plunges below $6000 following regulatory scrutiny and retail exhaustion,https://www.reuters.com/article/markets/bitcoin-slides-below-6000-as-cryptocurrency-sell-off-deepens-idUSKBN1FQ009/,True
+2020-03-12,COVID Black Thursday,Global liquidity panic triggered by WHO COVID-19 pandemic declaration crashes crypto over 40%,https://www.coindesk.com/markets/2020/03/12/crypto-markets-plunge-as-bitcoin-drops-below-6k-on-coronavirus-fears/,True
+2021-05-19,China bans financial institutions from crypto services,Three Chinese financial industry bodies ban banks and payment firms from crypto transactions and services,https://www.aljazeera.com/economy/2021/5/19/china-bans-financial-institutions-from-cryptocurrency-business,True
+2022-05-09,Terra UST depeg,TerraUSD algorithmic stablecoin loses $1 peg triggering LUNA death spiral and systemic liquidations,https://www.bloomberg.com/news/articles/2022-05-09/terra-s-ust-stablecoin-loses-dollar-peg-again-as-crypto-slides,True
+2022-06-13,Celsius withdrawal freeze,Celsius Network freezes all account withdrawals and transfers citing extreme market volatility,https://www.cnbc.com/2022/06/13/celsius-pauses-all-account-withdrawals-transfers-due-to-extreme-market-conditions.html,True
+2022-11-08,FTX collapse,Binance signs non-binding LOI to acquire FTX before pulling out due to $8B balance sheet deficit,https://www.reuters.com/technology/binance-signs-letter-intent-acquire-ftx-exchange-ceo-says-2022-11-08/,True
+2023-03-10,SVB failure,Silicon Valley Bank seized by FDIC triggering USDC depeg panic over uninsured cash reserves,https://www.fdic.gov/news/press-releases/2023/pr23019.html,True
+2024-01-10,US spot BTC ETF approval,US SEC approves 11 spot Bitcoin exchange-traded funds including BlackRock and Fidelity,https://www.sec.gov/newsroom/press-releases/2024-3,False
+2024-08-05,Yen carry-trade unwind,Bank of Japan rate hike sparks global market crash and sharp crypto liquidations,https://www.reuters.com/markets/asia/japan-stocks-rebound-after-historic-sell-off-yen-firms-2024-08-06/,True
+2025-10-10,Oct-10 liquidation cascade,Massive cascading derivatives liquidations across centralized exchanges sparking systemic drawdown,https://coinmetrics.io/insights/,True
