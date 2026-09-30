@@ -1,0 +1,21 @@
+experiment:
+  name: "tgn_daily_baseline"
+  description: "Baseline TGN shock risk training on daily 20-coin universe"
+
+data:
+  config: "configs/data/daily.yaml"
+  dataset_path: "data/processed/crypto_graph_dataset.pt"
+
+model:
+  type: "tgn"
+  in_features: 8
+  memory_dim: 32
+  embedding_dim: 32
+  out_horizons: 5
+
+training:
+  batch_size: 16
+  learning_rate: 0.001
+  max_epochs: 50
+  patience: 10
+  device: "auto"

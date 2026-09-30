@@ -1,0 +1,23 @@
+# Hourly 30-coin Binance target data configuration
+source: "binance_archive"
+quote_asset: "USDT"
+resolution: "1h"
+fallback_resolution: "2h"
+reference_resolution: "1d"
+target_coins_count: 30
+
+start_date: "2024-01-01"
+end_date: "2026-09-27"
+embargo_days: 7
+
+horizons_hours: [1, 3, 6, 12, 24]
+
+features:
+  rolling_windows_hours: [24, 72, 168]
+  include_parkinson: true
+  exclude_garman_klass: true
+  seasonality_adjustment: true
+
+paths:
+  raw_dir: "data/raw/binance/1h"
+  processed_dir: "data/processed/v2/1h"

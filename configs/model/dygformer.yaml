@@ -1,0 +1,13 @@
+# DyGFormer Adapter Configuration
+model:
+  type: "dygformer"
+  in_features: 8
+  patch_size: 1
+  max_input_sequence_length: 32
+  num_heads: 2
+  num_layers: 2
+  dropout: 0.1
+
+training:
+  learning_rate: 0.0005
+  batch_size: 32

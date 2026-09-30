@@ -1,0 +1,14 @@
+# Adversarial and perturbation stress testing configuration
+perturbation:
+  epsilon_levels: [0.01, 0.05, 0.10, 0.20]
+  topology_drop_ratios: [0.05, 0.10, 0.20]
+  attack_types:
+    - "feature_gaussian"
+    - "feature_fgsm"
+    - "topology_drop"
+
+evaluation:
+  target_nodes: [0, 1]  # BTC, ETH by default
+  metrics:
+    - "prediction_drift_mse"
+    - "explanation_jaccard_stability"
