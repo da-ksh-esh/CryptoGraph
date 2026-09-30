@@ -29,6 +29,7 @@ class QC(IntFlag):
     FILLED = 1 << 15                 # forward-filled gap (<= max_ffill_gap days)
     LONG_GAP = 1 << 16               # inside a gap longer than max_ffill_gap (left missing, inactive)
     REDENOMINATION = 1 << 17         # documented ticker migration / redenomination date
+    USDT_DEPEG = 1 << 18             # hourly (USDT-quoted) data: USDT off its USD peg by more than the tolerance that day
 
 
 def decode(mask: int) -> list[str]:

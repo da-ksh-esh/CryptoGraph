@@ -284,6 +284,20 @@ class BinanceConfig(_Strict):
     interval: str = "1h"
     retries: int = 5
     backoff_base_seconds: float = 2.0
+    download_workers: int = 8
+
+
+class HourlyQualityConfig(_Strict):
+    max_ffill_hours: int = 2                # forward-fill at most this many consecutive missing hours
+    stale_hours: int = 6                    # close unchanged for >= this many consecutive hours -> flag
+    volume_spike_mult: float = 20.0         # volume > mult x trailing median -> flag
+    volume_spike_window_hours: int = 168
+    abs_logret_flag: float = 0.25           # |hourly log return| above this is checked against the daily source
+    daily_confirm_logret: float = 0.10      # same-day daily move that confirms a large hourly move
+    event_window_days: int = 3
+    crosscheck_tol: float = 0.01            # hourly-derived daily close vs daily dataset (relative)
+    usdt_peg_tol: float = 0.005             # |USDT/USD - 1| above this flags the day
+    rename_max_price_jump: float = 0.05     # |log price change| allowed across a ticker migration (1:1 swaps)
 
 
 class HourlyPathsConfig(_Strict):
@@ -304,6 +318,7 @@ class HourlyConfig(_Strict):
     splits: SplitsConfig
     universe: HourlyUniverseConfig
     binance: BinanceConfig = BinanceConfig()
+    quality: HourlyQualityConfig = HourlyQualityConfig()
     paths: HourlyPathsConfig = HourlyPathsConfig()
 
     def path(self, rel: str) -> Path:

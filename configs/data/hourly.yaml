@@ -45,7 +45,7 @@ universe:
   # Ticker migrations on Binance (coingecko id -> symbol history, oldest first). Verified in Stage 2.
   symbol_overrides:
     polygon-ecosystem-token:
-      - {symbol: MATICUSDT, until: "2024-09-09"}
+      - {symbol: MATICUSDT, until: "2024-09-10"}   # verified: last MATICUSDT hour 2024-09-10 02:00, POLUSDT from 2024-09-13 10:00 (1:1, -0.7%)
       - {symbol: POLUSDT}
     render-token:
       - {symbol: RNDRUSDT, until: "2024-07-26"}
@@ -66,6 +66,19 @@ binance:
   interval: "1h"
   retries: 5
   backoff_base_seconds: 2.0
+  download_workers: 8
+
+quality:
+  max_ffill_hours: 2             # forward-fill at most 2 consecutive missing hours (flagged); longer gaps masked
+  stale_hours: 6                 # close unchanged for >= 6 consecutive hours -> flagged
+  volume_spike_mult: 20          # volume > 20x trailing 7-day median -> flagged
+  volume_spike_window_hours: 168
+  abs_logret_flag: 0.25          # |hourly log return| > 0.25 is checked against the daily source / events
+  daily_confirm_logret: 0.10     # a same-day daily move of >= 10% (log) confirms it
+  event_window_days: 3
+  crosscheck_tol: 0.01           # hourly-derived daily close vs daily dataset: flag differences > 1%
+  usdt_peg_tol: 0.005            # USDT off its peg by > 0.5% -> day flagged (Coin Metrics, daily; ends 2026-05-23)
+  rename_max_price_jump: 0.05    # ticker migrations are 1:1 swaps: price should not jump across the switch
 
 paths:
   raw_dir: "data/raw"

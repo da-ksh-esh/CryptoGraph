@@ -1,0 +1,4 @@
+coin,type,from_symbol,to_symbol,old_last_hour,new_first_hour,gap_hours,log_price_change,flag,symbol,rows_dropped,first_dropped_hour,median_close_of_dropped_rows
+POL,symbol_boundary,MATICUSDT,POLUSDT,2024-09-10 02:00:00,2024-09-13 10:00:00,79.0,0.0,False,,,,
+LUNC,reused_symbol_rows_dropped,,,,,,,False,LUNAUSDT,18.0,2022-05-31 06:00:00,8.84305
+LUNC,symbol_boundary,LUNAUSDT,LUNCUSDT,2022-05-13 00:00:00,2022-09-09 08:00:00,2863.0,2.3373729184797094,False,,,,

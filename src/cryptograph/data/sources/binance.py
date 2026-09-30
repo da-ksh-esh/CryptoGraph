@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 from ...common.logger import get_logger
-from ..storage import FetchLog
+from ..storage import FetchLog, utc_now, write_json
 from .base import with_retries
 
 logger = get_logger(__name__)
@@ -130,6 +130,58 @@ class BinanceArchive:
     # ---- download --------------------------------------------------------------------
     def file_key(self, symbol: str, period: str, stamp: str) -> str:
         return self._prefix(period, symbol) + f"{symbol}-{self.interval}-{stamp}.zip"
+
+    def download_many(self, keys: list[str], out_dir: Path, *, refresh: bool = False, workers: int = 8,
+                      log_every: int = 200) -> tuple[list[Path], list[tuple[str, str]]]:
+        """Download many zips in parallel (each checksum-verified). Returns (paths, failures).
+
+        The fetch log is written once, from the calling thread, to avoid concurrent writes.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        paths: list[Path] = []
+        failures: list[tuple[str, str]] = []
+        fresh: list[tuple[Path, str, str]] = []
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(self._download_verified, k, out_dir, refresh): k for k in keys}
+            for n, f in enumerate(as_completed(futs), 1):
+                try:
+                    path, checksum, was_new = f.result()
+                    paths.append(path)
+                    if was_new:
+                        fresh.append((path, futs[f], checksum))
+                except Exception as e:  # recorded and reported, never silently dropped
+                    failures.append((futs[f], repr(e)))
+                if n % log_every == 0:
+                    logger.info(f"downloaded {n}/{len(keys)} files into {out_dir.name}")
+        by_dir: dict[Path, list] = {}
+        for path, key, checksum in fresh:
+            by_dir.setdefault(path.parent, []).append((path, key, checksum))
+        for d, items in by_dir.items():
+            log = FetchLog(d / "fetch_log.json")
+            for path, key, checksum in items:
+                log.entries[path.name] = {"source": "binance", "url": f"{self.archive_url}/{key}",
+                                          "fetched_utc": utc_now(), "rows": -1, "sha256": checksum,
+                                          "checksum_sha256": checksum, "verified": True}
+            write_json(log.entries, log.path)
+        return sorted(paths), failures
+
+    def _download_verified(self, key: str, out_dir: Path, refresh: bool) -> tuple[Path, str, bool]:
+        """(path, sha256, newly_downloaded) — no fetch-log write (thread-safe)."""
+        out = out_dir / Path(key).name
+        if out.exists() and not refresh:
+            return out, "", False
+        url = f"{self.archive_url}/{key}"
+        blob = with_retries(lambda: self._get(url, timeout=120), retries=self.retries, backoff=self.backoff,
+                            what=f"binance {Path(key).name}")
+        expected = parse_checksum(with_retries(lambda: self._get(url + ".CHECKSUM").decode(), retries=self.retries,
+                                               backoff=self.backoff, what=f"binance checksum {Path(key).name}"))
+        verify_bytes(blob, expected)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(".part")
+        tmp.write_bytes(blob)
+        tmp.replace(out)          # atomic: a crash never leaves a truncated zip behind
+        return out, expected, True
 
     def download(self, key: str, out_dir: Path, *, refresh: bool = False) -> Path:
         """Download one zip, verify it against its .CHECKSUM, and keep it (write-once unless refresh)."""

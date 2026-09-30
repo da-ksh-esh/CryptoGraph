@@ -10,6 +10,8 @@ Daily (Yahoo + Coin Metrics), configs/data/daily.yaml:
 
 Hourly (Binance), configs/data/hourly.yaml (selected because it declares `resolution`):
     cryptograph-data --config configs/data/hourly.yaml --stage audit    # 30-coin universe (checkpoint)
+    cryptograph-data --config configs/data/hourly.yaml --stage fetch    # download + verify + stitch 1h klines
+    cryptograph-data --config configs/data/hourly.yaml --stage clean    # quality, cleaning, 2h, peg, cross-check
 
 Add --refresh to re-download raw snapshots. Each stage reads only artifacts written by
 earlier stages, so stages can be re-run independently.
@@ -61,8 +63,10 @@ ALL_ORDER = ["fetch", "clean", "build", "smoke"]
 
 HOURLY_STAGES: dict[str, Callable] = {
     "audit": _stage("hourly_audit"),
+    "fetch": _stage("hourly_fetch"),
+    "clean": _stage("hourly_clean"),
 }
-HOURLY_ALL_ORDER = ["audit"]
+HOURLY_ALL_ORDER = ["fetch", "clean"]
 
 
 def main(argv: list[str] | None = None) -> None:
