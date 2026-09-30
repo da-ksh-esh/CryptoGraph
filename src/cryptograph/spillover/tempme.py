@@ -39,51 +39,84 @@ class TempME:
         if num_edges == 0:
             return {"edge_mask": np.array([]), "top_edges": [], "sparsity": 1.0}
 
-        # Initialize learnable mask over edges
-        mask_param = nn.Parameter(torch.zeros(num_edges, requires_grad=True))
-        optimizer = torch.optim.Adam([mask_param], lr=self.lr)
+        # Identify directed incoming edges that flow into target_node_idx
+        # In a 1-hop spatial GNN, only incoming edges directly influence target_node_idx
+        incident_mask = (edge_index[1] == target_node_idx)
+        incident_indices = torch.where(incident_mask)[0]
 
-        # Freeze model parameters to prevent backward conflict
-        param_states = [p.requires_grad for p in self.model.parameters()]
-        for p in self.model.parameters():
-            p.requires_grad = False
+        # If no incoming edges are found (isolated node), consider all edges touching target
+        if len(incident_indices) == 0:
+            incident_mask = (edge_index[0] == target_node_idx) | (edge_index[1] == target_node_idx)
+            incident_indices = torch.where(incident_mask)[0]
+
+        # Base edge weights
+        if edge_weight is not None:
+            base_w = torch.abs(edge_weight).clamp(min=1e-4, max=1.0)
+        else:
+            base_w = torch.ones(num_edges, device=edge_index.device)
 
         self.model.eval()
         with torch.no_grad():
-            orig_preds, _ = self.model(node_features, edge_index, edge_weight, timestamps)
-            target_orig = orig_preds[target_node_idx].detach()
+            out = self.model(node_features, edge_index, base_w, timestamps)
+            if isinstance(out, tuple):
+                orig_preds, orig_z = out[0], out[1]
+            else:
+                orig_preds, orig_z = out, None
+            target_orig_p = orig_preds[target_node_idx].detach()
+            target_orig_z = orig_z[target_node_idx].detach() if orig_z is not None else None
 
-        # Optimize mask to identify critical edges
-        for epoch in range(self.num_epochs):
-            optimizer.zero_grad()
-            mask = torch.sigmoid(mask_param)
+        # Compute counterfactual perturbation sensitivity for each incoming edge:
+        # Evaluates sensitivity in forecast prediction space with automatic fallback
+        # to topological graph embedding space to prevent dying-ReLU saturation.
+        sensitivities = []
+        with torch.no_grad():
+            for g_idx in incident_indices:
+                w_ablated = base_w.clone()
+                w_ablated[g_idx] = 1e-4  # effectively prune edge
+                ab_out = self.model(node_features, edge_index, w_ablated, timestamps)
+                if isinstance(ab_out, tuple):
+                    ablated_preds, ablated_z = ab_out[0], ab_out[1]
+                else:
+                    ablated_preds, ablated_z = ab_out, None
 
-            # Pass mask as dynamic edge weights
-            masked_preds, _ = self.model(node_features, edge_index, edge_weight=mask, timestamps=timestamps)
+                p_diff = torch.norm(target_orig_p - ablated_preds[target_node_idx], p=2).item()
+                if target_orig_z is not None and ablated_z is not None:
+                    z_diff = torch.norm(target_orig_z - ablated_z[target_node_idx], p=2).item()
+                else:
+                    z_diff = 0.0
 
-            pred_loss = nn.MSELoss()(masked_preds[target_node_idx], target_orig)
-            sparsity_loss = self.sparsity_weight * torch.sum(mask)
+                diff = p_diff if p_diff > 1e-6 else z_diff
+                sensitivities.append(diff)
 
-            loss = pred_loss + sparsity_loss
-            loss.backward()
-            optimizer.step()
+        sens_arr = np.array(sensitivities)
+        max_sens = np.max(sens_arr) if len(sens_arr) > 0 and np.max(sens_arr) > 1e-8 else 1.0
 
-        # Restore model parameter grad states
-        for p, state in zip(self.model.parameters(), param_states):
-            p.requires_grad = state
+        # Construct global edge mask
+        global_mask = np.zeros(num_edges, dtype=np.float32)
+        if len(incident_indices) > 0:
+            normalized_sens = sens_arr / max_sens
+            global_mask[incident_indices.cpu().numpy()] = normalized_sens
 
-        final_mask = torch.sigmoid(mask_param).detach().cpu().numpy()
-        ranked_indices = np.argsort(-final_mask)
-
-        top_edges = []
-        for idx in ranked_indices[:min(10, num_edges)]:
-            src = int(edge_index[0, idx])
-            dst = int(edge_index[1, idx])
-            score = float(final_mask[idx])
-            top_edges.append({"source": src, "target": dst, "importance": score})
+            # Rank incident edges by attributed shock impact
+            ranked_local = np.argsort(-normalized_sens)
+            top_edges = []
+            for loc_idx in ranked_local:
+                g_idx = incident_indices[loc_idx].item()
+                src = int(edge_index[0, g_idx])
+                dst = int(edge_index[1, g_idx])
+                score = float(normalized_sens[loc_idx])
+                top_edges.append({
+                    "source": src,
+                    "target": dst,
+                    "importance": score,
+                    "raw_impact": float(sens_arr[loc_idx])
+                })
+        else:
+            top_edges = []
 
         return {
-            "edge_mask": final_mask,
+            "edge_mask": global_mask,
             "top_edges": top_edges,
-            "sparsity": float(np.mean(final_mask < 0.5))
+            "sparsity": float(np.mean(global_mask < 0.5))
         }
+

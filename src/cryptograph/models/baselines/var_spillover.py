@@ -39,23 +39,42 @@ class VARSpilloverBaseline:
 
     def compute_spillover_table(self) -> Dict[str, Any]:
         """
-        Calculates the Diebold-Yilmaz directional spillover matrix,
-        TO others, FROM others, NET spillover, and Total Spillover Index (TSI).
+        Calculates the order-invariant Diebold-Yilmaz (2012) / Pesaran-Shin (1998)
+        Generalized Forecast Error Variance Decomposition (GFEVD) spillover matrix,
+        Spillover TO others, FROM others, NET spillover, and Total Spillover Index (TSI).
         """
         if self.fitted_model is None:
             raise RuntimeError("Model must be fitted before computing spillover table.")
 
-        fevd = self.fitted_model.fevd(self.forecast_horizon)
-        # fevd.decomp has shape (num_variables, forecast_horizon, num_variables)
-        # We take the horizon step:
-        decomp_h = fevd.decomp[:, self.forecast_horizon - 1, :]
-        # Normalize rows to sum to 100%
-        row_sums = decomp_h.sum(axis=1, keepdims=True)
-        norm_matrix = (decomp_h / row_sums) * 100.0
-
+        # 1. Extract VMA representation Phi_0, ..., Phi_{H-1} and residual covariance Sigma
+        ma = self.fitted_model.ma_rep(maxn=self.forecast_horizon)
+        sigma = np.asarray(self.fitted_model.sigma_u)
         n = len(self.asset_names)
-        # Directional spillovers
-        # Off-diagonal elements
+        H = self.forecast_horizon
+
+        # 2. Compute Generalized FEVD (Pesaran & Shin 1998, Diebold & Yilmaz 2012):
+        # theta_{ij}^g(H) = (sigma_{jj}^-1 * sum_{h=0}^{H-1} (Phi_h Sigma)_{ij}^2) / (sum_{h=0}^{H-1} (Phi_h Sigma Phi_h')_{ii})
+        theta_g = np.zeros((n, n))
+        for i in range(n):
+            denom = 0.0
+            for h in range(H):
+                phi_h = ma[h]
+                denom += (phi_h @ sigma @ phi_h.T)[i, i]
+
+            for j in range(n):
+                sigma_jj = sigma[j, j]
+                numer = 0.0
+                for h in range(H):
+                    phi_h = ma[h]
+                    term = (phi_h @ sigma)[i, j]
+                    numer += term ** 2
+                theta_g[i, j] = (1.0 / sigma_jj) * (numer / denom) if denom > 0 else 0.0
+
+        # 3. Normalize rows to sum to 100% (Diebold & Yilmaz 2012 normalization)
+        row_sums = theta_g.sum(axis=1, keepdims=True)
+        norm_matrix = (theta_g / np.where(row_sums == 0, 1.0, row_sums)) * 100.0
+
+        # 4. Directional spillovers (off-diagonal elements)
         off_diag = norm_matrix.copy()
         np.fill_diagonal(off_diag, 0.0)
 
@@ -63,7 +82,7 @@ class VARSpilloverBaseline:
         to_others = off_diag.sum(axis=0)
         # Spillover FROM others (row sum of off-diagonal)
         from_others = off_diag.sum(axis=1)
-        # Net spillover
+        # Net directional spillover
         net_spillover = to_others - from_others
 
         # Total Spillover Index (TSI)
@@ -74,6 +93,7 @@ class VARSpilloverBaseline:
 
         return {
             "spillover_matrix": spillover_df,
+            "directional_table": spillover_df,
             "to_others": pd.Series(to_others, index=self.asset_names),
             "from_others": pd.Series(from_others, index=self.asset_names),
             "net_spillover": pd.Series(net_spillover, index=self.asset_names),

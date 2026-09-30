@@ -78,21 +78,19 @@ class CryptoTGN(nn.Module):
             predictions: Tensor of shape (num_nodes, out_horizons)
             embeddings: Tensor of shape (num_nodes, embedding_dim)
         """
-        # Read current memory states
+        # Read current memory states (detached for truncated backprop across snapshots)
         node_ids = torch.arange(self.num_nodes, device=node_features.device)
-        if self.training:
+        with torch.no_grad():
             mem, _ = self.memory(node_ids)
-        else:
-            with torch.no_grad():
-                mem, _ = self.memory(node_ids)
-                mem = mem.detach()
+            mem = mem.detach()
 
         # Fuse node memory with instantaneous features
         fused = torch.cat([mem, node_features], dim=-1)
 
         # Spatial aggregation over dynamic edges
         if edge_index is not None and edge_index.size(1) > 0:
-            z = torch.relu(self.spatial_conv(fused, edge_index, edge_weight))
+            norm_w = torch.abs(edge_weight).clamp(min=1e-4, max=1.0) if edge_weight is not None else None
+            z = torch.relu(self.spatial_conv(fused, edge_index, norm_w))
         else:
             z = torch.relu(self.spatial_conv.lin(fused))
 
