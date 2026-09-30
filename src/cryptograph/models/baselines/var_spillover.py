@@ -37,21 +37,29 @@ class VARSpilloverBaseline:
         logger.info(f"Fitted VAR baseline with lag order: {self.fitted_model.k_ar}")
         return self
 
-    def compute_spillover_table(self) -> Dict[str, Any]:
+    def compute_spillover_table(self, method: str = "generalized") -> Dict[str, Any]:
         """
         Calculates the Diebold-Yilmaz directional spillover matrix,
         TO others, FROM others, NET spillover, and Total Spillover Index (TSI).
+
+        method="generalized" (default) uses the Pesaran-Shin generalized FEVD, which is
+        invariant to column order (Diebold & Yilmaz 2012). method="cholesky" reproduces
+        the old statsmodels `fevd()` result, which depends on variable ordering.
         """
         if self.fitted_model is None:
             raise RuntimeError("Model must be fitted before computing spillover table.")
 
-        fevd = self.fitted_model.fevd(self.forecast_horizon)
-        # fevd.decomp has shape (num_variables, forecast_horizon, num_variables)
-        # We take the horizon step:
-        decomp_h = fevd.decomp[:, self.forecast_horizon - 1, :]
-        # Normalize rows to sum to 100%
-        row_sums = decomp_h.sum(axis=1, keepdims=True)
-        norm_matrix = (decomp_h / row_sums) * 100.0
+        if method == "generalized":
+            from ...analysis.connectedness import generalized_fevd
+
+            norm_matrix = generalized_fevd(self.fitted_model.coefs, np.asarray(self.fitted_model.sigma_u),
+                                           self.forecast_horizon)
+        elif method == "cholesky":
+            fevd = self.fitted_model.fevd(self.forecast_horizon)
+            decomp_h = fevd.decomp[:, self.forecast_horizon - 1, :]
+            norm_matrix = (decomp_h / decomp_h.sum(axis=1, keepdims=True)) * 100.0
+        else:
+            raise ValueError(f"unknown method {method!r}")
 
         n = len(self.asset_names)
         # Directional spillovers
