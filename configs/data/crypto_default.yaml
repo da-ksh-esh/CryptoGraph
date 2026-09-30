@@ -1,6 +1,13 @@
-# Data collection and dynamic graph builder configuration
+# =============================================================================
+# CryptoGraph-Secure — data configuration
+# Loaded and validated by cryptograph.data.config.load_config (pydantic).
+# Legacy keys (source, tickers, period, interval, lookback_window,
+# forecast_horizons, graph, paths) are kept for existing modules.
+# =============================================================================
+
+# ---- legacy keys (read by collector.py / dataloader.py facades) ----------------
 source: "yfinance"
-tickers:
+tickers:                      # legacy default list; the real universe is built from `universe`
   - "BTC-USD"
   - "ETH-USD"
   - "BNB-USD"
@@ -21,19 +28,160 @@ tickers:
   - "XMR-USD"
   - "FIL-USD"
   - "SHIB-USD"
-
-period: "10y"
+period: "10y"                 # DEPRECATED — ignored by the new pipeline; use window.start_date/end_date
 interval: "1d"
-lookback_window: 30          # 30 days lookback sequence for TGNN
-forecast_horizons: [1, 3, 7, 14, 30]  # Forecast 1, 3, 7, 14, 30 days ahead
+lookback_window: 30           # L: input window length (days) for sequence models
+forecast_horizons: [1, 3, 7, 14, 30]
 
 graph:
-  correlation_metric: "pearson" # or "dcc_garch", "granger"
-  rolling_window: 30            # Rolling window days to compute dynamic edges
-  threshold: 0.40               # Minimum correlation to form an edge
-  top_k: 5                      # Minimum degree guarantee if using top_k
-  use_adaptive_adjacency: true  # Learn dynamic latent edge matrix
+  correlation_metric: "pearson"
+  rolling_window: 30          # trailing window (days) for edge estimation; uses days <= t only
+  # EDA (01_dpeda §9): at 0.4 the val/test graphs are ~75% dense (near-complete, little structure);
+  # 0.6 keeps mean density at 30% / 55% / 50% (train/val/test) and is far above the n=30 null.
+  threshold: 0.60             # |corr| threshold for undirected edges
+  top_k: 2                    # per-node top-k guarantee for undirected edges (connectivity)
+  use_adaptive_adjacency: true
+  # Directed lag-1 snapshot edges (kept as an option). EDA §8-9: positive lag-1 correlations
+  # over 30/90/180-day windows occur no more often than under the null -> not used for the TGN.
+  directed_lag_threshold: 0.30   # corr(r_i[t-1], r_j[t]) threshold for directed i->j edges (30-obs SE ~0.18)
+  directed_top_k: 0              # optional top-k for directed edges (0 = threshold only)
+  threshold_grid: [0.3, 0.4, 0.5, 0.6]
+  min_obs: 20                 # minimum overlapping observations in the window to estimate a correlation
 
 paths:
-  raw_file: "data/raw/crypto_top20_10y_1d.parquet"
-  processed_file: "data/processed/crypto_top20_processed.pt"
+  raw_file: "data/raw/crypto_top20_10y_1d.parquet"         # legacy
+  processed_file: "data/processed/crypto_top20_processed.pt" # legacy
+  raw_dir: "data/raw"
+  interim_dir: "data/interim"
+  processed_dir: "data/processed"
+  external_dir: "data/external"
+  reports_dir: "reports"
+  figures_dir: "reports/figures"
+  legacy_graph_dataset: "data/processed/crypto_graph_dataset.pt"
+
+# ---- new keys -----------------------------------------------------------------
+dataset_version: "v1"
+seed: 42
+
+window:
+  start_date: "2016-09-28"
+  end_date: "2026-09-27"      # inclusive
+  reference_date: "2026-09-27" # market-cap ranking date (ranking snapshot saved at fetch time)
+
+universe:
+  panel_size: 20
+  # Checkpoint decision (2026-09-28): only 13 coins reach 98% coverage from 2016-09-28
+  # (Yahoo history starts 2017-11-09 for all but BTC/LTC). Panel A is therefore the
+  # balanced panel on [panel_a_start_date, end_date] = 3,246 days (option a).
+  panel_a_start_date: "2017-11-09"
+  # Panel B: top-N non-stable by market cap among coins with >= this many active
+  # days before the test split starts (so every node has training data + a fitted
+  # scaler) and median volume >= quality.min_median_volume_usd.
+  panel_b_min_train_days: 365
+  # Candidate superset. `yahoo: null` => resolved via Yahoo search and verified
+  # against the CoinGecko reference price. `coinmetrics` lists archive asset ids
+  # to try in order. Categories: large_cap, legacy, event.
+  candidates:
+    - {coin: BTC,   coingecko: bitcoin,            yahoo: BTC-USD,       coinmetrics: [btc],  category: large_cap}
+    - {coin: ETH,   coingecko: ethereum,           yahoo: ETH-USD,       coinmetrics: [eth],  category: large_cap}
+    - {coin: BNB,   coingecko: binancecoin,        yahoo: BNB-USD,       coinmetrics: [bnb],  category: large_cap}
+    - {coin: XRP,   coingecko: ripple,             yahoo: XRP-USD,       coinmetrics: [xrp],  category: large_cap}
+    - {coin: SOL,   coingecko: solana,             yahoo: SOL-USD,       coinmetrics: [sol],  category: large_cap}
+    - {coin: TRX,   coingecko: tron,               yahoo: TRX-USD,       coinmetrics: [trx],  category: large_cap}
+    - {coin: ZEC,   coingecko: zcash,              yahoo: ZEC-USD,       coinmetrics: [zec],  category: large_cap}
+    - {coin: HYPE,  coingecko: hyperliquid,        yahoo: HYPE32196-USD, coinmetrics: [hype], category: large_cap}
+    - {coin: DOGE,  coingecko: dogecoin,           yahoo: DOGE-USD,      coinmetrics: [doge], category: large_cap}
+    - {coin: LINK,  coingecko: chainlink,          yahoo: LINK-USD,      coinmetrics: [link], category: large_cap}
+    - {coin: XMR,   coingecko: monero,             yahoo: XMR-USD,       coinmetrics: [xmr],  category: large_cap}
+    - {coin: WBT,   coingecko: whitebit,           yahoo: null,          coinmetrics: [wbt],  category: large_cap}
+    - {coin: ADA,   coingecko: cardano,            yahoo: ADA-USD,       coinmetrics: [ada],  category: large_cap}
+    - {coin: RAIN,  coingecko: rain,               yahoo: null,          coinmetrics: [rain], category: large_cap}
+    - {coin: LEO,   coingecko: leo-token,          yahoo: LEO-USD,       coinmetrics: [leo],  category: large_cap}
+    - {coin: XLM,   coingecko: stellar,            yahoo: XLM-USD,       coinmetrics: [xlm],  category: large_cap}
+    - {coin: NEAR,  coingecko: near,               yahoo: NEAR-USD,      coinmetrics: [near], category: large_cap}
+    - {coin: BCH,   coingecko: bitcoin-cash,       yahoo: BCH-USD,       coinmetrics: [bch],  category: large_cap}
+    - {coin: UNI,   coingecko: uniswap,            yahoo: UNI7083-USD,   coinmetrics: [uni],  category: large_cap}
+    - {coin: CC,    coingecko: canton-network,     yahoo: null,          coinmetrics: [cc],   category: large_cap}
+    - {coin: LTC,   coingecko: litecoin,           yahoo: LTC-USD,       coinmetrics: [ltc],  category: large_cap}
+    - {coin: AVAX,  coingecko: avalanche-2,        yahoo: AVAX-USD,      coinmetrics: [avax, avaxc], category: large_cap}
+    - {coin: SUI,   coingecko: sui,                yahoo: SUI20947-USD,  coinmetrics: [sui],  category: large_cap}
+    - {coin: TON,   coingecko: the-open-network,   yahoo: null,          coinmetrics: [ton],  category: large_cap}
+    - {coin: HBAR,  coingecko: hedera-hashgraph,   yahoo: HBAR-USD,      coinmetrics: [hbar], category: large_cap}
+    - {coin: QNT,   coingecko: quant-network,      yahoo: null,          coinmetrics: [qnt],  category: large_cap}
+    - {coin: TAO,   coingecko: bittensor,          yahoo: TAO22974-USD,  coinmetrics: [tao],  category: large_cap}
+    - {coin: SHIB,  coingecko: shiba-inu,          yahoo: SHIB-USD,      coinmetrics: [shib], category: large_cap}
+    - {coin: CRO,   coingecko: crypto-com-chain,   yahoo: CRO-USD,       coinmetrics: [cro],  category: large_cap}
+    - {coin: DOT,   coingecko: polkadot,           yahoo: DOT-USD,       coinmetrics: [dot],  category: large_cap}
+    # legacy large coins with long histories
+    - {coin: ETC,   coingecko: ethereum-classic,   yahoo: ETC-USD,       coinmetrics: [etc],  category: legacy}
+    - {coin: DASH,  coingecko: dash,               yahoo: DASH-USD,      coinmetrics: [dash], category: legacy}
+    - {coin: XEM,   coingecko: nem,                yahoo: XEM-USD,       coinmetrics: [xem],  category: legacy}
+    - {coin: WAVES, coingecko: waves,              yahoo: WAVES-USD,     coinmetrics: [waves], category: legacy}
+    - {coin: NEO,   coingecko: neo,                yahoo: NEO-USD,       coinmetrics: [neo],  category: legacy}
+    - {coin: DCR,   coingecko: decred,             yahoo: DCR-USD,       coinmetrics: [dcr],  category: legacy}
+    - {coin: LSK,   coingecko: lisk,               yahoo: LSK-USD,       coinmetrics: [lsk],  category: legacy}
+    - {coin: DGB,   coingecko: digibyte,           yahoo: DGB-USD,       coinmetrics: [dgb],  category: legacy}
+    - {coin: BTS,   coingecko: bitshares,          yahoo: BTS-USD,       coinmetrics: [bts],  category: legacy}
+    - {coin: SC,    coingecko: siacoin,            yahoo: SC-USD,        coinmetrics: [sc],   category: legacy}
+    - {coin: XTZ,   coingecko: tezos,              yahoo: XTZ-USD,       coinmetrics: [xtz],  category: legacy}
+    # collapsed event-origin coins (shock source nodes)
+    - {coin: LUNC,  coingecko: terra-luna,         yahoo: LUNC-USD,      coinmetrics: [luna, lunc], category: event}
+    - {coin: FTT,   coingecko: ftx-token,          yahoo: FTT-USD,       coinmetrics: [ftt],  category: event}
+  # Not independent shock nodes -> excluded from ranking (matched on CoinGecko symbol).
+  stablecoins: [usdt, usdc, dai, fdusd, usde, tusd, pyusd, usds, usd1, usdg, rlusd, busd, usdd, gusd,
+                frax, lusd, usdp, usdy, usyc, buidl, eurc, susds, susde, usdtb, usdf, usdx, crvusd, gho]
+  wrapped_or_staked: [wbtc, weth, steth, wsteth, weeth, cbbtc, cbeth, reth, wbeth, bnsol, jitosol,
+                      msol, ezeth, rseth, lbtc, solvbtc, meth, tbtc, clbtc, wbnb, weth.e, susde]
+  rwa_or_commodity: [xaut, paxg, figr_heloc]   # tokenised real-world assets: price not set by crypto market
+  event_coins: [LUNC, FTT]
+  include_event_coins_in_panel_b: false
+
+sources:
+  priority: [yahoo, coinmetrics, coindesk]
+  retries: 5
+  backoff_base_seconds: 2.0
+  request_pause_seconds: 0.5
+  coinmetrics_url: "https://raw.githubusercontent.com/coinmetrics/data/master/csv/{asset}.csv"
+  coingecko_markets_url: "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1"
+  coindesk_api_key_env: "COINDESK_API_KEY"
+  identity_price_tolerance: 0.10   # Yahoo last close vs CoinGecko current price, relative
+
+quality:
+  min_coverage_panel_a: 0.98
+  min_median_volume_usd: 1000000
+  max_ffill_gap: 2
+  xsource_close_tol: 0.02
+  volume_spike_mult: 20
+  volume_spike_window: 30
+  stale_days: 3
+  abs_logret_flag: 0.40
+
+splits:
+  train: ["2016-09-28", "2022-06-30"]
+  val:   ["2022-07-01", "2023-12-31"]
+  test:  ["2024-01-01", "2026-09-27"]
+  embargo_days: 30              # days at the start of val and test that are excluded from samples
+
+targets:
+  horizons: [1, 3, 7, 14, 30]
+  shock_vol_window: 30
+  shock_z: 2.5                  # |r_{t+1}| / sigma_30(t) threshold; validated on train only
+  contagion_k: [1, 2, 3]
+
+tgn:
+  # Decision (2026-09-28, after EDA): events are shock-triggered. On each day t where coin i has a
+  # shock (|r_t| / sigma30_{t-1} > targets.shock_z, observable at t) one event i->j is emitted for
+  # every other active node j. Direction comes from time ordering, not from a noisy lag-corr estimate.
+  # "lag_corr" reproduces the original rule (directed snapshot edges).
+  event_source: "shock"         # "shock" | "lag_corr"
+
+features:
+  vol_windows: [7, 14, 30]
+  volume_median_window: 30
+  rsi_window: 14
+  days_listed_cap: 730          # EDA §5-6: uncapped age was an era proxy (largest train->test KS shift)
+
+scaling:
+  method: "robust"
+  scope: "per_coin"             # confirmed in EDA (per_coin vs global)
+  clip: 5.0

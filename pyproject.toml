@@ -32,20 +32,21 @@ classifiers = [
 dependencies = [
     "torch>=2.0.0",
     "torch-geometric>=2.3.0",
-    "torch-geometric-temporal>=0.54.0",
     "numpy>=1.24.0",
     "pandas>=2.0.0",
+    "pyarrow>=14.0",
     "scipy>=1.10.0",
     "networkx>=3.0",
-    "ccxt>=4.0.0",
-    "yfinance>=0.2.30",
+    "yfinance>=0.2.40",
     "statsmodels>=0.14.0",
+    "arch>=6.0",
     "scikit-learn>=1.3.0",
     "pyyaml>=6.0",
     "pydantic>=2.0",
+    "matplotlib>=3.7",
+    "seaborn>=0.13",
     "streamlit>=1.28.0",
     "plotly>=5.17.0",
-    "pyvis>=0.3.2",
     "tqdm>=4.66.0"
 ]
 
@@ -55,8 +56,25 @@ dev = [
     "pytest-cov>=4.1.0",
     "ruff>=0.1.0",
     "black>=23.9.0",
-    "ipykernel>=6.25.0"
+    "ipykernel>=6.25.0",
+    "nbconvert>=7.0"
 ]
+
+[project.scripts]
+cryptograph-data = "cryptograph.pipelines.build_data:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "integration: needs processed artifacts in data/processed (skipped when absent)",
+    "network: needs internet access",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
