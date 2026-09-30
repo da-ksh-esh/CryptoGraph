@@ -7,8 +7,8 @@ name = "cryptograph-secure"
 version = "0.1.0"
 description = "A cybersecurity-focused deep learning framework analyzing cryptocurrency shock propagation and anomaly resilience using Temporal Graph Neural Networks."
 readme = "README.md"
-requires-python = ">=3.10"
-license = { text = "MIT" }
+requires-python = ">=3.11"
+license = { text = "Proprietary, all rights reserved (pending IP review)" }
 authors = [
     { name = "CryptoGraph-Secure Team" }
 ]
@@ -23,7 +23,7 @@ keywords = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+    "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Office/Business :: Financial :: Investment"
@@ -76,5 +76,5 @@ markers = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py312"
 src = ["src", "tests"]
