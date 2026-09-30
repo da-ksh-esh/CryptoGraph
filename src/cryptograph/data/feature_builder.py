@@ -1,4 +1,9 @@
-"""Feature engineering module for constructing normalized node features and multi-horizon targets."""
+"""Legacy feature builder (kept for existing callers).
+
+Deprecated for model data: it fills NaNs with 0, back-fills across launch dates
+and clips returns. Use `cryptograph.data.features` (trailing-only features with
+availability masks) via `cryptograph-data --stage build` instead.
+"""
 
 from typing import List, Tuple, Dict, Optional
 import numpy as np

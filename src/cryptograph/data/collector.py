@@ -1,11 +1,14 @@
-"""Data collection module for fetching multi-asset historical OHLCV data."""
+"""Legacy data collection facade (multi-ticker OHLCV frame).
+
+The audited, reproducible pipeline lives in `cryptograph.data.sources` /
+`cryptograph.pipelines.build_data` (`cryptograph-data --stage ...`).
+"""
 
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 import argparse
 import yaml
 import pandas as pd
-import yfinance as yf
 
 from ..common.logger import get_logger
 
@@ -34,30 +37,48 @@ class CryptoDataCollector:
         tickers: Optional[List[str]] = None,
         period: str = "10y",
         interval: str = "1d",
-        auto_adjust: bool = True
+        auto_adjust: bool = False,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
     ) -> pd.DataFrame:
         """
-        Fetches historical multi-ticker candlestick data from Yahoo Finance.
+        Fetches historical multi-ticker daily candlestick data from Yahoo Finance.
 
-        Args:
-            tickers: List of Yahoo Finance ticker symbols (e.g., ['BTC-USD', 'ETH-USD']).
-            period: Duration string ('10y', '5y', '2y', etc.).
-            interval: Candlestick resolution ('1d', '1h', etc.).
-            auto_adjust: Adjust prices for splits/dividends.
+        Legacy entry point. The audited pipeline is `cryptograph-data` (see README);
+        this method now fetches one ticker per request with retries (batch downloads
+        silently drop failing tickers) over a fixed [start, end] window. `period` is
+        only used when start/end are omitted and is not reproducible across runs.
 
         Returns:
             pd.DataFrame: Multi-index DataFrame with (Price Metric, Ticker) columns.
         """
-        symbols = tickers or self.tickers
-        logger.info(f"Downloading {len(symbols)} tickers for period='{period}', interval='{interval}' from Yahoo Finance...")
+        from datetime import date, timedelta
 
-        df = yf.download(
-            tickers=symbols,
-            period=period,
-            interval=interval,
-            auto_adjust=auto_adjust,
-            progress=True
-        )
+        from .sources.yahoo import YahooSource
+
+        symbols = tickers or self.tickers
+        if interval != "1d":
+            raise ValueError("only daily data is supported")
+        end_d = date.fromisoformat(end) if end else date.today() - timedelta(days=1)
+        years = int(period.rstrip("y")) if period.endswith("y") else 10
+        start_d = date.fromisoformat(start) if start else end_d.replace(year=end_d.year - years)
+        logger.info(f"Downloading {len(symbols)} tickers {start_d}..{end_d} from Yahoo Finance (one per request)...")
+
+        src = YahooSource(start_d, end_d)
+        frames = {}
+        for sym in symbols:
+            try:
+                d = src.fetch(sym)
+            except RuntimeError as e:
+                logger.warning(f"{sym}: {e}")
+                continue
+            if auto_adjust and "adj_close" in d:
+                d["close"] = d["adj_close"]
+            frames[sym] = d.rename(columns=str.title)[["Open", "High", "Low", "Close", "Volume"]]
+        if not frames:
+            raise ValueError("Downloaded dataset is empty. Check ticker symbols or network connection.")
+        df = pd.concat(frames, axis=1).swaplevel(0, 1, axis=1).sort_index(axis=1)
+        df.columns = df.columns.remove_unused_levels()
 
         if df.empty:
             raise ValueError("Downloaded dataset is empty. Check ticker symbols or network connection.")
