@@ -37,11 +37,29 @@ data/processed/*
 !data/processed/.gitkeep
 data/external/*
 !data/external/.gitkeep
+!data/external/events.csv
+!data/external/sectors.csv
+data/interim/*
+!data/interim/.gitkeep
 
-# Model weights and checkpoints
+# Binary data artifacts anywhere in the repo (data never goes into git)
+*.parquet
+*.pkl
+*.zip
+*.feather
+*.h5
+
+# Local secrets (optional CoinDesk API key, tokens)
+.env
+.env.*
+!.env.example
+
+# Model weights, checkpoints and experiment runs (local tracking only)
 checkpoints/
+runs/
 *.pt
 *.pth
+*.ckpt
 *.onnx
 
 # Jupyter Notebooks
