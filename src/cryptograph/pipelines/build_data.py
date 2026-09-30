@@ -15,27 +15,13 @@ re-run independently.
 from __future__ import annotations
 
 import argparse
-import random
 from typing import Callable
-
-import numpy as np
 
 from ..common.logger import get_logger
 from ..data.config import DEFAULT_CONFIG_PATH, DataConfig, load_config
+from ..training.seed import seed_everything
 
 logger = get_logger("cryptograph.pipeline")
-
-
-def seed_everything(seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
-    try:
-        import torch
-
-        torch.manual_seed(seed)
-    except ImportError:
-        pass
-
 
 def stage_audit(cfg: DataConfig, refresh: bool) -> None:
     from ..data.universe import UniverseAuditor, format_summary
