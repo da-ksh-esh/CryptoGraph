@@ -30,13 +30,13 @@ env/
 env.bak/
 venv.bak/
 
-# Data and Artifacts (except sample data / structures)
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
+# Data and Artifacts
+data/raw/
+data/interim/
+data/processed/
 data/external/*
 !data/external/.gitkeep
+!data/external/*.csv
 
 # Model weights and checkpoints
 checkpoints/
@@ -58,8 +58,17 @@ checkpoints/
 .DS_Store
 Thumbs.db
 
-# Logs and outputs
+# Logs, runs, reports and outputs
 logs/
 *.log
+runs/
+reports/**/*.parquet
+*.parquet
+*.pkl
+*.zip
+colab/*.zip
+.env
 wandb/
 mlruns/
+.pytest_cache/
+extra/
