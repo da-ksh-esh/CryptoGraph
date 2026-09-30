@@ -1,4 +1,9 @@
-"""Adversarial perturbation attacks: Feature attacks (PGD/FGSM) and Graph Topology (DICE)."""
+"""Adversarial feature attacks (FGSM).
+
+TODO: `fgsm_feature_attack` assumes `model(x, edge_index)` returns a tensor; CryptoTGN
+returns `(preds, z)`, so it fails with MSELoss on a tuple. Fix when the robustness stage
+starts (use `model(...)[0]`). The DICE topology attack was a no-op stub and was removed.
+"""
 from typing import Tuple
 import torch
 import torch.nn as nn
@@ -20,8 +25,3 @@ class AdversarialAttacker:
         with torch.no_grad():
             x_adv = x_adv + self.eps * x_adv.grad.sign()
         return x_adv.detach()
-
-    def dice_topology_attack(self, edge_index: torch.Tensor, num_nodes: int, ratio: float = 0.1) -> torch.Tensor:
-        """Disconnect Internally, Connect Externally (DICE) edge perturbation."""
-        # Random edge flipping simulation
-        return edge_index

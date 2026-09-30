@@ -1,4 +1,10 @@
-"""Scores anomalies and detects oracle/market manipulation via reconstruction error."""
+"""Reconstruction-error anomaly scoring (for the optional T-GAE).
+
+Flags nodes whose reconstruction error is above a percentile threshold. It does not
+identify the cause of an anomaly: every alert is reported as "unclassified". (The
+previous version labelled alerts "oracle_manipulation" or "wash_trading" from a 1.5x
+threshold, which had no basis.)
+"""
 from typing import List
 import numpy as np
 import torch
@@ -27,7 +33,7 @@ class AnomalyScorer:
                     asset=asset,
                     anomaly_score=score,
                     threshold=float(threshold),
-                    suspected_type="oracle_manipulation" if score > threshold * 1.5 else "wash_trading",
+                    suspected_type="unclassified",
                     reconstruction_error=score
                 ))
         return alerts

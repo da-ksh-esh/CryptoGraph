@@ -7,9 +7,9 @@ from cryptograph.models.tgn import CryptoTGN
 from cryptograph.models.lstm import CryptoLSTM
 from cryptograph.analysis.var_spillover import VARSpilloverBaseline
 from cryptograph.models.tgae import TemporalGAE
-from cryptograph.spillover.tempme import TempME
-from cryptograph.spillover.validation import ExplanationValidator
-from cryptograph.security.perturbation import DualPerturbationTester
+from cryptograph.explain.edge_mask import EdgeMaskExplainer
+from cryptograph.explain.validation import ExplanationValidator
+from cryptograph.robustness.perturbation import DualPerturbationTester
 
 def test_crypto_tgn():
     num_nodes = 5
@@ -47,7 +47,7 @@ def test_tempme_and_validation():
     x = torch.randn(num_nodes, in_features)
     edge_index = torch.tensor([[0, 1, 2], [1, 2, 0]], dtype=torch.long)
 
-    explainer = TempME(model, num_epochs=5)
+    explainer = EdgeMaskExplainer(model, num_epochs=5)
     exp = explainer.explain(target_node_idx=0, node_features=x, edge_index=edge_index)
     assert "edge_mask" in exp
     assert "top_edges" in exp
@@ -68,7 +68,7 @@ def test_dual_perturbation():
     model = CryptoTGN(num_nodes=num_nodes, raw_msg_dim=8, memory_dim=16, embedding_dim=16, out_horizons=2)
     x = torch.randn(num_nodes, 8)
     edge_index = torch.tensor([[0, 1, 2], [1, 2, 0]], dtype=torch.long)
-    explainer = TempME(model, num_epochs=3)
+    explainer = EdgeMaskExplainer(model, num_epochs=3)
 
     tester = DualPerturbationTester(model, explainer)
     results = tester.run_stress_test(x, edge_index, target_idx=0, epsilon_levels=[0.05])

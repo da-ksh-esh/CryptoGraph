@@ -1,15 +1,21 @@
-"""TempME: Temporal Motif Explainer for Dynamic Graph Contagion Networks."""
+"""Edge-mask explainer (GNNExplainer-style) for graph models.
+
+This is NOT TempME. It learns a soft mask over the edges of a single graph so the
+model's prediction for one node is preserved with as few edges as possible. It has
+no notion of temporal motifs. It was previously named `TempME`; that name is kept as
+a deprecated alias. The real TempME (official code) is evaluated in the model-plan
+feasibility check and will get its own adapter in `cryptograph.explain`.
+"""
 
 from typing import Dict, List, Tuple, Any
 import torch
 import torch.nn as nn
 import numpy as np
 
-class TempME:
+class EdgeMaskExplainer:
     """
-    Temporal Motif Explainer (TempME) for Temporal Graph Networks.
-    Identifies the key sequence of timestamped edges (motifs) that explain
-    why a target cryptocurrency experienced a shock spillover.
+    Learns an edge-importance mask that preserves the model's prediction for a
+    target node (sigmoid mask + MSE to the original prediction + L1 sparsity).
     """
 
     def __init__(self, model: nn.Module, num_epochs: int = 50, lr: float = 0.05, sparsity_weight: float = 0.01):
@@ -87,3 +93,7 @@ class TempME:
             "top_edges": top_edges,
             "sparsity": float(np.mean(final_mask < 0.5))
         }
+
+
+# Deprecated alias: this class was previously (mis)named TempME.
+TempME = EdgeMaskExplainer
