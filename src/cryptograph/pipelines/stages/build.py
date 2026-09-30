@@ -26,6 +26,7 @@ from ...data.features.targets import (contagion_labels, forward_realized_vol, fo
                                       shock_indicator, shock_z)
 from ...data.graphs.correlation import directed_edges, rolling_corr_mats, undirected_edges
 from ...data.graphs.temporal_stream import MSG_NAMES, build_event_arrays, shock_edges, split_events, to_temporal_data
+from ...data.legacy import write_legacy_graph_dataset
 from ...data.storage import hash_tree, library_versions, sha256_file, utc_now, write_csv, write_json
 from . import load_universe
 
@@ -150,18 +151,16 @@ def run(cfg: DataConfig, refresh: bool = False) -> None:
                        "last_date": date_str[np.flatnonzero(sample_mask[s])[-1]]})
 
     # ---------------- legacy crypto_graph_dataset.pt (existing format) ----------------
-    legacy = {
-        "features": _t(Xb), "targets": _t(np.nan_to_num(y_ret[:, gidx]).astype(np.float32)), "active_mask": _t(act_b),
-        "edge_indices": snap["undirected_edge_index"], "edge_weights": snap["undirected_edge_weight"],
-        "timestamps": date_str, "asset_names": gcoins, "feature_names": fnames, "horizons": horizons,
-        "metadata": {"num_timesteps": T, "num_assets": len(gcoins), "num_features": F,
-                     "rolling_window": g.rolling_window, "correlation_threshold": g.threshold,
-                     "dataset_version": cfg.dataset_version,
-                     "note": "features are train-fitted robust-scaled + clipped; targets NaN->0 (use active_mask)"},
-    }
-    legacy_path = cfg.path(cfg.paths.legacy_graph_dataset)
-    legacy_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(legacy, legacy_path)
+    legacy_path = write_legacy_graph_dataset(
+        cfg.path(cfg.paths.legacy_graph_dataset),
+        features=_t(Xb), targets=_t(np.nan_to_num(y_ret[:, gidx]).astype(np.float32)), active_mask=_t(act_b),
+        edge_indices=snap["undirected_edge_index"], edge_weights=snap["undirected_edge_weight"],
+        timestamps=date_str, asset_names=gcoins, feature_names=fnames, horizons=horizons,
+        metadata={"num_timesteps": T, "num_assets": len(gcoins), "num_features": F,
+                  "rolling_window": g.rolling_window, "correlation_threshold": g.threshold,
+                  "dataset_version": cfg.dataset_version,
+                  "note": "features are train-fitted robust-scaled + clipped; targets NaN->0 (use active_mask)"},
+    )
 
     # ---------------- TGN event stream ----------------
     li, lv = fnames.index("log_return"), fnames.index("rv_7")

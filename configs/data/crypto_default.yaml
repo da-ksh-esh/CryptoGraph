@@ -5,7 +5,7 @@
 # forecast_horizons, graph, paths) are kept for existing modules.
 # =============================================================================
 
-# ---- legacy keys (read by collector.py / dataloader.py facades) ----------------
+# ---- legacy keys (kept for compatibility; the new pipeline reads the keys below) -
 source: "yfinance"
 tickers:                      # legacy default list; the real universe is built from `universe`
   - "BTC-USD"
