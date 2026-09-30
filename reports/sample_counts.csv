@@ -1,0 +1,10 @@
+dataset,split,samples,positives_shock,first_date,last_date
+lstm_windows,train,28880,1126,2016-10-27,2022-05-31
+lstm_windows,val,9725,401,2022-07-31,2023-12-01
+lstm_windows,test,18820,739,2024-01-31,2026-08-28
+graph_snapshots,train,2043,1130,2016-10-27,2022-05-31
+graph_snapshots,val,489,401,2022-07-31,2023-12-01
+graph_snapshots,test,941,739,2024-01-31,2026-08-28
+tgn_events,train,16266,16266,2016-10-25,2022-06-19
+tgn_events,val,8241,8241,2022-07-18,2023-12-29
+tgn_events,test,14877,14877,2024-01-02,2026-09-24
