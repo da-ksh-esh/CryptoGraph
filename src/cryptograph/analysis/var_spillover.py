@@ -4,7 +4,8 @@ from typing import Dict, Any, Tuple
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.api import VAR
-from ...common.logger import get_logger
+from ..common.logger import get_logger
+from .connectedness import generalized_fevd
 
 logger = get_logger(__name__)
 
@@ -50,8 +51,6 @@ class VARSpilloverBaseline:
             raise RuntimeError("Model must be fitted before computing spillover table.")
 
         if method == "generalized":
-            from ...analysis.connectedness import generalized_fevd
-
             norm_matrix = generalized_fevd(self.fitted_model.coefs, np.asarray(self.fitted_model.sigma_u),
                                            self.forecast_horizon)
         elif method == "cholesky":

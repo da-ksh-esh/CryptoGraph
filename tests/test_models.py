@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 
 from cryptograph.models.tgn import CryptoTGN
-from cryptograph.models.baselines.lstm import CryptoLSTM
-from cryptograph.models.baselines.var_spillover import VARSpilloverBaseline
-from cryptograph.models.anomaly_ae import TemporalGAE
+from cryptograph.models.lstm import CryptoLSTM
+from cryptograph.analysis.var_spillover import VARSpilloverBaseline
+from cryptograph.models.tgae import TemporalGAE
 from cryptograph.spillover.tempme import TempME
 from cryptograph.spillover.validation import ExplanationValidator
 from cryptograph.security.perturbation import DualPerturbationTester

@@ -1,6 +1,10 @@
-from .tgn import CryptoTGN
-from .anomaly_ae import TemporalGAE
-from .baselines.lstm import CryptoLSTM
-from .baselines.var_spillover import VARSpilloverBaseline
+"""Models: LSTM baseline, TGN, T-GAE, and placeholders for DyGFormer and the snapshot GNN ablation.
 
-__all__ = ["CryptoTGN", "TemporalGAE", "CryptoLSTM", "VARSpilloverBaseline"]
+The VAR / Diebold-Yilmaz baseline lives in `cryptograph.analysis` (statistical, not trained).
+"""
+
+from .lstm import CryptoLSTM
+from .tgae import TemporalGAE
+from .tgn import CryptoTGN
+
+__all__ = ["CryptoTGN", "TemporalGAE", "CryptoLSTM"]
