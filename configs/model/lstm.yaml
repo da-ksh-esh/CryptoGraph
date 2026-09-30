@@ -1,0 +1,15 @@
+# LSTM baseline (non-graph): one 30-step window of node features per coin -> targets.
+# Draft values; tuned in the training phase on validation data only.
+model_name: "CryptoLSTM"
+in_features: 12
+hidden_dim: 32          # small: ~2,000 training days (daily) -> overfitting risk
+num_layers: 1
+dropout: 0.2
+out_horizons: 5
+
+training:
+  epochs: 100
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 1.0e-4
+  patience: 10            # early stopping on validation loss

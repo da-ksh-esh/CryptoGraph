@@ -1,6 +1,6 @@
 """Typed, validated data configuration.
 
-`load_config` reads ``configs/data/crypto_default.yaml`` into a pydantic
+`load_config` reads ``configs/data/daily.yaml`` into a pydantic
 ``DataConfig``. Every path is resolved relative to the project root so the
 pipeline behaves the same from any working directory.
 """
@@ -17,7 +17,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "data" / "crypto_default.yaml"
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "configs" / "data" / "daily.yaml"
 
 
 class _Strict(BaseModel):
@@ -219,7 +219,7 @@ class DataConfig(_Strict):
 
 
 def load_config(path: str | Path | None = None) -> DataConfig:
-    """Load and validate the data config (defaults to configs/data/crypto_default.yaml)."""
+    """Load and validate the data config (defaults to configs/data/daily.yaml)."""
     p = Path(path) if path is not None else DEFAULT_CONFIG_PATH
     if not p.is_absolute() and not p.exists():
         p = PROJECT_ROOT / p

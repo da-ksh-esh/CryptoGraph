@@ -1,0 +1,5 @@
+# DyGFormer (Yu et al., NeurIPS 2023) via a DyGLib adapter.
+# Placeholder: settings are filled in after the DyGLib feasibility check (docs/model_plan.md).
+model_name: "DyGFormer"
+backend: "dyglib"
+status: "not implemented"

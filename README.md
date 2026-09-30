@@ -70,7 +70,7 @@ pytest
 jupyter nbconvert --to notebook --execute --inplace notebooks/01_market_dynamics_and_spillover_baseline.ipynb
 ```
 
-Raw downloads are write-once snapshots under `data/raw/` and are reused on later runs. Pass `--refresh` to download them again. The date window, universe, thresholds, splits and seed all live in `configs/data/crypto_default.yaml`. On Windows, `import cryptograph` (or `torch`) before `pandas`, because pyarrow ships an older `msvcp140.dll` that breaks torch when it loads first.
+Raw downloads are write-once snapshots under `data/raw/` and are reused on later runs. Pass `--refresh` to download them again. The date window, universe, thresholds, splits and seed all live in `configs/data/daily.yaml`. On Windows, `import cryptograph` (or `torch`) before `pandas`, because pyarrow ships an older `msvcp140.dll` that breaks torch when it loads first.
 
 ### Window and universe
 

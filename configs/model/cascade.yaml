@@ -1,0 +1,6 @@
+# Independent cascade baseline (Kempe, Kleinberg & Tardos 2003).
+# Edge activation probabilities p(i->j) are estimated on TRAIN from conditional shock propagation.
+model_name: "IndependentCascade"
+horizons_hours: [1, 3, 6, 12, 24]
+smoothing: 1.0          # additive (Laplace) smoothing of the activation counts
+status: "planned (Stage 5)"
