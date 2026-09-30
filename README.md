@@ -20,19 +20,28 @@ A cybersecurity-focused deep learning framework that analyzes how price shocks p
 
 ```text
 CryptoGraph/
-├── configs/             # Hydra / YAML experiment & model configurations
-├── data/                # Raw, processed, and external dataset storage
-├── dashboard/           # Streamlit interactive monitoring dashboard
-├── notebooks/           # Research and exploratory Jupyter notebooks
-├── src/cryptograph/     # Core Python library
-│   ├── common/          # Types, logging, shared utilities
-│   ├── data/            # Audited data pipeline: sources, quality, features, graphs, datasets
-│   ├── analysis/        # EDA statistics, Diebold-Yilmaz connectedness (generalized FEVD)
-│   ├── models/          # GATv2, GCN, GRU, TCN, TGNN, and VGAE
-│   ├── spillover/       # Shock detector, propagation tracker, attribution
-│   ├── security/        # Anomaly scoring, adversarial attacks & defenses
-│   └── pipelines/       # Training and evaluation orchestration pipelines
-└── tests/               # Pytest unit and integration test suite
+├── configs/
+│   ├── data/daily.yaml       # data window, universe, quality, splits, targets, graph, scaling
+│   ├── model/                # lstm, tgn, dygformer, cascade, tgae
+│   ├── experiment/           # one YAML per training experiment
+│   └── robustness/           # perturbation settings (optional stage)
+├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv
+├── dashboard/                # Streamlit UI (deferred until models are trained)
+├── docs/                     # model plan, merge notes
+├── notebooks/                # 01 data & EDA, 03 Diebold-Yilmaz; archive/ holds superseded notebooks
+├── reports/                  # audit, quality and baseline tables, figures
+├── runs/                     # local experiment runs (gitignored)
+├── src/cryptograph/
+│   ├── data/                 # sources, quality, features, graphs, datasets, universe; legacy.py (old file format)
+│   ├── network/              # centrality, communities, MST, topology, independent cascade (Stage 5)
+│   ├── models/               # LSTM, TGN, T-GAE; DyGFormer and snapshot-GNN placeholders
+│   ├── explain/              # edge-mask explainer, explanation validation (TempME adapter later)
+│   ├── robustness/           # perturbation tests, FGSM (TODO), anomaly scoring
+│   ├── training/             # seeding, losses, metrics, early stopping, loop
+│   ├── analysis/             # statistics, Diebold-Yilmaz (generalized FEVD), event studies, baselines
+│   ├── pipelines/            # build_data (cryptograph-data), train, evaluate, explain
+│   └── common/               # logging, shared types
+└── tests/unit/{data,models,explain,robustness,training,analysis,network}, tests/integration/
 ```
 
 ---
