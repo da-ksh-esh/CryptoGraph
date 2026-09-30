@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -218,11 +218,123 @@ class DataConfig(_Strict):
         return hashlib.sha256(blob).hexdigest()
 
 
-def load_config(path: str | Path | None = None) -> DataConfig:
-    """Load and validate the data config (defaults to configs/data/daily.yaml)."""
+def _read_yaml(path: str | Path | None) -> dict:
     p = Path(path) if path is not None else DEFAULT_CONFIG_PATH
     if not p.is_absolute() and not p.exists():
         p = PROJECT_ROOT / p
     with open(p, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-    return DataConfig.model_validate(raw)
+        return yaml.safe_load(f)
+
+
+def load_config(path: str | Path | None = None) -> DataConfig:
+    """Load and validate the data config (defaults to configs/data/daily.yaml)."""
+    return DataConfig.model_validate(_read_yaml(path))
+
+
+# ============================================================================
+# Hourly (Binance) configuration — configs/data/hourly.yaml
+# ============================================================================
+HOURLY_CONFIG_PATH = PROJECT_ROOT / "configs" / "data" / "hourly.yaml"
+
+
+class HourlyWindowConfig(_Strict):
+    start: datetime               # first hour (UTC, inclusive)
+    end: datetime                 # last hour (UTC, inclusive)
+    reference_date: date          # market-cap ranking date
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "HourlyWindowConfig":
+        if not self.start < self.end:
+            raise ValueError("hourly window start must precede end")
+        return self
+
+
+class SymbolOverride(_Strict):
+    """Binance symbol history for a coin whose ticker changed (oldest first).
+
+    `until` closes a segment (UTC date, inclusive); the last segment has no `until`.
+    """
+    symbol: str
+    until: date | None = None
+
+
+class HourlyUniverseConfig(_Strict):
+    target_size: int = 30
+    candidate_pool: int = 60                    # top-N non-stable coins by market cap that are audited
+    quote_asset: str = "USDT"
+    min_history_days: int = 730                 # >= 2 years of hourly data inside the window
+    min_test_coverage: float = 0.90             # share of test-period hours with data
+    identity_price_tolerance: float = 0.10      # Binance last close vs CoinGecko reference price
+    stablecoins: list[str]
+    wrapped_or_staked: list[str]
+    rwa_or_pegged: list[str]
+    event_coins: dict[str, list[SymbolOverride]]           # coin -> Binance symbol history
+    symbol_overrides: dict[str, list[SymbolOverride]] = Field(default_factory=dict)   # coingecko id -> history
+    yahoo_tickers: dict[str, str] = Field(default_factory=dict)   # coingecko id -> Yahoo ticker (still price-verified)
+
+    @property
+    def excluded_symbols(self) -> set[str]:
+        return {s.lower() for s in (*self.stablecoins, *self.wrapped_or_staked, *self.rwa_or_pegged)}
+
+
+class BinanceConfig(_Strict):
+    archive_url: str = "https://data.binance.vision"
+    list_url: str = "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision"
+    market: str = "spot"
+    interval: str = "1h"
+    retries: int = 5
+    backoff_base_seconds: float = 2.0
+
+
+class HourlyPathsConfig(_Strict):
+    raw_dir: str = "data/raw"
+    interim_dir: str = "data/interim/hourly"
+    processed_dir: str = "data/processed"
+    external_dir: str = "data/external"
+    reports_dir: str = "reports"
+    coingecko_snapshot: str = "data/raw/coingecko/markets_snapshot.json"
+    daily_audit: str = "reports/universe_audit.csv"
+
+
+class HourlyConfig(_Strict):
+    resolution: Literal["1h", "2h"] = "1h"
+    dataset_version: str = "v2"
+    seed: int = 42
+    window: HourlyWindowConfig
+    splits: SplitsConfig
+    universe: HourlyUniverseConfig
+    binance: BinanceConfig = BinanceConfig()
+    paths: HourlyPathsConfig = HourlyPathsConfig()
+
+    def path(self, rel: str) -> Path:
+        p = Path(rel)
+        return p if p.is_absolute() else PROJECT_ROOT / p
+
+    @property
+    def raw_dir(self) -> Path:
+        return self.path(self.paths.raw_dir)
+
+    @property
+    def reports_dir(self) -> Path:
+        return self.path(self.paths.reports_dir)
+
+    @property
+    def external_dir(self) -> Path:
+        return self.path(self.paths.external_dir)
+
+    @property
+    def interim_dir(self) -> Path:
+        return self.path(self.paths.interim_dir)
+
+    def fingerprint(self) -> str:
+        blob = json.dumps(self.model_dump(mode="json"), sort_keys=True).encode()
+        return hashlib.sha256(blob).hexdigest()
+
+
+def load_hourly_config(path: str | Path | None = None) -> HourlyConfig:
+    return HourlyConfig.model_validate(_read_yaml(path if path is not None else HOURLY_CONFIG_PATH))
+
+
+def is_hourly_config(path: str | Path) -> bool:
+    """True when the YAML at `path` is an hourly config (it declares `resolution`)."""
+    return "resolution" in (_read_yaml(path) or {})
