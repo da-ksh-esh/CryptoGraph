@@ -1,0 +1,33 @@
+coin,sector,source_url
+BTC,Layer 1,https://www.coingecko.com/en/coins/bitcoin
+ETH,Layer 1,https://www.coingecko.com/en/coins/ethereum
+BNB,Layer 1,https://www.coingecko.com/en/coins/bnb
+SOL,Layer 1,https://www.coingecko.com/en/coins/solana
+XRP,Payments,https://www.coingecko.com/en/coins/xrp
+DOGE,Meme,https://www.coingecko.com/en/coins/dogecoin
+ADA,Layer 1,https://www.coingecko.com/en/coins/cardano
+AVAX,Layer 1,https://www.coingecko.com/en/coins/avalanche
+LINK,Infrastructure,https://www.coingecko.com/en/coins/chainlink
+SUI,Layer 1,https://www.coingecko.com/en/coins/sui
+SHIB,Meme,https://www.coingecko.com/en/coins/shiba-inu
+NEAR,Layer 1,https://www.coingecko.com/en/coins/near
+DOT,Interoperability,https://www.coingecko.com/en/coins/polkadot
+BCH,Payments,https://www.coingecko.com/en/coins/bitcoin-cash
+LTC,Payments,https://www.coingecko.com/en/coins/litecoin
+UNI,DeFi,https://www.coingecko.com/en/coins/uniswap
+PEPE,Meme,https://www.coingecko.com/en/coins/pepe
+APT,Layer 1,https://www.coingecko.com/en/coins/aptos
+ICP,Layer 1,https://www.coingecko.com/en/coins/internet-computer
+TRX,Layer 1,https://www.coingecko.com/en/coins/tron
+XLM,Payments,https://www.coingecko.com/en/coins/stellar
+ETC,Layer 1,https://www.coingecko.com/en/coins/ethereum-classic
+ATOM,Interoperability,https://www.coingecko.com/en/coins/cosmos
+FIL,DePIN,https://www.coingecko.com/en/coins/filecoin
+ARB,Layer 2,https://www.coingecko.com/en/coins/arbitrum
+OP,Layer 2,https://www.coingecko.com/en/coins/optimism
+INJ,DeFi,https://www.coingecko.com/en/coins/injective
+RENDER,DePIN,https://www.coingecko.com/en/coins/render
+FET,AI,https://www.coingecko.com/en/coins/artificial-superintelligence-alliance
+AAVE,DeFi,https://www.coingecko.com/en/coins/aave
+LUNC,Event Coin,https://www.coingecko.com/en/coins/terra-luna-classic
+FTT,Event Coin,https://www.coingecko.com/en/coins/ftx-token

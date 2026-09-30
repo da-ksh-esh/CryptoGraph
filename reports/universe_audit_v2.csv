@@ -1,0 +1,46 @@
+coin,status,category,spot_market,history_years,test_coverage,reason
+BTC,Included,Layer 1,BTCUSDT,>7y,100%,Target 30 Universe (Passed all criteria)
+ETH,Included,Layer 1,ETHUSDT,>7y,100%,Target 30 Universe (Passed all criteria)
+BNB,Included,Layer 1,BNBUSDT,>6y,100%,Target 30 Universe (Passed all criteria)
+SOL,Included,Layer 1,SOLUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+XRP,Included,Payments,XRPUSDT,>6y,100%,Target 30 Universe (Passed all criteria)
+DOGE,Included,Meme,DOGEUSDT,>5y,100%,Target 30 Universe (Passed all criteria)
+ADA,Included,Layer 1,ADAUSDT,>6y,100%,Target 30 Universe (Passed all criteria)
+AVAX,Included,Layer 1,AVAXUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+LINK,Included,Infrastructure,LINKUSDT,>5y,100%,Target 30 Universe (Passed all criteria)
+SUI,Included,Layer 1,SUIUSDT,>2y,100%,Target 30 Universe (Passed all criteria)
+SHIB,Included,Meme,SHIBUSDT,>3y,100%,Target 30 Universe (Passed all criteria)
+NEAR,Included,Layer 1,NEARUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+DOT,Included,Interoperability,DOTUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+BCH,Included,Payments,BCHUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+LTC,Included,Payments,LTCUSDT,>6y,100%,Target 30 Universe (Passed all criteria)
+UNI,Included,DeFi,UNIUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+PEPE,Included,Meme,PEPEUSDT,>2y,100%,Target 30 Universe (Passed all criteria)
+APT,Included,Layer 1,APTUSDT,>2.5y,100%,Target 30 Universe (Passed all criteria)
+ICP,Included,Layer 1,ICPUSDT,>3y,100%,Target 30 Universe (Passed all criteria)
+TRX,Included,Layer 1,TRXUSDT,>6y,100%,Target 30 Universe (Passed all criteria)
+XLM,Included,Payments,XLMUSDT,>6y,100%,Target 30 Universe (Passed all criteria)
+ETC,Included,Layer 1,ETCUSDT,>6y,100%,Target 30 Universe (Passed all criteria)
+ATOM,Included,Interoperability,ATOMUSDT,>5y,100%,Target 30 Universe (Passed all criteria)
+FIL,Included,DePIN,FILUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+ARB,Included,Layer 2,ARBUSDT,>2.5y,100%,Target 30 Universe (Passed all criteria)
+OP,Included,Layer 2,OPUSDT,>3y,100%,Target 30 Universe (Passed all criteria)
+INJ,Included,DeFi,INJUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+RENDER,Included,DePIN,RENDERUSDT,>3y,100%,Target 30 Universe (Passed all criteria; formerly RNDR)
+FET,Included,AI,FETUSDT,>5y,100%,Target 30 Universe (Passed all criteria)
+AAVE,Included,DeFi,AAVEUSDT,>4y,100%,Target 30 Universe (Passed all criteria)
+XMR,Excluded,Privacy,XMRUSDT,>7y,6%,Binance spot delisting on 2024-02-20 (<90% test period coverage)
+USDT,Excluded,Stablecoin,N/A,N/A,N/A,Excluded fiat-pegged stablecoin
+USDC,Excluded,Stablecoin,USDCUSDT,>5y,100%,Excluded fiat-pegged stablecoin
+DAI,Excluded,Stablecoin,DAIUSDT,>4y,100%,Excluded algorithmic/fiat stablecoin
+FDUSD,Excluded,Stablecoin,FDUSDUSDT,<2y,100%,Excluded fiat-pegged stablecoin
+USDe,Excluded,Stablecoin,N/A,<1y,N/A,Excluded synthetic dollar stablecoin
+WBTC,Excluded,Wrapped,WBTCBTC,>4y,100%,Excluded wrapped token (duplicates BTC)
+STETH,Excluded,Liquid Staking,N/A,>3y,N/A,Excluded liquid staking receipt (duplicates ETH)
+WSTETH,Excluded,Liquid Staking,WSTETHUSDT,<2y,100%,Excluded liquid staking wrapper
+LEO,Excluded,Exchange,None,N/A,0%,"Bitfinex proprietary token, not listed on Binance spot"
+WBT,Excluded,Exchange,None,N/A,0%,"WhiteBIT exchange token, not listed on Binance spot"
+MNT,Excluded,Layer 2,None,N/A,0%,"Bybit Mantle ecosystem, not listed on Binance spot"
+OKB,Excluded,Exchange,None,N/A,0%,"OKX exchange token, not listed on Binance spot"
+LUNC,Event Coin,Layer 1,LUNCUSDT,>4y,100%,Preserved for Terra collapse case studies (May 2022)
+FTT,Event Coin,Exchange,FTTUSDT,>3y,100%,Preserved for FTX collapse case studies (Nov 2022)
