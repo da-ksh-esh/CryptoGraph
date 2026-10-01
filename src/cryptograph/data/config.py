@@ -318,9 +318,10 @@ class HourlyTargetsConfig(_Strict):
 class HourlyGraphConfig(_Strict):
     corr_window_hours: int = 168
     snapshot_step_hours: int = 24
-    threshold: float = 0.5                    # undirected |corr| threshold (revisited per resolution in Stage 4)
+    threshold: float | None = None            # fixed undirected |corr| threshold; None = calibrate on train
+    target_train_density: float = 0.30        # calibration target per resolution (daily graph: 30% on train)
     top_k: int = 2
-    directed_lag_threshold: float = 0.3
+    directed_lag_threshold: float | None = None   # None = no directed lag-1 edges (no usable hourly lead-lag)
     min_obs_frac: float = 0.8
 
 
@@ -329,7 +330,7 @@ class HourlyDatasetConfig(_Strict):
     lookback_hours: int = 168
     sample_stride_hours: int = 1
     include_event_coins_in_graph: bool = False
-    tgn_max_events: int = 1_000_000           # above this, stop at a checkpoint before building the stream
+    tgn_max_events: int = 2_000_000           # above this, stop at a checkpoint before building the stream
     tgn_top_k_receivers: int | None = None    # if set, each shock emits events only to its k strongest receivers
     scaler_min_train_hours: int = 2160        # 90 days; fewer -> global train scaler
 

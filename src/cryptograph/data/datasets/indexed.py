@@ -63,3 +63,38 @@ class PanelWindowDataset(Dataset):
         sl = slice(t - self.lookback + 1, t + 1)
         return {"x": self.X[sl, n], "x_mask": self.X_mask[sl, n], "y_ret": self.y_ret[t, n], "y_rv": self.y_rv[t, n],
                 "y_shock": self.y_shock[t, n], "coin_id": n, "t": t}
+
+
+class HourlySnapshotDataset(Dataset):
+    """One PyG `Data` per hourly graph snapshot whose bar is a sample bar of `split`.
+
+    Nodes = `graph_coins` (event coins excluded); x = scaled features at the snapshot bar; edges from
+    graph_snapshots.pt (built from the trailing window up to that bar). Fields as GraphSnapshotDataset,
+    with `t` (bar index) instead of `day`.
+    """
+
+    def __init__(self, panel_path: str | Path, snapshots_path: str | Path, split: str):
+        p = torch.load(panel_path, weights_only=False)
+        g = torch.load(snapshots_path, weights_only=False)
+        gi = torch.as_tensor(g["graph_index"])
+        self.X, self.X_mask, self.active = p["X"][:, gi], p["X_mask"][:, gi], p["active"][:, gi]
+        self.y_ret, self.y_rv, self.y_mask = p["y_ret"][:, gi], p["y_rv"][:, gi], p["y_mask"][:, gi]
+        self.y_shock, self.y_shock_mask = p["y_shock"][:, gi], p["y_shock_mask"][:, gi]
+        self.edge_index, self.edge_weight = g["undirected_edge_index"], g["undirected_edge_weight"]
+        snap_t = g["snapshot_t"].numpy()
+        keep = p["sample_mask"][split].numpy()[snap_t]
+        self.snap_k, self.snap_t = np.flatnonzero(keep), snap_t[keep]
+        self.meta = {"graph_coins": g["graph_coins"], "feature_names": p["feature_names"], "split": split,
+                     "threshold": g.get("undirected_threshold"), "bar_hours": p["bar_hours"]}
+
+    def __len__(self) -> int:
+        return len(self.snap_k)
+
+    def __getitem__(self, i: int):
+        from torch_geometric.data import Data
+
+        k, t = int(self.snap_k[i]), int(self.snap_t[i])
+        return Data(x=self.X[t], x_mask=self.X_mask[t], active=self.active[t], edge_index=self.edge_index[k],
+                    edge_weight=self.edge_weight[k], y_ret=self.y_ret[t], y_rv=self.y_rv[t], y_mask=self.y_mask[t],
+                    y_shock=self.y_shock[t], y_shock_mask=self.y_shock_mask[t], t=torch.tensor([t]),
+                    num_nodes=self.X.shape[1])

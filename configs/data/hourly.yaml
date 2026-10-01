@@ -96,9 +96,15 @@ targets:
 graph:
   corr_window_hours: 168
   snapshot_step_hours: 24        # one graph snapshot per day of hourly data
-  threshold: 0.5                 # draft; Stage 4 sets it per resolution (Epps effect)
+  # Stage 4: hourly |corr| is high at every sampling interval (weak Epps effect: 0.58 at 1h, 0.62 at 4-12h),
+  # so 0.5 gave ~76% density. The threshold is fitted per resolution on TRAIN snapshots to match the daily
+  # graph's 30% train density (notebook 01, section 16). Set a number here to override.
+  threshold: null
+  target_train_density: 0.30
   top_k: 2
-  directed_lag_threshold: 0.3
+  # Stage 4: no usable lead-lag at 1h-24h (|ccf| <= 0.05, Granger dR2 < 0.5%, does not replicate on val),
+  # so hourly snapshots carry no directed lag-1 edges. Directed networks come from GFEVD in Stage 5.
+  directed_lag_threshold: null
   min_obs_frac: 0.8
 
 datasets:
@@ -106,7 +112,8 @@ datasets:
   lookback_hours: 168            # LSTM input window
   sample_stride_hours: 1
   include_event_coins_in_graph: false
-  tgn_max_events: 1000000        # if the shock-triggered stream is larger, stop at a checkpoint first
+  tgn_max_events: 2000000        # stop at a checkpoint above this. Raised from 1M (2026-10-01): full 1h stream
+                                 # (1.46M events) kept unbiased, trained on Colab GPU; 2h stream = robustness check
   tgn_top_k_receivers: null
   scaler_min_train_hours: 2160   # 90 days of train data for a per-coin scaler, else the global train scaler
 

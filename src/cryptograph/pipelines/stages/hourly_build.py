@@ -25,7 +25,7 @@ from ...data.datasets.indexed import sample_mask_times, window_index
 from ...data.features.intraday import SeasonalityProfile, bars, build_intraday_features, prune_redundant
 from ...data.features.scaling import RobustScalerSet
 from ...data.features.targets import forward_realized_vol, forward_returns, next_day_shock, shock_indicator, shock_z
-from ...data.graphs.correlation import directed_edges, pairwise_corr, undirected_edges
+from ...data.graphs.correlation import directed_edges, pairwise_corr, threshold_for_density, undirected_edges
 from ...data.storage import hash_tree, library_versions, utc_now, write_csv, write_json
 from ...data.universe_hourly import _ts
 from .hourly_fetch import hourly_universe
@@ -175,29 +175,46 @@ def build_resolution(cfg: HourlyConfig, res: str) -> dict:
                        "first": str(cal[idx[:, 0].min()]) if len(idx) else None,
                        "last": str(cal[idx[:, 0].max()]) if len(idx) else None})
 
-    # graph snapshots every step (undirected + directed lag-1), trailing window only
+    # graph snapshots every step, trailing window only: undirected (threshold fitted on train snapshots)
+    # and, if configured, directed lag-1
     g = cfg.graph
     W = bars(g.corr_window_hours, bh)
     step = bars(g.snapshot_step_hours, bh)
     snap_t = np.arange(W - 1, T, step)
     rds = r_ds.to_numpy()[:, gidx]
     act_g = active[:, gidx]
-    und, dirg, dens = [], [], []
     min_obs = int(g.min_obs_frac * W)
+    Cs = []
     for t in snap_t:
         win = rds[t - W + 1: t + 1]
         C = pairwise_corr(win, win, min_obs)
-        D = pairwise_corr(rds[t - W: t], win, min_obs) if t >= W else np.full_like(C, np.nan)
         np.fill_diagonal(C, np.nan)
-        np.fill_diagonal(D, np.nan)
-        und.append(undirected_edges(C, act_g[t], g.threshold, g.top_k))
-        dirg.append(directed_edges(D, act_g[t], g.directed_lag_threshold))
+        Cs.append(C)
+    if g.threshold is None:
+        tr_snaps = [k for k, t in enumerate(snap_t) if split_id[t] == 0]
+        thr, thr_density = threshold_for_density([Cs[k] for k in tr_snaps], [act_g[snap_t[k]] for k in tr_snaps],
+                                                 g.target_train_density)
+        logger.info(f"[{res}] undirected threshold |corr| >= {thr} (train density {thr_density:.3f}, "
+                    f"target {g.target_train_density})")
+    else:
+        thr = float(g.threshold)
+    und, dirg, dens = [], [], []
+    for C, t in zip(Cs, snap_t):
+        und.append(undirected_edges(C, act_g[t], thr, g.top_k))
         na = act_g[t].sum()
-        dens.append((und[-1][0].shape[1] / max(na * (na - 1), 1), dirg[-1][0].shape[1] / max(na * (na - 1), 1)))
-    torch.save({"snapshot_t": _t(snap_t), "graph_coins": gcoins, "graph_index": gidx, "params": g.model_dump(),
-                "undirected_edge_index": [_t(e[0]) for e in und], "undirected_edge_weight": [_t(e[1]) for e in und],
-                "directed_edge_index": [_t(e[0]) for e in dirg], "directed_edge_weight": [_t(e[1]) for e in dirg]},
-               out_dir / "graph_snapshots.pt")
+        d_dir = np.nan
+        if g.directed_lag_threshold is not None:
+            D = pairwise_corr(rds[t - W: t], rds[t - W + 1: t + 1], min_obs) if t >= W else np.full_like(C, np.nan)
+            np.fill_diagonal(D, np.nan)
+            dirg.append(directed_edges(D, act_g[t], g.directed_lag_threshold))
+            d_dir = dirg[-1][0].shape[1] / max(na * (na - 1), 1)
+        dens.append((und[-1][0].shape[1] / max(na * (na - 1), 1), d_dir))
+    snap = {"snapshot_t": _t(snap_t), "graph_coins": gcoins, "graph_index": gidx, "params": g.model_dump(),
+            "undirected_threshold": thr,
+            "undirected_edge_index": [_t(e[0]) for e in und], "undirected_edge_weight": [_t(e[1]) for e in und]}
+    if g.directed_lag_threshold is not None:
+        snap |= {"directed_edge_index": [_t(e[0]) for e in dirg], "directed_edge_weight": [_t(e[1]) for e in dirg]}
+    torch.save(snap, out_dir / "graph_snapshots.pt")
     for si, s in enumerate(SPLITS):
         m = sample_mask[s][snap_t]
         counts.append({"dataset": "graph_snapshots", "split": s, "samples": int(m.sum()),
@@ -239,13 +256,18 @@ def build_resolution(cfg: HourlyConfig, res: str) -> dict:
                 "coins": coins, "model_coins": model_coins, "graph_coins": gcoins,
                 "features": fnames, "features_dropped_as_redundant": dropped, "shock_threshold": zthr,
                 "shape": {"T": T, "N": N, "F": len(fnames)},
-                "graph_density_mean": {"undirected": float(np.nanmean(dens[:, 0])), "directed": float(np.nanmean(dens[:, 1]))},
+                "graph_undirected_threshold": thr,
+                "graph_density_mean": {"undirected": float(np.nanmean(dens[:, 0])),
+                                       "undirected_by_split": {s: float(np.nanmean(dens[split_id[snap_t] == i, 0]))
+                                                               for i, s in enumerate(SPLITS)},
+                                       "directed": float(np.nanmean(dens[:, 1])) if np.isfinite(dens[:, 1]).any() else None},
                 "tgn": tgn_info, "quote_currency": "USDT",
                 "interim_sha256": hash_tree([cfg.interim_dir / f"master_{res}.parquet"], PROJECT_ROOT),
                 "processed_sha256": hash_tree(files, PROJECT_ROOT)}, out_dir / "metadata.json")
-    write_dictionary(out_dir, res, bh, fnames, dropped, zthr, L, cfg, T, N)
+    write_dictionary(out_dir, res, bh, fnames, dropped, zthr, L, cfg, T, N, thr)
     return {"res": res, "features": fnames, "dropped": dropped, "zthr": zthr, "counts": counts, "balance": bal,
-            "tgn": tgn_info, "density": dens.mean(axis=0).tolist()}
+            "tgn": tgn_info, "density": np.nanmean(dens, axis=0).tolist() if np.isfinite(dens[:, 1]).any()
+            else [float(np.nanmean(dens[:, 0])), float("nan")], "threshold": thr}
 
 
 def build_tgn_stream(out_dir, cal, coins, gidx, src_all, act_g, rds, X_in, fnames, kb, fut, split_id, W, min_obs,
@@ -270,7 +292,9 @@ def build_tgn_stream(out_dir, cal, coins, gidx, src_all, act_g, rds, X_in, fname
                 msgs.append([np.nan_to_num(D[i, j]), np.nan_to_num(C[i, j]), X_in[t, gi, li], X_in[t, gi, vi], 1.0])
                 ys.append([fut[k][0][t, j] for k in kb])
                 yms.append([fut[k][1][t, j] for k in kb])
-                ts.append(t); ss.append(i); ds.append(j)
+                ts.append(t)
+                ss.append(i)
+                ds.append(j)
     data = TemporalData(src=torch.tensor(ss), dst=torch.tensor(ds), t=torch.tensor(ts),
                         msg=torch.tensor(np.asarray(msgs, np.float32)))
     data.y = torch.tensor(np.asarray(ys, bool))
@@ -282,7 +306,7 @@ def build_tgn_stream(out_dir, cal, coins, gidx, src_all, act_g, rds, X_in, fname
                out_dir / "tgn_events.pt")
 
 
-def write_dictionary(out_dir, res, bh, fnames, dropped, zthr, L, cfg, T, N) -> None:
+def write_dictionary(out_dir, res, bh, fnames, dropped, zthr, L, cfg, T, N, thr) -> None:
     lines = [f"# Data dictionary — hourly dataset `{cfg.dataset_version}/{res}`", "",
              f"Bars of {bh} hour(s), UTC, {T} bars × {N} coins (30 model coins + event coins LUNC, FTT). Prices in USDT.",
              "Bar index `t` = position in `panel.pt['times']`. Inputs at t use data up to t; targets are strictly after t.",
@@ -307,8 +331,13 @@ def write_dictionary(out_dir, res, bh, fnames, dropped, zthr, L, cfg, T, N) -> N
               "", "## lstm_index_<split>.pt", "",
               f"`index` (S, 2) = (t, coin) with all {L} input bars active; use `cryptograph.data.datasets.PanelWindowDataset(panel.pt, lstm_index_<split>.pt)`.",
               "", "## graph_snapshots.pt", "",
-              f"`snapshot_t` (bar indices every {cfg.graph.snapshot_step_hours}h); per snapshot undirected edges (|ρ| ≥ {cfg.graph.threshold} or top-{cfg.graph.top_k}) "
-              f"and directed lag-1 edges (ρ(r_i,t−1, r_j,t) > {cfg.graph.directed_lag_threshold}) over the trailing {cfg.graph.corr_window_hours}h of deseasonalised returns; node order = `graph_coins`.",
+              f"`snapshot_t` (bar indices every {cfg.graph.snapshot_step_hours}h); per snapshot undirected edges (|ρ| ≥ {thr} or top-{cfg.graph.top_k}) "
+              f"over the trailing {cfg.graph.corr_window_hours}h of deseasonalised returns; node order = `graph_coins`. "
+              + (f"The threshold was fitted on train snapshots for a {cfg.graph.target_train_density:.0%} mean density. "
+                 if cfg.graph.threshold is None else "")
+              + (f"Directed lag-1 edges: ρ(r_i,t−1, r_j,t) > {cfg.graph.directed_lag_threshold}."
+                 if cfg.graph.directed_lag_threshold is not None else
+                 "No directed lag-1 edges (no usable hourly lead-lag; notebook 01, section 15)."),
               "", "## tgn_events.pt (if built — see tgn_event_count.json)", "",
               "TemporalData: `src`, `dst` (graph-node index), `t` (bar index), `msg` (E,5) = lag-1 corr, contemporaneous corr, "
               "source return (scaled), source volatility (scaled), source shock flag; `y` (E,K) = destination shocks within "
@@ -324,8 +353,8 @@ def run(cfg: HourlyConfig, refresh: bool = False) -> None:
         print(f"\n===== {r['res']} =====")
         print("features kept:", r["features"])
         print("dropped as redundant:", r["dropped"])
-        print(f"shock threshold |z| > {r['zthr']}; mean graph density undirected/directed: "
-              f"{r['density'][0]:.2f} / {r['density'][1]:.3f}")
+        print(f"shock threshold |z| > {r['zthr']}; undirected |corr| threshold {r['threshold']}; "
+              f"mean graph density undirected/directed: {r['density'][0]:.2f} / {r['density'][1]:.3f}")
         print(pd.DataFrame(r["counts"]).to_string(index=False))
         print(pd.DataFrame(r["balance"]).to_string(index=False))
         t = r["tgn"]

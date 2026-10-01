@@ -102,3 +102,30 @@ def test_future_any_strictly_after_t():
     anyf, allv = future_any(s, np.ones_like(s), 2)
     assert anyf[:, 0].tolist() == [False, True, True, False, False, False]
     assert allv[:, 0].tolist() == [True, True, True, True, False, False]
+
+
+def test_hourly_snapshot_dataset_selects_split_bars_and_graph_coins(tmp_path):
+    import torch
+
+    from cryptograph.data.datasets.indexed import HourlySnapshotDataset
+
+    T, N, F = 40, 3, 2
+    X = torch.arange(T * N * F, dtype=torch.float32).reshape(T, N, F)
+    sm = {"train": torch.zeros(T, dtype=torch.bool), "val": torch.zeros(T, dtype=torch.bool)}
+    sm["train"][5:20] = True
+    sm["val"][25:40] = True
+    ones = torch.ones(T, N, dtype=torch.bool)
+    panel = {"X": X, "X_mask": torch.ones(T, N, F, dtype=torch.bool), "active": ones, "y_ret": torch.zeros(T, N, 2),
+             "y_rv": torch.zeros(T, N, 2), "y_mask": torch.ones(T, N, 2, dtype=torch.bool), "y_shock": ones,
+             "y_shock_mask": ones, "sample_mask": sm, "feature_names": ["a", "b"], "bar_hours": 1}
+    snap_t = torch.arange(4, T, 8)                        # 4, 12, 20, 28, 36
+    e = torch.tensor([[0, 1], [1, 0]])
+    snaps = {"snapshot_t": snap_t, "graph_index": [0, 2], "graph_coins": ["A", "C"], "undirected_threshold": 0.7,
+             "undirected_edge_index": [e] * len(snap_t), "undirected_edge_weight": [torch.ones(2)] * len(snap_t)}
+    torch.save(panel, tmp_path / "panel.pt")
+    torch.save(snaps, tmp_path / "graph_snapshots.pt")
+    tr = HourlySnapshotDataset(tmp_path / "panel.pt", tmp_path / "graph_snapshots.pt", "train")
+    va = HourlySnapshotDataset(tmp_path / "panel.pt", tmp_path / "graph_snapshots.pt", "val")
+    assert [int(d.t) for d in tr] == [12] and [int(d.t) for d in va] == [28, 36]
+    d = va[0]
+    assert d.num_nodes == 2 and torch.equal(d.x, X[28][[0, 2]])

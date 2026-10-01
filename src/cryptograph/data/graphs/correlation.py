@@ -87,3 +87,26 @@ def directed_edges(D: np.ndarray, active: np.ndarray, threshold: float, top_k: i
     np.fill_diagonal(keep, False)
     src, dst = np.nonzero(keep)
     return np.stack([src, dst]).astype(np.int64), M[src, dst].astype(np.float32)
+
+
+def threshold_for_density(corr_mats: list[np.ndarray], active: list[np.ndarray], target: float,
+                          grid: np.ndarray | None = None) -> tuple[float, float]:
+    """Smallest |corr| threshold (0.01 grid) whose mean density over the given snapshots is <= target.
+
+    Pass TRAIN snapshots only. Density = share of active, estimable ordered pairs with |corr| >= threshold
+    (top-k additions are not counted). Returns (threshold, achieved mean density).
+    """
+    grid = np.round(np.arange(0.0, 1.0001, 0.01), 2) if grid is None else np.asarray(grid)
+    vals = []
+    for C, a in zip(corr_mats, active):
+        M = np.abs(C[np.ix_(a, a)])
+        off = ~np.eye(M.shape[0], dtype=bool)
+        v = M[off & np.isfinite(M)]
+        if v.size:
+            vals.append(np.sort(v))
+    if not vals:
+        raise ValueError("no estimable correlation matrices to calibrate on")
+    dens = np.array([np.mean([1 - np.searchsorted(v, th, side="left") / v.size for v in vals]) for th in grid])
+    ok = np.flatnonzero(dens <= target)
+    i = int(ok[0]) if ok.size else len(grid) - 1
+    return float(grid[i]), float(dens[i])
