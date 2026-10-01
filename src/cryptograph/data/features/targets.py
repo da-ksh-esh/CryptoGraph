@@ -85,3 +85,16 @@ def contagion_labels(shock: np.ndarray, valid: np.ndarray, ks: list[int]) -> tup
         msk[:, :, :, kk] = valid[:, :, None] & fut_valid[:, None, :] & off_diag
     lab &= msk
     return lab, msk
+
+
+def future_any(flag: np.ndarray, valid: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+    """any(flag[t+1..t+k]) and all(valid[t+1..t+k]) for every t (T, N); False/invalid where the window runs out."""
+    T = flag.shape[0]
+    cs = np.vstack([np.zeros((1, flag.shape[1]), np.int64), np.cumsum(flag, axis=0)])
+    cv = np.vstack([np.zeros((1, valid.shape[1]), np.int64), np.cumsum(valid, axis=0)])
+    anyf = np.zeros_like(flag, dtype=bool)
+    allv = np.zeros_like(valid, dtype=bool)
+    t = np.arange(T - k)
+    anyf[t] = (cs[t + k + 1] - cs[t + 1]) > 0
+    allv[t] = (cv[t + k + 1] - cv[t + 1]) == k
+    return anyf & allv, allv

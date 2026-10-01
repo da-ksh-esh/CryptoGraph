@@ -4,7 +4,7 @@ import pandas as pd
 from cryptograph.data.datasets.indexed import sample_mask_times, window_index
 from cryptograph.data.features.intraday import (SeasonalityProfile, bucket_index, build_intraday_features,
                                                 prune_redundant)
-from cryptograph.pipelines.stages.hourly_build import future_any
+from cryptograph.data.features.targets import future_any
 
 
 def _master(hours=24 * 60, coins=("A", "B"), seed=0):

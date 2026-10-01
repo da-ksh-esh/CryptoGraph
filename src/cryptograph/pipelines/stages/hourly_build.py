@@ -24,7 +24,8 @@ from ...data.config import PROJECT_ROOT, HourlyConfig
 from ...data.datasets.indexed import sample_mask_times, window_index
 from ...data.features.intraday import SeasonalityProfile, bars, build_intraday_features, prune_redundant
 from ...data.features.scaling import RobustScalerSet
-from ...data.features.targets import forward_realized_vol, forward_returns, next_day_shock, shock_indicator, shock_z
+from ...data.features.targets import (forward_realized_vol, forward_returns, future_any, next_day_shock,
+                                      shock_indicator, shock_z)
 from ...data.graphs.correlation import directed_edges, pairwise_corr, threshold_for_density, undirected_edges
 from ...data.storage import hash_tree, library_versions, utc_now, write_csv, write_json
 from ...data.universe_hourly import _ts
@@ -36,19 +37,6 @@ SPLITS = ("train", "val", "test")
 
 def _t(a) -> torch.Tensor:
     return torch.from_numpy(np.ascontiguousarray(a))
-
-
-def future_any(flag: np.ndarray, valid: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
-    """any(flag[t+1..t+k]) and all(valid[t+1..t+k]) for every t (T, N); False/invalid where the window runs out."""
-    T = flag.shape[0]
-    cs = np.vstack([np.zeros((1, flag.shape[1]), np.int64), np.cumsum(flag, axis=0)])
-    cv = np.vstack([np.zeros((1, valid.shape[1]), np.int64), np.cumsum(valid, axis=0)])
-    anyf = np.zeros_like(flag, dtype=bool)
-    allv = np.zeros_like(valid, dtype=bool)
-    t = np.arange(T - k)
-    anyf[t] = (cs[t + k + 1] - cs[t + 1]) > 0
-    allv[t] = (cv[t + k + 1] - cv[t + 1]) == k
-    return anyf & allv, allv
 
 
 def build_resolution(cfg: HourlyConfig, res: str) -> dict:
@@ -158,6 +146,7 @@ def build_resolution(cfg: HourlyConfig, res: str) -> dict:
         "model_coins": model_coins, "graph_coins": gcoins, "feature_names": fnames, "features_dropped": dropped,
         "horizons_hours": t_cfg.horizons_hours, "contagion_k_hours": t_cfg.contagion_k_hours,
         "X_raw": _t(X_raw), "X": _t(X_in.astype(np.float32)), "X_mask": _t(X_mask), "active": _t(active),
+        "r_ds": _t(r_ds.to_numpy().astype(np.float32)),
         "y_ret": _t(y_ret), "y_rv": _t(y_rv), "y_mask": _t(y_mask), "shock_z": _t(z.astype(np.float32)),
         "shock_today": _t(s_today), "shock_today_mask": _t(s_valid), "y_shock": _t(y_shock),
         "y_shock_mask": _t(y_shock_mask), "shock_threshold": zthr, "split_id": _t(split_id),
@@ -323,6 +312,7 @@ def write_dictionary(out_dir, res, bh, fnames, dropped, zthr, L, cfg, T, N, thr)
         lines += ["", "Dropped as redundant on train (|Spearman ρ| ≥ %.2f): " % cfg.features.redundancy_threshold
                   + ", ".join(f"`{a}` (ρ={v} with `{b}`)" for a, b, v in dropped)]
     lines += ["", "## panel.pt", "",
+              "`r_ds` (T,N) deseasonalised log return (NaN where missing; used by the graphs and network analysis);",
               "`X_raw` (T,N,F) unscaled with NaN; `X` robust-scaled per coin (train-fitted), clipped ±%g, NaN→0; `X_mask`; `active` (T,N);" % cfg.scaling.clip,
               f"`y_ret`, `y_rv` (T,N,H) forward log return / realized volatility at {cfg.targets.horizons_hours} hours; `y_mask`;",
               f"`shock_z` = deseasonalised return / trailing {cfg.targets.shock_vol_window_hours}h volatility (to t-1); "
