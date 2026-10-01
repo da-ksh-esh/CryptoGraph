@@ -335,6 +335,20 @@ class HourlyDatasetConfig(_Strict):
     scaler_min_train_hours: int = 2160        # 90 days; fewer -> global train scaler
 
 
+class HourlyNetworkConfig(_Strict):
+    corr_window_hours: int = 168              # correlation networks: same trailing windows as graph_snapshots
+    spillover_window_hours: int = 720         # rolling Diebold-Yilmaz (GFEVD) network
+    spillover_var_lags: int = 1
+    spillover_horizon_hours: int = 24
+    ranking_var_maxlags: int = 3              # static DY on the test window: lag order by BIC up to this
+    cascade_window_hours: int = 2160          # trailing window of the rolling shock-transmission network
+    cascade_k_hours: int = 1                  # response horizon of that network
+    cascade_prior_strength: float = 10.0      # p_ij shrunk towards the receiver's base rate with this pseudo-count
+    louvain_resolution: float = 1.0
+    pagerank_alpha: float = 0.85
+    min_coverage: float = 0.9                 # a coin enters a window's VAR / networks with >= this share of bars
+
+
 class HourlyPathsConfig(_Strict):
     raw_dir: str = "data/raw"
     interim_dir: str = "data/interim/hourly"
@@ -358,6 +372,7 @@ class HourlyConfig(_Strict):
     targets: HourlyTargetsConfig = HourlyTargetsConfig()
     graph: HourlyGraphConfig = HourlyGraphConfig()
     datasets: HourlyDatasetConfig = HourlyDatasetConfig()
+    network: HourlyNetworkConfig = HourlyNetworkConfig()
     scaling: ScalingConfig = ScalingConfig()
     paths: HourlyPathsConfig = HourlyPathsConfig()
 

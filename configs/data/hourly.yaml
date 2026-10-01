@@ -117,6 +117,19 @@ datasets:
   tgn_top_k_receivers: null
   scaler_min_train_hours: 2160   # 90 days of train data for a per-coin scaler, else the global train scaler
 
+network:                         # Stage 5 (notebook 02); all networks use trailing windows only
+  corr_window_hours: 168         # correlation networks (communities, MST, topology): same windows as graph_snapshots
+  spillover_window_hours: 720    # rolling Diebold-Yilmaz GFEVD network (30 days of hourly bars)
+  spillover_var_lags: 1
+  spillover_horizon_hours: 24
+  ranking_var_maxlags: 3         # static DY on the test window (rankings.csv): VAR lag order by BIC up to this
+  cascade_window_hours: 2160     # rolling shock-transmission network (90 days)
+  cascade_k_hours: 1             # "j shocks within k hours after i shocks"
+  cascade_prior_strength: 10     # p_ij shrunk towards j's base rate with this many pseudo-observations
+  louvain_resolution: 1.0
+  pagerank_alpha: 0.85
+  min_coverage: 0.9              # a coin enters a window's networks with >= 90% of its bars
+
 scaling:
   method: "robust"
   scope: "per_coin"

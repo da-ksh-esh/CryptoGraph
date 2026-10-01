@@ -1,6 +1,8 @@
-# Independent cascade baseline (Kempe, Kleinberg & Tardos 2003).
-# Edge activation probabilities p(i->j) are estimated on TRAIN from conditional shock propagation.
+# Independent cascade baseline (Kempe, Kleinberg & Tardos 2003): cryptograph.network.cascade.IndependentCascade.
+# Edge activation probabilities p(i->j) are estimated on TRAIN sample hours from "j shocks within k hours after i
+# shocks", shrunk towards j's base rate. Fitted and scored on the TGN events by the hourly `network` stage
+# (configs/data/hourly.yaml, network.cascade_*); results in reports/cascade_baseline.csv, notebook 02 section 9.
 model_name: "IndependentCascade"
 horizons_hours: [1, 3, 6, 12, 24]
-smoothing: 1.0          # additive (Laplace) smoothing of the activation counts
-status: "planned (Stage 5)"
+prior_strength: 10      # pseudo-observations of the receiver's base rate (= network.cascade_prior_strength)
+status: "implemented (Stage 5)"
