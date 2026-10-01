@@ -36,3 +36,13 @@ daily Yahoo vs Coin Metrics comparison: early markets were thinner and the sourc
 **SHIB and PEPE cannot be cross-checked with Yahoo**: Yahoo returns their prices rounded to 6 decimal places
 (SHIB is stored as exactly 0.000006, with 217 days rounded to 0.000000; PEPE as 0.000004). Binance has full
 precision. Yahoo's daily data for sub-$0.0001 coins is not usable.
+
+## Stage 4 decisions (hourly EDA, notebook 01 Part II)
+
+| Question | Finding (train unless stated) | Decision |
+|---|---|---|
+| TGN event count at 1h | 1,463,693 shock-triggered events (361k / 301k / 802k) | Full 1h stream built (`tgn_max_events` raised to 2M); trained on the Colab GPU. The 2h stream (752,627 events) is the robustness check. Top-k receivers rejected: it would bias the contagion labels towards the selected pairs. |
+| Lead-lag (BTC, ETH → 23 coins, −24…+24 h) | Lag-0 correlation 0.65–0.68; largest non-zero-lag \|corr\| ≈ 0.035, mostly at +24 h (daily cycle). Granger (3 lags, BH): 8/45 leader → coin and 10/45 coin → leader significant, max ΔR² 0.47%; the lag-1 pattern does not replicate on validation | No lead-lag edge features; no directed lag-1 edges in hourly graphs (`directed_lag_threshold: null`). Directed networks in Stage 5 come from GFEVD spillovers. |
+| Epps effect | Mean pairwise correlation 0.58 (1h), 0.60 (2h), 0.61 (4h), 0.62 (12h), 0.59 (1d) | Weak; the threshold is set by density, not by an Epps correction. |
+| Undirected graph threshold | 0.5 gives 75% density at 1h | Fitted on train snapshots per resolution for 30% density (as the daily graph): 0.75 at 1h, 0.77 at 2h (`threshold: null`, `target_train_density: 0.30`). With the top-2 links per coin, mean density is 38% / 30% / 39% at 1h. |
+| Contagion signal | Lift of "j shocks within k hours after i shocks" over the base rate: 2.3× (k = 1h) falling to 1.26× (24h); 2.4× val, 2.7× test | Hourly resolution is justified; contagion is mostly within the first hours. |
