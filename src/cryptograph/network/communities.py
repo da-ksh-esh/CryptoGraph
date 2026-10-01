@@ -24,9 +24,17 @@ class CommunityDetector:
 
         # Louvain on undirected graph with positive weights
         undirected_G = G.to_undirected() if G.is_directed() else G
-        comms = louvain_communities(undirected_G, weight=weight, resolution=self.resolution, seed=self.seed)
 
-        mod_score = modularity(undirected_G, comms, weight=weight)
+        if undirected_G.number_of_edges() == 0:
+            comms = [{n} for n in undirected_G.nodes()]
+            node_map = {n: idx for idx, n in enumerate(undirected_G.nodes())}
+            return {"communities": comms, "modularity": 0.0, "node_community": node_map}
+
+        comms = louvain_communities(undirected_G, weight=weight, resolution=self.resolution, seed=self.seed)
+        try:
+            mod_score = float(modularity(undirected_G, comms, weight=weight))
+        except ZeroDivisionError:
+            mod_score = 0.0
 
         node_map = {}
         for c_idx, comm in enumerate(comms):
