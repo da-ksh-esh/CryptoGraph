@@ -4,6 +4,7 @@ from .mst import MinimumSpanningTreeAnalyzer
 from .topology import TopologyMetrics
 from .cascade import IndependentCascadeModel
 from .features import CausalNetworkFeatureExtractor
+from .compression import NetworkCompressor
 
 __all__ = [
     "NetworkCentralityAnalyzer",
@@ -11,5 +12,6 @@ __all__ = [
     "MinimumSpanningTreeAnalyzer",
     "TopologyMetrics",
     "IndependentCascadeModel",
-    "CausalNetworkFeatureExtractor"
+    "CausalNetworkFeatureExtractor",
+    "NetworkCompressor"
 ]

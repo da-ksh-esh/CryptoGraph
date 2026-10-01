@@ -14,21 +14,23 @@ class NetworkCentralityAnalyzer:
         Computes degree, betweenness, closeness, eigenvector centrality, and PageRank (if directed).
         """
         degree = nx.degree_centrality(G)
+        strength = dict(G.degree(weight="weight"))
         betweenness = nx.betweenness_centrality(G)
         closeness = nx.closeness_centrality(G)
 
         try:
-            eigenvector = nx.eigenvector_centrality_numpy(G)
+            eigenvector = nx.eigenvector_centrality_numpy(G, weight="weight")
         except Exception:
             eigenvector = {n: 0.0 for n in G.nodes()}
 
         if G.is_directed():
-            pagerank = nx.pagerank(G, alpha=0.85)
+            pagerank = nx.pagerank(G, alpha=0.85, weight="weight")
         else:
-            pagerank = nx.pagerank(G.to_directed(), alpha=0.85)
+            pagerank = nx.pagerank(G.to_directed(), alpha=0.85, weight="weight")
 
         df = pd.DataFrame({
             "degree": degree,
+            "strength": strength,
             "betweenness": betweenness,
             "closeness": closeness,
             "eigenvector": eigenvector,
