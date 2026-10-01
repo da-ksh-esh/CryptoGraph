@@ -2,7 +2,7 @@
 
 Handles market-level continuity rules:
 1. LUNC vs LUNA continuity (never splicing post-fork LUNA onto old LUNA).
-2. Ticker renames (e.g., MATIC -> POL, RNDR -> RENDER).
+2. Ticker renames and migrations (e.g., MATIC -> POL, RNDR -> RENDER).
 3. Exchange maintenance gaps (ffill maximum 2 hours with audit flags; >=3h gaps masked).
 4. Delisting handling (e.g. XMR Binance delisting on 2024-02-20).
 5. USDT quote asset disclaimer and daily USDT peg status tracking up to 2026-05-23.
@@ -17,10 +17,29 @@ logger = get_logger(__name__)
 
 COIN_METRICS_PEG_CUTOFF = pd.Timestamp("2026-05-23", tz="UTC")
 
+# Explicit symbol migration chronology on Binance
+SYMBOL_MIGRATION_MAP: Dict[str, List[Dict[str, Any]]] = {
+    "RENDER": [
+        {"symbol": "RNDRUSDT", "end": pd.Timestamp("2024-07-22 23:59:59", tz="UTC")},
+        {"symbol": "RENDERUSDT", "start": pd.Timestamp("2024-07-23 00:00:00", tz="UTC")}
+    ],
+    "POL": [
+        {"symbol": "MATICUSDT", "end": pd.Timestamp("2024-09-10 23:59:59", tz="UTC")},
+        {"symbol": "POLUSDT", "start": pd.Timestamp("2024-09-11 00:00:00", tz="UTC")}
+    ]
+}
+
 class ContinuityAuditor:
     """
     Audits and enforces continuity and missingness rules for hourly crypto streams.
     """
+
+    @staticmethod
+    def get_binance_symbols_for_coin(coin: str) -> List[str]:
+        """Returns list of Binance symbols that comprise the continuous history for a coin."""
+        if coin in SYMBOL_MIGRATION_MAP:
+            return [m["symbol"] for m in SYMBOL_MIGRATION_MAP[coin]]
+        return [f"{coin}USDT"]
 
     @staticmethod
     def handle_lunc_continuity(old_luna_df: Optional[pd.DataFrame], lunc_df: pd.DataFrame) -> pd.DataFrame:
@@ -39,6 +58,35 @@ class ContinuityAuditor:
         valid_new["is_event_coin"] = True
 
         combined = pd.concat([valid_old, valid_new]).sort_index()
+        return combined
+
+    @staticmethod
+    def splice_migrated_history(dataframes_by_symbol: Dict[str, pd.DataFrame], coin: str) -> pd.DataFrame:
+        """
+        Splices consecutive historical segments for tokens that underwent token redenomination / rebranding
+        (e.g., RNDR -> RENDER, MATIC -> POL) based on verified exchange transition timestamps.
+        """
+        if coin not in SYMBOL_MIGRATION_MAP:
+            sym = f"{coin}USDT"
+            return dataframes_by_symbol.get(sym, pd.DataFrame())
+
+        rules = SYMBOL_MIGRATION_MAP[coin]
+        segments = []
+        for rule in rules:
+            sym = rule["symbol"]
+            if sym in dataframes_by_symbol and not dataframes_by_symbol[sym].empty:
+                df = dataframes_by_symbol[sym].copy()
+                if "start" in rule and rule["start"] is not None:
+                    df = df.loc[df.index >= rule["start"]]
+                if "end" in rule and rule["end"] is not None:
+                    df = df.loc[df.index <= rule["end"]]
+                segments.append(df)
+
+        if not segments:
+            return pd.DataFrame()
+
+        combined = pd.concat(segments).sort_index()
+        combined = combined[~combined.index.duplicated(keep="last")]
         return combined
 
     @staticmethod
