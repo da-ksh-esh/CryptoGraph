@@ -1,4 +1,8 @@
-"""EDA and statistical analysis. Reads pipeline outputs; never feeds model inputs."""
+"""EDA and statistical analysis. Reads pipeline outputs; never feeds model inputs directly.
+
+The generalized-FEVD math in `connectedness` is reused by `cryptograph.network.spillover`, which builds
+trailing-window network features.
+"""
 
 from .connectedness import dy_connectedness, generalized_fevd, rolling_total_spillover, spillover_table
 from .var_spillover import VARSpilloverBaseline
