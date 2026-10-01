@@ -10,7 +10,7 @@ The corrected, current versions are:
 | Archived notebook | Corrected version |
 |---|---|
 | `01_data_preprocessing_and_eda.ipynb` | `notebooks/01_market_dynamics_and_spillover_baseline.ipynb` (layout and section order taken from the archived notebook, rebuilt on the audited data) |
-| `02_statistical_spillover_baseline.ipynb` | `notebooks/03_statistical_spillover_baseline.ipynb` (generalized FEVD); moves into `02_network_analysis` in the next stage |
+| `02_statistical_spillover_baseline.ipynb` | `notebooks/02_network_analysis.ipynb`, section 2b (generalized FEVD), next to the hourly spillover network |
 
 ## `01_data_preprocessing_and_eda.ipynb`
 

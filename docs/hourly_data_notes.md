@@ -46,3 +46,19 @@ precision. Yahoo's daily data for sub-$0.0001 coins is not usable.
 | Epps effect | Mean pairwise correlation 0.58 (1h), 0.60 (2h), 0.61 (4h), 0.62 (12h), 0.59 (1d) | Weak; the threshold is set by density, not by an Epps correction. |
 | Undirected graph threshold | 0.5 gives 75% density at 1h | Fitted on train snapshots per resolution for 30% density (as the daily graph): 0.75 at 1h, 0.77 at 2h (`threshold: null`, `target_train_density: 0.30`). With the top-2 links per coin, mean density is 38% / 30% / 39% at 1h. |
 | Contagion signal | Lift of "j shocks within k hours after i shocks" over the base rate: 2.3× (k = 1h) falling to 1.26× (24h); 2.4× val, 2.7× test | Hourly resolution is justified; contagion is mostly within the first hours. |
+
+## Stage 5 outputs and decisions (network analysis, notebook 02)
+
+`cryptograph-data --config configs/data/hourly.yaml --stage network` writes `data/processed/v2/<res>/network_features.pt`
+(8 node features per daily snapshot, trailing windows only; use the latest snapshot at or before t),
+`data/processed/v2/rankings.csv` + `rankings.json` (test window 2024-04-02 → 2026-09-27, all 30 coins listed; evaluation
+benchmark only), `reports/network_timeseries_<res>.csv` and `reports/cascade_baseline.csv`.
+
+| Question | Finding | Decision |
+|---|---|---|
+| Directed network for PageRank | Hourly lead-lag is absent, so hourly GFEVD is driven by same-hour correlation: DY NET = eigenvector centrality (ρ = 1.00); daily vs hourly NET ρ = 0.21 | Two directed networks: DY GFEVD (30-day windows) and a time-ordered shock-transmission network (P(j shocks ≤ 1h after i), 90-day windows). PageRank on the "depends on" graph (rank = transmitter importance). TempME is validated against several rankings, not one. |
+| Communities | Louvain on raw correlations is one block (market mode = 64% of variance) | Louvain (seeded) on correlations with the market mode removed; NMI with sectors 0.47 (p = 0.003). |
+| Centrality scale | Sum-to-1 centralities change level as coins list | Eigenvector and PageRank features rescaled to mean 1 over the active coins. |
+| Redundancy | Max |ρ| between the 8 node features on train = 0.78 | All 8 kept. |
+| Sectors | Within- vs cross-sector 1h contagion equal (9.3% vs 9.3% train), except meme coins | Sector id kept as a node attribute; graphs are not built around sectors. |
+| Contagion benchmark | Independent cascade AUPRC at k = 1h: 0.160 test / 0.117 val vs base rate 0.107 / 0.086; p_ij alone ≈ base rate | The TGN must beat the cascade, not only the base rate. |
