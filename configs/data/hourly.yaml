@@ -80,6 +80,41 @@ quality:
   usdt_peg_tol: 0.005            # USDT off its peg by > 0.5% -> day flagged (Coin Metrics, daily; ends 2026-05-23)
   rename_max_price_jump: 0.05    # ticker migrations are 1:1 swaps: price should not jump across the switch
 
+features:                        # windows in hours (divided by the bar size at 2h)
+  rv_windows_hours: [24, 72, 168]
+  range_window_hours: 24         # Parkinson range volatility (Garman-Klass dropped: rho 0.99 at daily)
+  volume_window_hours: 168       # volume relative to its trailing 7-day median
+  listing_cap_hours: 17520       # hours since listing, capped at 2 years
+  redundancy_threshold: 0.90     # drop one feature of any pair with |Spearman rho| >= 0.90 on train
+
+targets:
+  horizons_hours: [1, 6, 24]     # forward log return / realized volatility
+  shock_vol_window_hours: 168    # z = deseasonalised return / trailing 7-day volatility (up to t-1)
+  shock_target_rate: 0.04        # z* chosen on train so the train shock rate is ~4% (comparable with daily 3.9%)
+  contagion_k_hours: [1, 3, 6, 12, 24]
+
+graph:
+  corr_window_hours: 168
+  snapshot_step_hours: 24        # one graph snapshot per day of hourly data
+  threshold: 0.5                 # draft; Stage 4 sets it per resolution (Epps effect)
+  top_k: 2
+  directed_lag_threshold: 0.3
+  min_obs_frac: 0.8
+
+datasets:
+  build_resolutions: ["1h", "2h"]
+  lookback_hours: 168            # LSTM input window
+  sample_stride_hours: 1
+  include_event_coins_in_graph: false
+  tgn_max_events: 1000000        # if the shock-triggered stream is larger, stop at a checkpoint first
+  tgn_top_k_receivers: null
+  scaler_min_train_hours: 2160   # 90 days of train data for a per-coin scaler, else the global train scaler
+
+scaling:
+  method: "robust"
+  scope: "per_coin"
+  clip: 5.0
+
 paths:
   raw_dir: "data/raw"
   interim_dir: "data/interim/hourly"

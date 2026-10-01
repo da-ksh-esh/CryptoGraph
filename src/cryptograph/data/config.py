@@ -300,6 +300,40 @@ class HourlyQualityConfig(_Strict):
     rename_max_price_jump: float = 0.05     # |log price change| allowed across a ticker migration (1:1 swaps)
 
 
+class HourlyFeaturesConfig(_Strict):
+    rv_windows_hours: list[int] = [24, 72, 168]
+    range_window_hours: int = 24
+    volume_window_hours: int = 168
+    listing_cap_hours: int = 17520            # "new coin" signal capped at 2 years
+    redundancy_threshold: float = 0.90        # drop one of any feature pair with |Spearman rho| >= this (train)
+
+
+class HourlyTargetsConfig(_Strict):
+    horizons_hours: list[int] = [1, 6, 24]
+    shock_vol_window_hours: int = 168
+    shock_target_rate: float = 0.04           # z* chosen on train so the train shock rate is ~ this (daily: 3.9%)
+    contagion_k_hours: list[int] = [1, 3, 6, 12, 24]
+
+
+class HourlyGraphConfig(_Strict):
+    corr_window_hours: int = 168
+    snapshot_step_hours: int = 24
+    threshold: float = 0.5                    # undirected |corr| threshold (revisited per resolution in Stage 4)
+    top_k: int = 2
+    directed_lag_threshold: float = 0.3
+    min_obs_frac: float = 0.8
+
+
+class HourlyDatasetConfig(_Strict):
+    build_resolutions: list[Literal["1h", "2h"]] = ["1h", "2h"]
+    lookback_hours: int = 168
+    sample_stride_hours: int = 1
+    include_event_coins_in_graph: bool = False
+    tgn_max_events: int = 1_000_000           # above this, stop at a checkpoint before building the stream
+    tgn_top_k_receivers: int | None = None    # if set, each shock emits events only to its k strongest receivers
+    scaler_min_train_hours: int = 2160        # 90 days; fewer -> global train scaler
+
+
 class HourlyPathsConfig(_Strict):
     raw_dir: str = "data/raw"
     interim_dir: str = "data/interim/hourly"
@@ -319,7 +353,16 @@ class HourlyConfig(_Strict):
     universe: HourlyUniverseConfig
     binance: BinanceConfig = BinanceConfig()
     quality: HourlyQualityConfig = HourlyQualityConfig()
+    features: HourlyFeaturesConfig = HourlyFeaturesConfig()
+    targets: HourlyTargetsConfig = HourlyTargetsConfig()
+    graph: HourlyGraphConfig = HourlyGraphConfig()
+    datasets: HourlyDatasetConfig = HourlyDatasetConfig()
+    scaling: ScalingConfig = ScalingConfig()
     paths: HourlyPathsConfig = HourlyPathsConfig()
+
+    def processed_dir(self, resolution: str) -> Path:
+        """data/processed/v2/<resolution>"""
+        return self.path(self.paths.processed_dir) / self.dataset_version / resolution
 
     def path(self, rel: str) -> Path:
         p = Path(rel)

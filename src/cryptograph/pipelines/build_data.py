@@ -65,8 +65,9 @@ HOURLY_STAGES: dict[str, Callable] = {
     "audit": _stage("hourly_audit"),
     "fetch": _stage("hourly_fetch"),
     "clean": _stage("hourly_clean"),
+    "build": _stage("hourly_build"),
 }
-HOURLY_ALL_ORDER = ["fetch", "clean"]
+HOURLY_ALL_ORDER = ["fetch", "clean", "build"]
 
 
 def main(argv: list[str] | None = None) -> None:
