@@ -77,7 +77,12 @@ class ExperimentTracker:
         if not results_csv.exists():
             row_df.to_csv(results_csv, index=False)
         else:
-            row_df.to_csv(results_csv, mode="a", header=False, index=False)
+            try:
+                existing_df = pd.read_csv(results_csv)
+                combined = pd.concat([existing_df, row_df], ignore_index=True)
+                combined.to_csv(results_csv, index=False)
+            except Exception:
+                row_df.to_csv(results_csv, index=False)
 
     def save_checkpoint(self, state_dict: Dict[str, Any], filename: str = "checkpoint.pt") -> Path:
         ckpt_path = self.run_path / filename

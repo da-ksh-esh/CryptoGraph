@@ -1,0 +1,30 @@
+experiment:
+  name: "tgn_hourly_contagion"
+  description: "CryptoTGN dynamic graph memory network on 30-coin hourly stream"
+
+data:
+  config: "configs/data/hourly.yaml"
+  dataset_path: "data/processed/v2/1h/processed_dataset.pt"
+  network_features_path: "data/processed/v2/network_features.pt"
+  resolution: "1h"
+
+model:
+  type: "tgn"
+  num_nodes: 30
+  raw_msg_dim: 9
+  memory_dim: 64
+  time_dim: 16
+  embedding_dim: 64
+  out_horizons: 5
+  dropout: 0.2
+
+training:
+  batch_size: 256
+  learning_rate: 0.0005
+  weight_decay: 1.0e-5
+  max_epochs: 6
+  patience: 3
+  task: "classification"
+  loss: "weighted_bce"
+  pos_weight: 10.0
+  device: "auto"

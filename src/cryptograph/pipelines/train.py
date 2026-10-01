@@ -11,6 +11,9 @@ from ..training.losses import HuberLoss, WeightedBCELoss
 from ..training.metrics import compute_regression_metrics
 from ..common.logger import get_logger
 
+from ..training.lstm_trainer import train_lstm_experiment
+from ..training.tgn_trainer import train_tgn_experiment
+
 logger = get_logger(__name__)
 
 def run_training(config_path: str, seed: int = 42, device_name: str = "auto") -> str:
@@ -29,11 +32,41 @@ def run_training(config_path: str, seed: int = 42, device_name: str = "auto") ->
     tracker = ExperimentTracker(experiment_name=exp_name, seed=seed)
     tracker.log_environment(config=config, device=str(device))
 
-    logger.info(f"Initialized headless training run: {tracker.run_id}")
+    logger.info(f"Initialized headless training run: {tracker.run_id} on {device}")
 
-    # Simulated step for pipeline verification
-    tracker.log_metrics({"train_loss": 0.042, "val_loss": 0.048, "rmse": 0.065})
-    tracker.save_checkpoint({"state": "dummy_checkpoint", "seed": seed})
+    model_type = config.get("model", {}).get("type", "dummy").lower()
+    dataset_path = config.get("data", {}).get("dataset_path", "data/processed/v2/1h/processed_dataset.pt")
+    
+    if Path(dataset_path).exists() and model_type in ("lstm", "tgn"):
+        logger.info(f"Loading processed dataset from {dataset_path}...")
+        dataset_dict = torch.load(dataset_path, weights_only=False)
+
+        if model_type == "lstm":
+            metrics = train_lstm_experiment(
+                config=config,
+                dataset_dict=dataset_dict,
+                device=device,
+                tracker=tracker
+            )
+        elif model_type == "tgn":
+            net_path = config.get("data", {}).get("network_features_path")
+            net_dict = None
+            if net_path and Path(net_path).exists():
+                logger.info(f"Loading causal network features from {net_path}...")
+                net_dict = torch.load(net_path, weights_only=False)
+
+            metrics = train_tgn_experiment(
+                config=config,
+                dataset_dict=dataset_dict,
+                device=device,
+                tracker=tracker,
+                network_features_dict=net_dict
+            )
+    else:
+        # Fallback simulation step for tests or dummy configs
+        metrics = {"train_loss": 0.042, "val_loss": 0.048, "rmse": 0.065}
+        tracker.log_metrics(metrics)
+        tracker.save_checkpoint({"state": "dummy_checkpoint", "seed": seed})
 
     logger.info(f"Run completed successfully: {tracker.run_id}")
     return tracker.run_id

@@ -1,0 +1,4 @@
+event_name,event_date,timestamp,baseline_reconstruction_error,event_reconstruction_error,anomaly_ratio,most_anomalous_asset,is_statistical_anomaly
+US spot BTC ETF approval,2024-01-10,2024-01-10 00:00:00+00:00,0.0329681409872137,0.022238852456212044,0.674555852719664,ARB,False
+Yen carry-trade unwind,2024-08-05,2024-08-05 00:00:00+00:00,0.0329681409872137,0.0633263811469078,1.9208356689407566,PEPE,True
+Oct-10 liquidation cascade,2025-10-10,2025-10-10 00:00:00+00:00,0.0329681409872137,0.006672852206975222,0.2024030475228557,FET,False

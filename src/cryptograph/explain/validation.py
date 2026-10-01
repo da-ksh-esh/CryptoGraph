@@ -51,6 +51,39 @@ class ExplanationValidator:
 
         return fidelity_plus
 
+    def compute_fidelity_minus(
+        self,
+        node_features: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_mask: np.ndarray,
+        target_idx: int,
+        top_k_pct: float = 0.20
+    ) -> float:
+        r"""
+        Computes Fidelity- (Prediction Retention under ablated background):
+        Fidelity- = || f(G)[target] - f(M)[target] ||_2
+        Where M consists ONLY of the top-k% most important explanatory edges.
+        """
+        self.model.eval()
+        with torch.no_grad():
+            out_orig = self.model(node_features, edge_index)
+            y_orig = out_orig[0][target_idx] if isinstance(out_orig, tuple) else out_orig[target_idx]
+
+            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0)
+            motif_indices = np.where(edge_mask >= cutoff)[0]
+
+            if len(motif_indices) == 0:
+                motif_edge_index = torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
+            else:
+                motif_edge_index = edge_index[:, motif_indices]
+
+            out_motif = self.model(node_features, motif_edge_index)
+            y_motif = out_motif[0][target_idx] if isinstance(out_motif, tuple) else out_motif[target_idx]
+
+            fidelity_minus = float(torch.norm(y_orig - y_motif, p=2).item())
+
+        return fidelity_minus
+
     def compute_characterization_scores(self, edge_mask: np.ndarray) -> Dict[str, float]:
         """
         Calculates explanation characterization metrics:

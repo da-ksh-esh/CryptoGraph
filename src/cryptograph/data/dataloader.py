@@ -93,6 +93,69 @@ class CryptoSequenceDataset(Dataset):
         }
 
 
+class HourlyWindowDataset(Dataset):
+    """
+    Sliding window dataset for sequence forecasting models (e.g. CryptoLSTM).
+    Extracts rolling history [t - lookback_window : t] to forecast targets at timestep t.
+    Uses target_indices to guarantee strict chronological split boundaries without leakage.
+    """
+    def __init__(
+        self,
+        features: torch.Tensor,
+        targets: torch.Tensor,
+        validity_mask: torch.Tensor,
+        active_mask: torch.Tensor,
+        target_indices: List[int],
+        lookback_window: int = 24
+    ):
+        self.features = features
+        self.targets = targets
+        self.validity_mask = validity_mask
+        self.active_mask = active_mask
+        self.lookback_window = lookback_window
+        # Only retain indices where t >= lookback_window so history is valid
+        self.valid_targets = [t for t in target_indices if t >= lookback_window]
+
+    def __len__(self) -> int:
+        return len(self.valid_targets)
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        t = self.valid_targets[idx]
+        # x_window: past L timesteps across all assets: (L, N, F) -> permute to (N, L, F)
+        x_window = self.features[t - self.lookback_window : t].permute(1, 0, 2) # (N, L, F)
+        y = self.targets[t].float()                                            # (N, K)
+        mask = (self.validity_mask[t] & self.active_mask[t].unsqueeze(-1)).bool() # (N, K)
+        return {
+            "x": x_window,
+            "y": y,
+            "mask": mask,
+            "timestep": torch.tensor(t, dtype=torch.long)
+        }
+
+
+def collate_hourly_windows(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+    """
+    Collates a list of timestep samples into a batched dictionary.
+    Flattens (B, N, L, F) to (B * N, L, F) for efficient sequence batching.
+    """
+    x = torch.stack([b["x"] for b in batch], dim=0)       # (B, N, L, F)
+    y = torch.stack([b["y"] for b in batch], dim=0)       # (B, N, K)
+    mask = torch.stack([b["mask"] for b in batch], dim=0) # (B, N, K)
+    timesteps = torch.stack([b["timestep"] for b in batch], dim=0)
+
+    B, N, L, F = x.shape
+    K = y.shape[-1]
+
+    return {
+        "x": x.reshape(B * N, L, F),
+        "y": y.reshape(B * N, K),
+        "mask": mask.reshape(B * N, K),
+        "timesteps": timesteps,
+        "batch_size": B,
+        "num_nodes": N
+    }
+
+
 def prepare_processed_dataset(
     raw_parquet_path: str | Path,
     output_path: str | Path,

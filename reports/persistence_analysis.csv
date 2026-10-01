@@ -1,0 +1,4 @@
+event_name,timestamp,trigger_step,shock_type,initial_transmitters,blast_radius_count,blast_radius_pct,propagation_delay_hours,mean_persistence_half_life_hours,most_impacted_sector
+US spot BTC ETF approval,2024-01-10 00:00:00+00:00,216,macro_systemic,BTC;SOL;ICP;ARB;OP,13,0.43333333333333335,40.0,23.46153846153846,Layer 1
+Yen carry-trade unwind,2024-08-05 00:00:00+00:00,5208,macro_systemic,ETH;AAVE,29,0.9666666666666667,12.0,13.172413793103448,Layer 1
+Oct-10 liquidation cascade,2025-10-10 00:00:00+00:00,15552,macro_systemic,None,30,1.0,21.0,8.766666666666667,Layer 1

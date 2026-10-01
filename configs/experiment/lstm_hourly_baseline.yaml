@@ -1,0 +1,28 @@
+experiment:
+  name: "lstm_hourly_baseline"
+  description: "Non-graph multi-asset LSTM baseline on 30-coin hourly dataset"
+
+data:
+  config: "configs/data/hourly.yaml"
+  dataset_path: "data/processed/v2/1h/processed_dataset.pt"
+  resolution: "1h"
+  lookback_window: 24
+
+model:
+  type: "lstm"
+  in_features: 9
+  hidden_dim: 64
+  num_layers: 2
+  out_horizons: 5
+  dropout: 0.2
+
+training:
+  batch_size: 64
+  learning_rate: 0.001
+  weight_decay: 1.0e-5
+  max_epochs: 8
+  patience: 3
+  task: "classification"
+  loss: "weighted_bce"
+  pos_weight: 10.0
+  device: "auto"

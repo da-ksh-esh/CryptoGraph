@@ -19,8 +19,9 @@ class CryptoTGN(nn.Module):
 
     def __init__(
         self,
-        num_nodes: int = 20,
-        raw_msg_dim: int = 8,
+        num_nodes: int = 30,
+        raw_msg_dim: int = 9,
+        node_feat_dim: Optional[int] = None,
         memory_dim: int = 64,
         time_dim: int = 16,
         embedding_dim: int = 64,
@@ -31,6 +32,7 @@ class CryptoTGN(nn.Module):
         self.num_nodes = num_nodes
         self.memory_dim = memory_dim
         self.raw_msg_dim = raw_msg_dim
+        self.node_feat_dim = node_feat_dim if node_feat_dim is not None else raw_msg_dim
 
         # 1. TGN Dynamic Memory Module
         self.memory = TGNMemory(
@@ -46,7 +48,7 @@ class CryptoTGN(nn.Module):
         self.time_proj = nn.Linear(1, time_dim)
 
         # 3. Spatial Neighbor Aggregation across dynamic edges
-        self.spatial_conv = GCNConv(memory_dim + raw_msg_dim, embedding_dim)
+        self.spatial_conv = GCNConv(memory_dim + self.node_feat_dim, embedding_dim)
 
         # 4. Multi-Horizon Contagion Forecast Head
         self.forecast_head = nn.Sequential(
@@ -106,4 +108,9 @@ class CryptoTGN(nn.Module):
         timestamps: torch.Tensor
     ):
         """Updates internal memory module given a batch of observed interactions/edges."""
-        self.memory.update_state(src, dst, timestamps, edge_features)
+        self.memory.update_state(
+            src.to(dtype=torch.long),
+            dst.to(dtype=torch.long),
+            timestamps.to(dtype=torch.long),
+            edge_features.to(dtype=torch.float32)
+        )
