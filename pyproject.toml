@@ -60,6 +60,13 @@ dev = [
     "ipykernel>=6.25.0"
 ]
 
+[project.scripts]
+cryptograph-data = "cryptograph.pipelines.data:main"
+cryptograph-train = "cryptograph.pipelines.train:main"
+cryptograph-eval = "cryptograph.pipelines.evaluate:main"
+cryptograph-explain = "cryptograph.pipelines.explain:main"
+cryptograph-package = "cryptograph.pipelines.package_data:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
