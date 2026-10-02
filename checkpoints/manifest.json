@@ -1,0 +1,200 @@
+{
+  "version": "1.0.0",
+  "description": "Production Checkpoint Manifest for CryptoGraph-Secure Framework",
+  "dataset": {
+    "path": "data/processed/v2/1h/processed_dataset.pt",
+    "sha256": "3e6dedd3954d9469f8bb0ffcb6107b2cabec0c5e1c3b5fde5e2e387b2d7bd856",
+    "resolution": "1h",
+    "assets_count": 30,
+    "period": "2024-01-01 to 2026-09-27"
+  },
+  "checkpoints": [
+    {
+      "model_name": "CryptoTGN",
+      "run_id": "20261001-144534_tgn_hourly_contagion_s42_12e04d8",
+      "seed": 42,
+      "epoch": 6,
+      "checkpoint_path": "runs/20261001-144534_tgn_hourly_contagion_s42_12e04d8/best_tgn_checkpoint.pt",
+      "checkpoint_sha256": "75a5b9237d27ec5a715fc930969bbdb913a256c611b5cac91b66555434507bd7",
+      "config_sha256": "3d478a3a3929e8ad6e0bd8bb560e3003c38f4b2ebd422a0e49898a33c19f75c7",
+      "git_commit": "12e04d8",
+      "git_dirty": true,
+      "timestamp_utc": "2026-10-01T14:45:34.156497",
+      "metrics": {
+        "test_mean_auprc": 0.698577140570573,
+        "test_mean_auroc": 0.9682332134142063,
+        "val_mean_auprc": 0.7014671182054728
+      }
+    },
+    {
+      "model_name": "CryptoTGN",
+      "run_id": "20261002-114312_tgn_seed_42_s42_195e9f5",
+      "seed": 42,
+      "epoch": 4,
+      "checkpoint_path": "runs/20261002-114312_tgn_seed_42_s42_195e9f5/best_tgn_checkpoint.pt",
+      "checkpoint_sha256": "a7a97cfbce341cd789dfe3a0ab64c698dc7b9dad33aefc91f76d3a4b403e9d83",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.6655970740739622,
+        "test_mean_auroc": 0.9577847748367854,
+        "val_mean_auprc": 0.6955392878475612
+      }
+    },
+    {
+      "model_name": "CryptoTGN",
+      "run_id": "20261002-114709_tgn_seed_43_s43_195e9f5",
+      "seed": 43,
+      "epoch": 4,
+      "checkpoint_path": "runs/20261002-114709_tgn_seed_43_s43_195e9f5/best_tgn_checkpoint.pt",
+      "checkpoint_sha256": "7131873fc5703ed791ed4b8df7b5816a8c4bb0ee35b29170ac8ada19eaf8af94",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.6285074659228569,
+        "test_mean_auroc": 0.9529937754239889,
+        "val_mean_auprc": 0.6597705227458106
+      }
+    },
+    {
+      "model_name": "CryptoTGN",
+      "run_id": "20261002-115105_tgn_seed_44_s44_195e9f5",
+      "seed": 44,
+      "epoch": 4,
+      "checkpoint_path": "runs/20261002-115105_tgn_seed_44_s44_195e9f5/best_tgn_checkpoint.pt",
+      "checkpoint_sha256": "5138af3ef6cec529ace21965140640a807d437be2d3359c57dd8311d0fb6064b",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.6640835534424145,
+        "test_mean_auroc": 0.9560370428068218,
+        "val_mean_auprc": 0.6714839931394406
+      }
+    },
+    {
+      "model_name": "CryptoLSTM",
+      "run_id": "20261001-143938_lstm_hourly_baseline_s42_12e04d8",
+      "seed": 42,
+      "epoch": 5,
+      "checkpoint_path": "runs/20261001-143938_lstm_hourly_baseline_s42_12e04d8/best_lstm_checkpoint.pt",
+      "checkpoint_sha256": "b1c4af59d490bbff173ce8fa3ecc9b5507ba05063792c407873e32d2e91e3a77",
+      "config_sha256": "10d3d6de06017f099dac7a008e8090539bd069163f8ba4c1dce6842ffa4e7921",
+      "git_commit": "12e04d8",
+      "git_dirty": true,
+      "timestamp_utc": "2026-10-01T14:39:38.923795",
+      "metrics": {
+        "test_mean_auprc": 0.8114614137828131,
+        "test_mean_auroc": 0.9826554510407004,
+        "val_mean_auprc": 0.7559933978189768
+      }
+    },
+    {
+      "model_name": "CryptoLSTM",
+      "run_id": "20261002-112516_lstm_seed_42_s42_195e9f5",
+      "seed": 42,
+      "epoch": 5,
+      "checkpoint_path": "runs/20261002-112516_lstm_seed_42_s42_195e9f5/best_lstm_checkpoint.pt",
+      "checkpoint_sha256": "7c1e220269a3bf0a87ed4296678e8eec38cec1a76b348c3535f971b98e1e7751",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.8090034791537019,
+        "test_mean_auroc": 0.9823260748547622,
+        "val_mean_auprc": 0.7610484459982108
+      }
+    },
+    {
+      "model_name": "CryptoLSTM",
+      "run_id": "20261002-112842_lstm_seed_43_s43_195e9f5",
+      "seed": 43,
+      "epoch": 5,
+      "checkpoint_path": "runs/20261002-112842_lstm_seed_43_s43_195e9f5/best_lstm_checkpoint.pt",
+      "checkpoint_sha256": "6c65b7f44c0f60c81206e2b5040711ffbe54140de55ab19c4b8604b64ee6f06f",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.8211548874772218,
+        "test_mean_auroc": 0.9833282697076908,
+        "val_mean_auprc": 0.7513632970604948
+      }
+    },
+    {
+      "model_name": "CryptoLSTM",
+      "run_id": "20261002-113205_lstm_seed_44_s44_195e9f5",
+      "seed": 44,
+      "epoch": 5,
+      "checkpoint_path": "runs/20261002-113205_lstm_seed_44_s44_195e9f5/best_lstm_checkpoint.pt",
+      "checkpoint_sha256": "53b1d00211a35c0616f76456ab07a6f1ca2e3ac72caa027786d67eea7b3b11a2",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.8116811529660106,
+        "test_mean_auroc": 0.98165366186262,
+        "val_mean_auprc": 0.7579684325312931
+      }
+    },
+    {
+      "model_name": "CryptoDyGFormer",
+      "run_id": "20261002-113529_dygformer_seed_42_s42_195e9f5",
+      "seed": 42,
+      "epoch": 4,
+      "checkpoint_path": "runs/20261002-113529_dygformer_seed_42_s42_195e9f5/best_dygformer_checkpoint.pt",
+      "checkpoint_sha256": "6b48e3084fffc65c585d93f8d462e9fe5cebcc0615918c4b0e3616c66eb5e9ef",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.8010079723948851,
+        "test_mean_auroc": 0.9822051910993268,
+        "val_mean_auprc": 0.764903574440698
+      }
+    },
+    {
+      "model_name": "CryptoDyGFormer",
+      "run_id": "20261002-113803_dygformer_seed_43_s43_195e9f5",
+      "seed": 43,
+      "epoch": 4,
+      "checkpoint_path": "runs/20261002-113803_dygformer_seed_43_s43_195e9f5/best_dygformer_checkpoint.pt",
+      "checkpoint_sha256": "8c1eb1408e1e5ceed976bba1aa9e5c45d43653d2c6bb00057fb32533f3a971f1",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.8168942784644244,
+        "test_mean_auroc": 0.983630380328125,
+        "val_mean_auprc": 0.7579364671384683
+      }
+    },
+    {
+      "model_name": "CryptoDyGFormer",
+      "run_id": "20261002-114038_dygformer_seed_44_s44_195e9f5",
+      "seed": 44,
+      "epoch": 4,
+      "checkpoint_path": "runs/20261002-114038_dygformer_seed_44_s44_195e9f5/best_dygformer_checkpoint.pt",
+      "checkpoint_sha256": "aa03f32a3308dbf7ea26701957ae80c4290d2325dcecbb4e39ec6053aef90d99",
+      "config_sha256": "",
+      "git_commit": "unknown",
+      "git_dirty": false,
+      "timestamp_utc": "",
+      "metrics": {
+        "test_mean_auprc": 0.7952495549568243,
+        "test_mean_auroc": 0.9806882466401831,
+        "val_mean_auprc": 0.761267084990658
+      }
+    }
+  ]
+}

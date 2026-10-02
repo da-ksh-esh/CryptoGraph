@@ -3,7 +3,7 @@ from .communities import CommunityDetector
 from .mst import MinimumSpanningTreeAnalyzer
 from .topology import TopologyMetrics
 from .cascade import IndependentCascadeModel
-from .features import CausalNetworkFeatureExtractor
+from .features import DynamicNetworkFeatureExtractor, CausalNetworkFeatureExtractor, CategoricalFeatureEmbedding
 from .compression import NetworkCompressor
 
 __all__ = [
@@ -12,6 +12,8 @@ __all__ = [
     "MinimumSpanningTreeAnalyzer",
     "TopologyMetrics",
     "IndependentCascadeModel",
+    "DynamicNetworkFeatureExtractor",
     "CausalNetworkFeatureExtractor",
+    "CategoricalFeatureEmbedding",
     "NetworkCompressor"
 ]

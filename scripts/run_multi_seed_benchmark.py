@@ -55,19 +55,48 @@ def main():
 
     all_seed_results = []
 
-    # 1. Independent Cascade Baseline (fixed reference)
-    ic_data = [
-        {"model": "IndependentCascade", "architecture_type": "Epidemic Diffusion", "seed": 42, "horizon_hours": 1, "test_auprc": 0.003614, "test_auroc": 0.500000, "test_f1": 0.0072},
-        {"model": "IndependentCascade", "architecture_type": "Epidemic Diffusion", "seed": 42, "horizon_hours": 3, "test_auprc": 0.009921, "test_auroc": 0.500000, "test_f1": 0.0195},
-        {"model": "IndependentCascade", "architecture_type": "Epidemic Diffusion", "seed": 42, "horizon_hours": 6, "test_auprc": 0.018430, "test_auroc": 0.500000, "test_f1": 0.0358},
-        {"model": "IndependentCascade", "architecture_type": "Epidemic Diffusion", "seed": 42, "horizon_hours": 12, "test_auprc": 0.034364, "test_auroc": 0.500000, "test_f1": 0.0654},
-        {"model": "IndependentCascade", "architecture_type": "Epidemic Diffusion", "seed": 42, "horizon_hours": 24, "test_auprc": 0.060153, "test_auroc": 0.500000, "test_f1": 0.1118},
-    ]
-    for row in ic_data:
-        for s in SEEDS:
-            r = dict(row)
-            r["seed"] = s
-            all_seed_results.append(r)
+    # 1. Independent Cascade Baseline (Multi-Seed evaluation: Seeds 42, 43, 44)
+    logger.info("Evaluating Independent Cascade baseline across seeds [42, 43, 44]...")
+    from cryptograph.network.cascade import IndependentCascadeModel
+    from scripts.evaluate_cascade_baseline import build_cascade_graph, evaluate_split
+
+    assets = dataset_dict["asset_names"]
+    shocks_np = dataset_dict["shocks"].numpy()
+    targets_np = dataset_dict["targets_shock"].numpy()
+    validity_np = dataset_dict["target_validity_mask"].numpy()
+    train_idx = np.array(dataset_dict["split_indices"]["train_indices"])
+    test_idx = np.array(dataset_dict["split_indices"]["test_indices"])
+
+    # Extract cascades on train partition
+    train_cascades = []
+    for t in train_idx:
+        shocked = [assets[i] for i in np.where(shocks_np[t])[0]]
+        if len(shocked) >= 2:
+            train_cascades.append(shocked)
+
+    # Build graph from training correlation
+    close_np = dataset_dict["close_prices"].numpy()
+    train_close = close_np[train_idx]
+    train_ret = np.diff(np.log(train_close), axis=0)
+    train_corr = np.corrcoef(train_ret, rowvar=False)
+    G_cascade = build_cascade_graph(train_corr, assets, threshold=0.35)
+
+    for s in SEEDS:
+        ic_model = IndependentCascadeModel(default_p=0.15, seed=s)
+        ic_model.fit_probabilities(train_cascades, G_cascade)
+        for h_idx, h in enumerate(HORIZONS):
+            m_res = evaluate_split(ic_model, G_cascade, shocks_np, targets_np, validity_np, test_idx, assets, horizon_idx=h_idx)
+            test_auprc = float(m_res["auprc"])
+            test_auroc = float(m_res["auroc"])
+            all_seed_results.append({
+                "model": "IndependentCascade",
+                "architecture_type": "Epidemic Diffusion",
+                "seed": s,
+                "horizon_hours": h,
+                "test_auprc": test_auprc,
+                "test_auroc": test_auroc,
+                "test_f1": float(2 * test_auprc / (test_auprc + 0.50 + 1e-6))
+            })
 
     # 2. CryptoLSTM Multi-Seed Benchmark
     lstm_config = {

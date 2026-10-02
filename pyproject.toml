@@ -34,7 +34,6 @@ classifiers = [
 dependencies = [
     "torch>=2.0.0",
     "torch-geometric>=2.3.0",
-    "torch-geometric-temporal>=0.54.0",
     "numpy>=1.24.0",
     "pandas>=2.0.0",
     "scipy>=1.10.0",

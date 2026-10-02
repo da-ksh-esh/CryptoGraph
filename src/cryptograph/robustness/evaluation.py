@@ -130,24 +130,66 @@ def evaluate_perturbation_degradation(
     features: torch.Tensor,
     edge_index: torch.Tensor,
     target_node_idx: int = 0,
+    target_nodes: Optional[List[int]] = None,
     epsilon_levels: List[float] = [0.01, 0.05, 0.10, 0.20, 0.35],
     output_csv_path: str = "reports/robustness_degradation.csv"
 ) -> pd.DataFrame:
     """
     Evaluates adversarial resilience and degradation curves under feature and topology noise.
+    Computes mean degradation, attack success rate, and 95% confidence intervals across target nodes.
     """
+    from scipy import stats
+
+    nodes_to_test = target_nodes if target_nodes is not None else [target_node_idx]
     explainer = TempME(model, num_epochs=5, lr=0.1)
     tester = DualPerturbationTester(tgn_model=model, tempme_explainer=explainer)
 
-    results = tester.run_stress_test(
-        node_features=features,
-        edge_index=edge_index,
-        target_idx=target_node_idx,
-        epsilon_levels=epsilon_levels
-    )
+    all_node_results = []
+    for node_idx in nodes_to_test:
+        node_res = tester.run_stress_test(
+            node_features=features,
+            edge_index=edge_index,
+            target_idx=node_idx,
+            epsilon_levels=epsilon_levels
+        )
+        for r in node_res:
+            r["target_node"] = node_idx
+            all_node_results.append(r)
 
-    df_deg = pd.DataFrame(results)
+    raw_df = pd.DataFrame(all_node_results)
+
+    # Compute aggregate summary with confidence intervals
+    summary_records = []
+    grouped = raw_df.groupby(["perturbation_type", "epsilon"])
+
+    for (p_type, eps), grp in grouped:
+        mse_vals = grp["prediction_drift_mse"].tolist()
+        jacc_vals = grp["explanation_jaccard_stability"].tolist()
+        asr_vals = grp["attack_success_rate"].tolist()
+
+        n = len(mse_vals)
+        t_crit = stats.t.ppf(0.975, df=max(1, n - 1)) if n > 1 else 1.96
+        ci_mse = float(t_crit * stats.sem(mse_vals)) if n > 1 else 0.0
+        ci_jacc = float(t_crit * stats.sem(jacc_vals)) if n > 1 else 0.0
+        ci_asr = float(t_crit * stats.sem(asr_vals)) if n > 1 else 0.0
+
+        summary_records.append({
+            "perturbation_type": p_type,
+            "epsilon": eps,
+            "num_nodes": n,
+            "mean_prediction_drift_mse": float(np.mean(mse_vals)),
+            "std_prediction_drift_mse": float(np.std(mse_vals, ddof=1)) if n > 1 else 0.0,
+            "ci95_drift_mse": ci_mse,
+            "mean_explanation_jaccard": float(np.mean(jacc_vals)),
+            "std_explanation_jaccard": float(np.std(jacc_vals, ddof=1)) if n > 1 else 0.0,
+            "ci95_explanation_jaccard": ci_jacc,
+            "mean_attack_success_rate": float(np.mean(asr_vals)),
+            "std_attack_success_rate": float(np.std(asr_vals, ddof=1)) if n > 1 else 0.0,
+            "ci95_attack_success_rate": ci_asr
+        })
+
+    df_deg = pd.DataFrame(summary_records)
     Path(output_csv_path).parent.mkdir(parents=True, exist_ok=True)
     df_deg.to_csv(output_csv_path, index=False)
-    logger.info(f"Saved perturbation degradation curves to {output_csv_path}.")
+    logger.info(f"Saved perturbation degradation curves with 95% CIs across {len(nodes_to_test)} nodes to {output_csv_path}.")
     return df_deg

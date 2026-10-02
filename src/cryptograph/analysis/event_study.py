@@ -11,10 +11,15 @@ import pandas as pd
 class EventStudyAnalyzer:
     """
     Analyzes systemic shock propagation dynamics around market crisis events.
+    Computes abnormal metrics against an estimation/control baseline window.
+    
+    NOTE: Measures empirical temporal co-occurrence and abnormal return profiles,
+    not counterfactual causality.
     """
-    def __init__(self, pre_event_window: int = 14, post_event_window: int = 30):
+    def __init__(self, pre_event_window: int = 14, post_event_window: int = 30, estimation_window: int = 60):
         self.pre_event_window = pre_event_window
         self.post_event_window = post_event_window
+        self.estimation_window = estimation_window
 
     def compute_cumulative_abnormal_returns(
         self,

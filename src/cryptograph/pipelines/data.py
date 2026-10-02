@@ -65,12 +65,12 @@ def process_hourly_dataset(
         else:
             c_df = pd.read_parquet(coin_path).reindex(all_ts)
 
-        close_s = c_df["close"].ffill().bfill()
+        close_s = c_df["close"].ffill().fillna(0.0)
         active_s = c_df["close"].notnull() & (c_df["close"] > 0)
 
         dfs[coin] = c_df
         active_matrix[:, idx] = active_s.values
-        close_matrix[:, idx] = close_s.fillna(0.0).values.astype(np.float32)
+        close_matrix[:, idx] = close_s.values.astype(np.float32)
 
     # 2. Chronological Splits & 7-Day Purge Embargoes
     splitter = TemporalSplitter(

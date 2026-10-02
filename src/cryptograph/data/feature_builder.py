@@ -37,7 +37,7 @@ class FeatureBuilder:
         cols = {c: c.lower() for c in df.columns}
         d = df.rename(columns=cols)
 
-        close = d["close"].replace(0.0, np.nan).ffill().bfill()
+        close = d["close"].replace(0.0, np.nan).ffill().fillna(0.0)
         high = d.get("high", close)
         low = d.get("low", close)
         volume = d.get("volume", pd.Series(1.0, index=close.index))
@@ -142,7 +142,7 @@ class FeatureBuilder:
             features[:, node_idx, :] = feat_df[self.feature_names].values
 
             # Compute multi-horizon future returns as targets: ln(Close_{t+h} / Close_t)
-            close_series = asset_df["close"].replace(0.0, np.nan).ffill().bfill()
+            close_series = asset_df["close"].replace(0.0, np.nan).ffill().fillna(0.0)
             for h_idx, h in enumerate(self.horizons):
                 future_ret = np.log(close_series.shift(-h) / close_series)
                 future_ret = future_ret.replace([np.inf, -np.inf], 0.0).fillna(0.0).clip(-3.0, 3.0)

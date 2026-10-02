@@ -75,19 +75,39 @@ class ShockPersistenceAnalyzer:
         active_mask: np.ndarray,
         asset_names: List[str],
         sectors_map: Dict[str, str],
-        lookahead_hours: int = 48
+        lookahead_hours: int = 48,
+        control_hours: int = 48
     ) -> Dict[str, Any]:
         """
-        Analyzes a single historical event's empirical shock propagation cascade.
+        Analyzes a single historical event's empirical shock propagation cascade against
+        a pre-event baseline control window [t - W_control, t].
+        
+        NOTE: This quantifies temporal co-occurrence and abnormal volatility/shock surges
+        relative to calm pre-event conditions, not counterfactual causality.
         """
         T, N, F = features.shape
         end_t = min(T, trigger_t + lookahead_hours)
 
-        # Identify initially shocked nodes at t
+        # 1. Pre-event control baseline: [start_ctrl, trigger_t]
+        start_ctrl = max(0, trigger_t - control_hours)
+        ctrl_shocks = shocks[start_ctrl:trigger_t] & active_mask[start_ctrl:trigger_t]
+        ctrl_active_count = np.sum(active_mask[start_ctrl:trigger_t])
+        ctrl_shock_rate = float(np.sum(ctrl_shocks) / max(1, ctrl_active_count))
+
+        vol_col = 1 # Parkinson volatility
+        ctrl_vol = float(np.mean(features[start_ctrl:trigger_t, :, vol_col])) if trigger_t > start_ctrl else 0.0
+
+        # 2. Event window: [trigger_t, end_t]
         init_shocked = [asset_names[i] for i in range(N) if shocks[trigger_t, i] and active_mask[trigger_t, i]]
 
-        # Secondary shocked nodes in subsequent window
-        sub_shocks = shocks[trigger_t : end_t] & active_mask[trigger_t : end_t]
+        sub_shocks = shocks[trigger_t:end_t] & active_mask[trigger_t:end_t]
+        event_active_count = np.sum(active_mask[trigger_t:end_t])
+        event_shock_rate = float(np.sum(sub_shocks) / max(1, event_active_count))
+        abnormal_shock_rate = float(event_shock_rate - ctrl_shock_rate)
+
+        event_vol = float(np.mean(features[trigger_t:end_t, :, vol_col]))
+        vol_surge_ratio = float(event_vol / max(1e-6, ctrl_vol)) if ctrl_vol > 0 else 1.0
+
         any_shocked = np.any(sub_shocks, axis=0)
         affected_assets = [asset_names[i] for i in range(N) if any_shocked[i]]
         blast_radius_count = len(affected_assets)
@@ -99,7 +119,6 @@ class ShockPersistenceAnalyzer:
 
         # Average volatility persistence duration (half-life)
         half_lives = []
-        vol_col = 1 # multi_std_24 or parkinson
         for i in range(N):
             if any_shocked[i]:
                 vol_window = features[trigger_t : min(T, trigger_t + 72), i, vol_col]
@@ -126,6 +145,12 @@ class ShockPersistenceAnalyzer:
             "blast_radius_pct": blast_radius_pct,
             "propagation_delay_hours": delay_h,
             "mean_persistence_half_life_hours": mean_duration,
+            "control_shock_rate": ctrl_shock_rate,
+            "event_shock_rate": event_shock_rate,
+            "abnormal_shock_rate": abnormal_shock_rate,
+            "control_mean_volatility": ctrl_vol,
+            "event_mean_volatility": event_vol,
+            "volatility_surge_ratio": vol_surge_ratio,
             "most_impacted_sector": lead_sector
         }
 

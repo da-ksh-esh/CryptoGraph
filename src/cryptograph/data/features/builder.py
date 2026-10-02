@@ -63,7 +63,7 @@ class ResolutionAwareFeatureBuilder:
         cols = {c: c.lower() for c in df.columns}
         d = df.rename(columns=cols)
 
-        close = d["close"].replace(0.0, np.nan).ffill().bfill()
+        close = d["close"].replace(0.0, np.nan).ffill().fillna(0.0)
         high = d.get("high", close)
         low = d.get("low", close)
         volume = d.get("volume", pd.Series(1.0, index=close.index))

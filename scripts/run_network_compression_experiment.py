@@ -90,12 +90,13 @@ def main():
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
 
-    # Correlation matrix over frozen test period
-    test_ret = returns_np[test_indices]
-    corr = np.corrcoef(test_ret, rowvar=False)
+    train_indices = data["split_indices"]["train_indices"]
+    # Reference correlation matrix constructed strictly from training period (zero test lookahead)
+    train_ret = returns_np[train_indices]
+    corr = np.corrcoef(train_ret, rowvar=False)
     corr = np.nan_to_num(corr, nan=0.0)
 
-    print("Running structural compression benchmark...")
+    print("Running structural compression benchmark on training topology (zero test lookahead)...")
     df_structural = NetworkCompressor.run_benchmark(corr, assets, seed=42)
 
     # Now evaluate downstream model performance under each representation
@@ -129,7 +130,8 @@ def main():
             horizons=horizons,
             edge_indices=e_idx,
             edge_weights=e_w,
-            reset_memory=True
+            reset_memory=True,
+            warmup_indices=train_indices[-168:] if len(train_indices) >= 168 else None
         )
         model_auprcs[name] = round(eval_res["mean_auprc"], 4)
         model_aurocs[name] = round(eval_res["mean_auroc"], 4)
