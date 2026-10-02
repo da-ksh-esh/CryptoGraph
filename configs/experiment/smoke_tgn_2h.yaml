@@ -1,0 +1,24 @@
+# Smoke test of the TGN contagion task: a few batches of the 2h event stream, 1 epoch.
+# Proves the stream training / evaluation loop and run tracking. NOT a result; do not report its metrics.
+name: smoke_tgn_2h
+seed: 0
+device: auto
+deterministic: true
+data:
+  version: v2
+  resolution: "2h"
+  network_features: true   # join network_features.pt (latest snapshot <= t) to the panel features
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {memory_dim: 16, embedding_dim: 16, time_dim: 8}
+training:
+  epochs: 1
+  batch_size: 200          # events per batch (a bar is never split)
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 5              # early stopping on validation AUPRC at k = 1 bar
+  loss: focal
+  max_train_batches: 30    # smoke test only
+  max_eval_batches: 30

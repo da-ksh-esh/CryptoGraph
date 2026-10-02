@@ -1,0 +1,23 @@
+# ABLATION: TGN without memory / neighbour attention (the head sees only node features at t and the event message).
+# Same settings as tgn_1h_dev; isolates what the temporal graph adds. Validation only.
+name: tgn_1h_nomem_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {use_memory: false}
+training:
+  epochs: 20
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 4
+  loss: focal

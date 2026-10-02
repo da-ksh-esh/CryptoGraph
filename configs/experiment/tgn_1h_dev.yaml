@@ -1,0 +1,23 @@
+# TGN contagion model (T1), 1h stream, development run: validation only (evaluate_test: false).
+# First full-size run to see whether the TGN beats the independent cascade on validation
+# (cascade val AUPRC: 0.117 at k=1h, 0.212 at 3h; base rate 0.086 / 0.174 — reports/cascade_baseline.csv).
+name: tgn_1h_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+training:
+  epochs: 20
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 4
+  loss: focal

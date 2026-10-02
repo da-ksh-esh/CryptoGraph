@@ -1,0 +1,22 @@
+# LSTM (no graph), 1h data, development run (validation only). T3 forward realized volatility (1/6/24h); baseline to beat: HAR-RV val MSE 4.02e-5 / 2.16e-5 / 1.47e-5
+# (reports/hourly_baselines_1h.csv). Window: 168 hours of the 6 panel features of one coin.
+name: lstm_1h_rv_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+model:
+  name: lstm
+  config: configs/model/lstm.yaml
+target: y_rv
+loss: huber
+training:
+  epochs: 15
+  batch_size: 512
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 3
+  num_workers: 0

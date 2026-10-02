@@ -1,0 +1,23 @@
+# FINAL TGN contagion model (T1), 1h stream: settings frozen from tgn_1h_dev (validation only).
+# Scores the test period once per seed (evaluate_test: true). Run seeds 0-4:
+#   for s in 0 1 2 3 4; do cryptograph-train --config configs/experiment/tgn_1h_final.yaml --seed $s; done
+name: tgn_1h_final
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: true
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+training:
+  epochs: 30             # dev runs: full model stopped at epoch 19, the ablation hit the 20-epoch cap
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 4
+  loss: focal
