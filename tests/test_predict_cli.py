@@ -8,7 +8,8 @@ from cryptograph.pipelines.predict import (
     predict_contagion,
     resolve_timestep,
     validate_checkpoint_schema,
-    validate_dataset_schema
+    validate_dataset_schema,
+    validate_compatibility
 )
 from cryptograph.data.universe import TARGET_UNIVERSE_30
 
@@ -63,6 +64,43 @@ def test_schema_validations():
             "timestamps": ["t1", "t2"],  # len 2 != 5
             "asset_names": ["a1", "a2", "a3", "a4"]
         })
+
+
+def test_compatibility_validations():
+    # TGN node count mismatch
+    tgn_ckpt = {
+        "model_state_dict": {
+            "memory.memory": torch.zeros(30, 64),
+            "spatial_conv.lin.weight": torch.zeros(64, 64 + 16),
+            "forecast_head.3.weight": torch.zeros(5, 32)
+        },
+        "config": {"model": {"memory_dim": 64}}
+    }
+    dummy_data = {"features": torch.randn(10, 30, 9)}
+    features_16 = torch.randn(10, 30, 16)
+
+    # Asset count mismatch (20 != 30)
+    with pytest.raises(ValueError, match="Asset count mismatch"):
+        validate_compatibility("tgn", tgn_ckpt, dummy_data, features_16, [1, 3, 6, 12, 24], [f"c{i}" for i in range(20)])
+
+    # Feature dimension mismatch (fused has 12 instead of 16)
+    features_12 = torch.randn(10, 30, 12)
+    with pytest.raises(ValueError, match="Feature dimension mismatch"):
+        validate_compatibility("tgn", tgn_ckpt, dummy_data, features_12, [1, 3, 6, 12, 24], [f"c{i}" for i in range(30)])
+
+    # Horizon count mismatch (3 != 5)
+    with pytest.raises(ValueError, match="Horizon count mismatch"):
+        validate_compatibility("tgn", tgn_ckpt, dummy_data, features_16, [1, 3, 6], [f"c{i}" for i in range(30)])
+
+    # LSTM feature dimension mismatch
+    lstm_ckpt = {
+        "model_state_dict": {
+            "lstm.weight_ih_l0": torch.zeros(256, 9),
+            "fc.weight": torch.zeros(5, 64)
+        }
+    }
+    with pytest.raises(ValueError, match="Feature dimension mismatch"):
+        validate_compatibility("lstm", lstm_ckpt, {"features": torch.randn(10, 30, 16)}, torch.randn(10, 30, 16), [1, 3, 6, 12, 24], [f"c{i}" for i in range(30)])
 
 
 def test_predict_contagion_tgn():

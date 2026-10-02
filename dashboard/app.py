@@ -9,6 +9,7 @@ if str(dashboard_dir) not in sys.path:
     sys.path.insert(0, str(dashboard_dir))
 
 import streamlit as st
+from components.live_prediction import render_live_prediction
 from components.graph_view import render_graph_view
 from components.spillover_heatmap import render_spillover_heatmap
 from components.anomaly_alerts import render_anomaly_alerts
@@ -23,16 +24,25 @@ st.set_page_config(
 st.title("🛡️ CryptoGraph-Secure: Dynamic Graph & Cybersecurity Dashboard")
 st.markdown("Real-time temporal graph neural network monitoring for cryptocurrency shock spillovers and anomaly detection.")
 
-tabs = st.tabs(["📊 Dynamic Network Graph", "🔗 Spillover Propagation", "🚨 Cybersecurity & Anomalies", "🛡️ Adversarial Stress Testing"])
+tabs = st.tabs([
+    "🔮 Live Contagion Forecast",
+    "📊 Dynamic Network Graph",
+    "🔗 Spillover Propagation",
+    "🚨 Cybersecurity & Anomalies",
+    "🛡️ Adversarial Stress Testing"
+])
 
 with tabs[0]:
-    render_graph_view()
+    render_live_prediction()
 
 with tabs[1]:
-    render_spillover_heatmap()
+    render_graph_view()
 
 with tabs[2]:
-    render_anomaly_alerts()
+    render_spillover_heatmap()
 
 with tabs[3]:
+    render_anomaly_alerts()
+
+with tabs[4]:
     render_robustness_panel()

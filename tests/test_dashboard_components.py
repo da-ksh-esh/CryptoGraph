@@ -8,9 +8,16 @@ from dashboard.components.graph_view import load_rankings_data, load_correlation
 from dashboard.components.spillover_heatmap import load_persistence_data, load_tempme_explanations
 from dashboard.components.anomaly_alerts import load_tgae_anomalies
 from dashboard.components.robustness_panel import load_robustness_data, load_manifest_data
+from dashboard.components.live_prediction import get_dataset_metadata
 
 
 def test_dashboard_data_loading():
+    # 0. Live prediction dataset metadata
+    timestamps, num_steps, horizons, assets = get_dataset_metadata()
+    if num_steps > 0:
+        assert len(timestamps) == num_steps
+        assert len(assets) == 30
+        assert len(horizons) >= 3
     # 1. Rankings data
     df_rankings = load_rankings_data()
     assert isinstance(df_rankings, pd.DataFrame)

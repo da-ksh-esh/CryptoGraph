@@ -96,6 +96,71 @@ def validate_dataset_schema(data: Dict[str, Any]) -> None:
         )
 
 
+def validate_compatibility(
+    model_type: str,
+    ckpt: Dict[str, Any],
+    data: Dict[str, Any],
+    features_to_use: torch.Tensor,
+    horizons: List[int],
+    asset_names: List[str]
+) -> None:
+    """
+    Validates dimensional and structural compatibility between loaded checkpoint and dataset.
+    Ensures feature dimensions, number of assets, and prediction horizons match exactly.
+    """
+    state_dict = ckpt["model_state_dict"]
+    expected = model_type.lower()
+
+    if expected == "tgn":
+        # Check node count from memory buffer
+        if "memory.memory" in state_dict:
+            ckpt_nodes = state_dict["memory.memory"].shape[0]
+            if ckpt_nodes != len(asset_names):
+                raise ValueError(
+                    f"Asset count mismatch: checkpoint expects {ckpt_nodes} assets, "
+                    f"but dataset contains {len(asset_names)} assets."
+                )
+        # Check input feature dimension to spatial convolution
+        if "spatial_conv.lin.weight" in state_dict:
+            expected_fused_dim = state_dict["spatial_conv.lin.weight"].shape[1]
+            memory_dim = ckpt.get("config", {}).get("model", {}).get("memory_dim", 64)
+            actual_fused_dim = features_to_use.shape[-1] + memory_dim
+            if expected_fused_dim != actual_fused_dim:
+                raise ValueError(
+                    f"Feature dimension mismatch: checkpoint spatial_conv expects fused dim {expected_fused_dim} "
+                    f"(memory_dim={memory_dim} + node_feat_dim={expected_fused_dim - memory_dim}), "
+                    f"but provided dataset fused features have dim {features_to_use.shape[-1]} "
+                    f"(total fused {actual_fused_dim})."
+                )
+        # Check forecast head horizons
+        forecast_weights = [v for k, v in state_dict.items() if "forecast_head" in k and "weight" in k]
+        if forecast_weights:
+            ckpt_horizons = forecast_weights[-1].shape[0]
+            if ckpt_horizons != len(horizons):
+                raise ValueError(
+                    f"Horizon count mismatch: checkpoint forecast head predicts {ckpt_horizons} horizons, "
+                    f"but dataset specifies {len(horizons)} horizons ({horizons})."
+                )
+
+    elif expected == "lstm":
+        if "lstm.weight_ih_l0" in state_dict:
+            expected_feat_dim = state_dict["lstm.weight_ih_l0"].shape[1]
+            actual_feat_dim = features_to_use.shape[-1]
+            if expected_feat_dim != actual_feat_dim:
+                raise ValueError(
+                    f"Feature dimension mismatch: checkpoint LSTM expects {expected_feat_dim} features, "
+                    f"but dataset has {actual_feat_dim} features."
+                )
+        fc_weights = [v for k, v in state_dict.items() if ("fc" in k or "forecast" in k) and "weight" in k]
+        if fc_weights:
+            ckpt_horizons = fc_weights[-1].shape[0]
+            if ckpt_horizons != len(horizons):
+                raise ValueError(
+                    f"Horizon count mismatch: checkpoint LSTM head predicts {ckpt_horizons} horizons, "
+                    f"but dataset specifies {len(horizons)} horizons ({horizons})."
+                )
+
+
 def find_latest_checkpoint(model_type: str = "tgn") -> Optional[Path]:
     """Finds the most recent best checkpoint for the given model architecture without cross-model fallback."""
     pattern = f"runs/*{model_type}*/best_{model_type}_checkpoint.pt"
@@ -240,6 +305,8 @@ def predict_contagion(
         else:
             fused_features = features
 
+        validate_compatibility("tgn", ckpt, data, fused_features, horizons, asset_names)
+
         node_feat_dim = fused_features.shape[-1]
         raw_msg_dim = ckpt_config.get("model", {}).get("raw_msg_dim", 9)
         memory_dim = ckpt_config.get("model", {}).get("memory_dim", 64)
@@ -317,6 +384,8 @@ def predict_contagion(
                     explanations_dict[c_idx] = "Correlation cluster"
 
     else:  # LSTM
+        validate_compatibility("lstm", ckpt, data, features, horizons, asset_names)
+
         in_features = features.shape[-1]
         hidden_dim = ckpt_config.get("model", {}).get("hidden_dim", 64)
         num_layers = ckpt_config.get("model", {}).get("num_layers", 2)
