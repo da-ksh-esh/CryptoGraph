@@ -22,6 +22,47 @@ def test_crypto_tgn():
     assert preds.shape == (num_nodes, 3)
     assert z.shape == (num_nodes, 16)
 
+
+def test_tgn_memory_gradients():
+    """Verify that gradients flow to TGNMemory GRU weights during training and detach_memory truncates graph."""
+    num_nodes = 4
+    in_features = 8
+    model = CryptoTGN(num_nodes=num_nodes, raw_msg_dim=in_features, memory_dim=16, embedding_dim=16, out_horizons=2)
+    model.train()
+
+    # Step 1
+    src = torch.tensor([0, 1], dtype=torch.long)
+    dst = torch.tensor([1, 2], dtype=torch.long)
+    ts = torch.tensor([0, 0], dtype=torch.long)
+    msg = torch.randn(2, in_features)
+    model.update_memory(src, dst, msg, ts)
+
+    x1 = torch.randn(num_nodes, in_features)
+    edge_index = torch.tensor([[0, 1], [1, 2]], dtype=torch.long)
+    preds1, _ = model(x1, edge_index)
+    loss1 = preds1.sum()
+    loss1.backward()
+
+    assert model.memory.gru.weight_ih.grad is not None
+    assert model.memory.gru.weight_ih.grad.norm().item() > 0.0
+
+    model.detach_memory()
+    model.zero_grad()
+
+    # Step 2: ensure no backward-through-graph-twice error
+    src2 = torch.tensor([2, 3], dtype=torch.long)
+    dst2 = torch.tensor([3, 0], dtype=torch.long)
+    ts2 = torch.tensor([1, 1], dtype=torch.long)
+    msg2 = torch.randn(2, in_features)
+    model.update_memory(src2, dst2, msg2, ts2)
+
+    x2 = torch.randn(num_nodes, in_features)
+    preds2, _ = model(x2, edge_index)
+    loss2 = preds2.sum()
+    loss2.backward()
+    assert model.memory.gru.weight_ih.grad is not None
+    assert model.memory.gru.weight_ih.grad.norm().item() > 0.0
+
 def test_crypto_lstm():
     lstm = CryptoLSTM(in_features=8, hidden_dim=16, out_horizons=3)
     dummy_x = torch.randn(5, 10, 8)  # 5 nodes/batches, 10 timesteps, 8 features

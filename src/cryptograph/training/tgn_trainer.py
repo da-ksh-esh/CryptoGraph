@@ -308,6 +308,9 @@ def train_tgn_experiment(
                 total_loss += loss.item() * grad_accum_steps
                 steps += 1
 
+            # Detach internal memory states for truncated backprop across snapshots
+            model.detach_memory()
+
             if (step_i + 1) % grad_accum_steps == 0 or (step_i + 1) == len(train_indices):
                 optimizer.step()
                 optimizer.zero_grad()

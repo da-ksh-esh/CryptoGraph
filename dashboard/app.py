@@ -1,4 +1,13 @@
-"""Streamlit entry point for CryptoGraph-Secure Monitoring Dashboard."""
+import sys
+from pathlib import Path
+
+repo_root = Path(__file__).resolve().parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+dashboard_dir = Path(__file__).resolve().parent
+if str(dashboard_dir) not in sys.path:
+    sys.path.insert(0, str(dashboard_dir))
+
 import streamlit as st
 from components.graph_view import render_graph_view
 from components.spillover_heatmap import render_spillover_heatmap

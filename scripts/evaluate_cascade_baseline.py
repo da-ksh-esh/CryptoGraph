@@ -10,6 +10,7 @@ import torch
 from sklearn.metrics import roc_auc_score, average_precision_score
 
 from cryptograph.network.cascade import IndependentCascadeModel
+from cryptograph.training.metrics import compute_classification_metrics
 
 
 def build_cascade_graph(correlation_matrix: np.ndarray, asset_names: list, threshold: float = 0.35) -> nx.Graph:
@@ -66,21 +67,24 @@ def evaluate_split(
             all_y_pred.append(y_score)
 
     if not all_y_true or sum(all_y_true) == 0:
-        return {"auroc": 0.5, "auprc": 0.0, "samples": len(all_y_true), "positives": sum(all_y_true)}
+        return {
+            "auroc": 0.5,
+            "auprc": 0.0,
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "samples": len(all_y_true),
+            "positives": sum(all_y_true),
+        }
 
-    try:
-        auroc = float(roc_auc_score(all_y_true, all_y_pred))
-    except Exception:
-        auroc = 0.5
-
-    try:
-        auprc = float(average_precision_score(all_y_true, all_y_pred))
-    except Exception:
-        auprc = 0.0
+    m = compute_classification_metrics(np.array(all_y_true), np.array(all_y_pred), threshold=0.5)
 
     return {
-        "auroc": auroc,
-        "auprc": auprc,
+        "auroc": m["auroc"],
+        "auprc": m["auprc"],
+        "f1": m["f1"],
+        "precision": m["precision"],
+        "recall": m["recall"],
         "samples": len(all_y_true),
         "positives": int(sum(all_y_true))
     }
@@ -134,10 +138,16 @@ def main():
             "horizon_hours": h,
             "val_auroc": val_metrics["auroc"],
             "val_auprc": val_metrics["auprc"],
+            "val_f1": val_metrics["f1"],
+            "val_precision": val_metrics["precision"],
+            "val_recall": val_metrics["recall"],
             "val_samples": val_metrics["samples"],
             "val_positives": val_metrics["positives"],
             "test_auroc": test_metrics["auroc"],
             "test_auprc": test_metrics["auprc"],
+            "test_f1": test_metrics["f1"],
+            "test_precision": test_metrics["precision"],
+            "test_recall": test_metrics["recall"],
             "test_samples": test_metrics["samples"],
             "test_positives": test_metrics["positives"],
         })
@@ -147,7 +157,7 @@ def main():
     rep_path.parent.mkdir(parents=True, exist_ok=True)
     df_out.to_csv(rep_path, index=False)
     print("=== CASCADE BASELINE PERFORMANCE ===")
-    print(df_out[["horizon_hours", "val_auroc", "val_auprc", "test_auroc", "test_auprc"]].to_string(index=False))
+    print(df_out[["horizon_hours", "val_auroc", "val_auprc", "val_f1", "test_auroc", "test_auprc", "test_f1"]].to_string(index=False))
     print(f"Saved results to {rep_path}")
 
 

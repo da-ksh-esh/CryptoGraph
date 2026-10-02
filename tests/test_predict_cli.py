@@ -4,7 +4,12 @@ import pytest
 import torch
 from pathlib import Path
 
-from cryptograph.pipelines.predict import predict_contagion, resolve_timestep
+from cryptograph.pipelines.predict import (
+    predict_contagion,
+    resolve_timestep,
+    validate_checkpoint_schema,
+    validate_dataset_schema
+)
 from cryptograph.data.universe import TARGET_UNIVERSE_30
 
 
@@ -23,6 +28,41 @@ def test_resolve_timestep():
     # Test date query match
     assert resolve_timestep(timestamps, "2024-08-05") == 4
     assert resolve_timestep(timestamps, "2024-01-01 01:00:00") == 1
+
+    # Out of bounds should raise IndexError (no silent clamping)
+    with pytest.raises(IndexError):
+        resolve_timestep(timestamps, 10)
+    with pytest.raises(IndexError):
+        resolve_timestep(timestamps, -10)
+
+    # Completely unmatchable or distant date should raise ValueError
+    with pytest.raises(ValueError):
+        resolve_timestep(timestamps, "2018-01-01")
+
+
+def test_schema_validations():
+    # Invalid checkpoint schema tests
+    with pytest.raises(KeyError):
+        validate_checkpoint_schema({}, "tgn")
+
+    with pytest.raises(ValueError):
+        validate_checkpoint_schema({"model_state_dict": {}}, "tgn")
+
+    # Architecture mismatch
+    with pytest.raises(ValueError):
+        validate_checkpoint_schema({"model_state_dict": {"lstm.weight_ih_l0": torch.randn(4, 4)}}, "tgn")
+
+    # Invalid dataset schema tests
+    with pytest.raises(KeyError):
+        validate_dataset_schema({"features": torch.randn(5, 4, 3)})
+
+    # Dimension mismatch
+    with pytest.raises(ValueError):
+        validate_dataset_schema({
+            "features": torch.randn(5, 4, 3),
+            "timestamps": ["t1", "t2"],  # len 2 != 5
+            "asset_names": ["a1", "a2", "a3", "a4"]
+        })
 
 
 def test_predict_contagion_tgn():

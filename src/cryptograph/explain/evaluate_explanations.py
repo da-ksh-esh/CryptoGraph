@@ -154,9 +154,9 @@ def run_explanation_benchmark(
         sparsity = exp_res["sparsity"]
         entropy = exp_res["motif_entropy"]
 
-        # Quantitative validation metrics with preserved edge weights
-        f_plus = validator.compute_fidelity_plus(x_t, e_idx, edge_mask, target_idx=target_node, edge_weight=e_w, top_k_pct=0.20)
-        f_minus = validator.compute_fidelity_minus(x_t, e_idx, edge_mask, target_idx=target_node, edge_weight=e_w, top_k_pct=0.20)
+        # Quantitative validation metrics with exact top-k edge selection and preserved edge weights
+        f_plus = validator.compute_fidelity_plus(x_t, e_idx, edge_mask, target_idx=target_node, edge_weight=e_w, top_k=5)
+        f_minus = validator.compute_fidelity_minus(x_t, e_idx, edge_mask, target_idx=target_node, edge_weight=e_w, top_k=5)
 
         # Convert node attributions to asset names
         node_attrib_named = {asset_names[node_id]: score for node_id, score in exp_res["node_attributions"].items()}

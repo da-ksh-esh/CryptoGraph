@@ -41,16 +41,67 @@ SECTOR_PERSISTENCE_HALFLIFE: Dict[str, float] = {
 DEFAULT_PERSISTENCE_HALFLIFE: float = 12.0
 
 
+def validate_checkpoint_schema(ckpt: Dict[str, Any], expected_model_type: str) -> None:
+    """Validates that the loaded checkpoint dictionary matches expected schema and architecture."""
+    if not isinstance(ckpt, dict):
+        raise TypeError(f"Checkpoint must be a dictionary, got {type(ckpt).__name__}")
+    if "model_state_dict" not in ckpt:
+        raise KeyError("Checkpoint missing required key 'model_state_dict'")
+    state_dict = ckpt["model_state_dict"]
+    if not isinstance(state_dict, dict) or len(state_dict) == 0:
+        raise ValueError("Checkpoint 'model_state_dict' must be a non-empty dictionary.")
+
+    expected = expected_model_type.lower()
+    keys = list(state_dict.keys())
+    if expected == "tgn":
+        is_tgn = any("memory" in k or "spatial_conv" in k for k in keys)
+        if not is_tgn:
+            raise ValueError(
+                f"Checkpoint architecture mismatch: expected '{expected}', "
+                f"but state_dict keys do not match TGN (found: {keys[:4]})."
+            )
+    elif expected == "lstm":
+        is_lstm = any("lstm" in k for k in keys)
+        if not is_lstm:
+            raise ValueError(
+                f"Checkpoint architecture mismatch: expected '{expected}', "
+                f"but state_dict keys do not match LSTM (found: {keys[:4]})."
+            )
+
+
+def validate_dataset_schema(data: Dict[str, Any]) -> None:
+    """Validates that the processed dataset dictionary matches required structure and shapes."""
+    if not isinstance(data, dict):
+        raise TypeError(f"Dataset must be a dictionary, got {type(data).__name__}")
+    required_keys = ["features", "timestamps", "asset_names"]
+    for k in required_keys:
+        if k not in data:
+            raise KeyError(f"Dataset missing required key '{k}'")
+
+    features = data["features"]
+    if not isinstance(features, torch.Tensor) or features.ndim != 3:
+        raise ValueError(
+            f"Dataset 'features' must be a 3D Tensor (T, N, F), "
+            f"got {type(features)} with shape {getattr(features, 'shape', None)}"
+        )
+
+    T, N, _ = features.shape
+    if len(data["timestamps"]) != T:
+        raise ValueError(
+            f"Dataset 'timestamps' length ({len(data['timestamps'])}) does not match features T dimension ({T})"
+        )
+    if len(data["asset_names"]) != N:
+        raise ValueError(
+            f"Dataset 'asset_names' length ({len(data['asset_names'])}) does not match features N dimension ({N})"
+        )
+
+
 def find_latest_checkpoint(model_type: str = "tgn") -> Optional[Path]:
-    """Finds the most recent best checkpoint for the given model architecture."""
+    """Finds the most recent best checkpoint for the given model architecture without cross-model fallback."""
     pattern = f"runs/*{model_type}*/best_{model_type}_checkpoint.pt"
     candidates = sorted(glob.glob(pattern))
     if candidates:
         return Path(candidates[-1])
-    # Fallback to any best checkpoint
-    any_candidates = sorted(glob.glob("runs/*/best_*.pt"))
-    if any_candidates:
-        return Path(any_candidates[-1])
     return None
 
 
@@ -58,37 +109,56 @@ def resolve_timestep(
     timestamps: List[str],
     timestep_arg: Union[int, str]
 ) -> int:
-    """Resolves an index or date string to a valid timestep index."""
+    """
+    Resolves an index or date string to a valid timestep index.
+    Raises IndexError if integer index is out of bounds.
+    Raises ValueError if date string cannot be matched to dataset timestamps.
+    """
     if isinstance(timestep_arg, int):
-        if timestep_arg < 0:
-            return len(timestamps) + timestep_arg
-        return min(timestep_arg, len(timestamps) - 1)
+        idx = len(timestamps) + timestep_arg if timestep_arg < 0 else timestep_arg
+        if idx < 0 or idx >= len(timestamps):
+            raise IndexError(
+                f"Timestep index {timestep_arg} is out of bounds for dataset of length {len(timestamps)} "
+                f"(valid range: [{-len(timestamps)}, {len(timestamps) - 1}])."
+            )
+        return idx
 
     # String argument: try parsing integer first
     try:
         t_int = int(timestep_arg)
-        if t_int < 0:
-            return len(timestamps) + t_int
-        return min(t_int, len(timestamps) - 1)
+        idx = len(timestamps) + t_int if t_int < 0 else t_int
+        if idx < 0 or idx >= len(timestamps):
+            raise IndexError(
+                f"Timestep index {timestep_arg} is out of bounds for dataset of length {len(timestamps)} "
+                f"(valid range: [{-len(timestamps)}, {len(timestamps) - 1}])."
+            )
+        return idx
     except ValueError:
         pass
 
     # String date lookup
     query = str(timestep_arg).strip()
-    # Exact or prefix match
     matches = [i for i, ts in enumerate(timestamps) if query in ts]
     if matches:
         return matches[-1]
 
-    # Timestamp comparison
+    # Timestamp comparison if query looks like a datetime
     try:
         query_dt = pd.to_datetime(query, utc=True)
         ts_series = pd.to_datetime(timestamps, utc=True)
         deltas = np.abs((ts_series - query_dt).total_seconds())
-        return int(np.argmin(deltas))
-    except Exception:
-        logger.warning(f"Could not parse timestep '{timestep_arg}'. Defaulting to latest.")
-        return len(timestamps) - 1
+        min_idx = int(np.argmin(deltas))
+        # Disallow match if closest timestamp is more than 7 days away
+        if deltas[min_idx] > 7 * 86400:
+            raise ValueError(
+                f"Timestep query '{query}' is too far from nearest dataset timestamp "
+                f"({timestamps[min_idx]}, delta: {deltas[min_idx]/86400:.1f} days)."
+            )
+        return min_idx
+    except Exception as e:
+        if isinstance(e, ValueError):
+            raise
+        raise ValueError(f"Could not resolve timestep query '{timestep_arg}' to any valid dataset timestamp: {e}")
 
 
 def predict_contagion(
@@ -130,12 +200,15 @@ def predict_contagion(
     elif "lstm" in Path(checkpoint_path).name.lower():
         model_type = "lstm"
 
+    validate_checkpoint_schema(ckpt, model_type)
+
     # 2. Load Processed Dataset
     data_file = Path(dataset_path)
     if not data_file.exists():
         raise FileNotFoundError(f"Processed dataset not found at: {data_file}")
 
     data = torch.load(data_file, map_location="cpu", weights_only=False)
+    validate_dataset_schema(data)
     features = data["features"]  # (T, N, F_tech)
     timestamps = data["timestamps"]
     horizons = data.get("horizons", [1, 3, 6, 12, 24])

@@ -62,6 +62,10 @@ class CryptoTGN(nn.Module):
         """Resets the internal node memory states for a new sequence or epoch."""
         self.memory.reset_state()
 
+    def detach_memory(self):
+        """Detaches internal memory state tensors for truncated backprop across steps."""
+        self.memory.detach()
+
     def forward(
         self,
         node_features: torch.Tensor,
@@ -80,11 +84,14 @@ class CryptoTGN(nn.Module):
             predictions: Tensor of shape (num_nodes, out_horizons)
             embeddings: Tensor of shape (num_nodes, embedding_dim)
         """
-        # Read current memory states (detached for truncated backprop across snapshots)
+        # Read current memory states (gradient flow enabled during training, detached across snapshots)
         node_ids = torch.arange(self.num_nodes, device=node_features.device)
-        with torch.no_grad():
+        if self.training:
             mem, _ = self.memory(node_ids)
-            mem = mem.detach()
+        else:
+            with torch.no_grad():
+                mem, _ = self.memory(node_ids)
+                mem = mem.detach()
 
         # Fuse node memory with instantaneous features
         fused = torch.cat([mem, node_features], dim=-1)

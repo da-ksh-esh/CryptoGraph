@@ -95,7 +95,9 @@ def main():
                 "horizon_hours": h,
                 "test_auprc": test_auprc,
                 "test_auroc": test_auroc,
-                "test_f1": float(2 * test_auprc / (test_auprc + 0.50 + 1e-6))
+                "test_f1": float(m_res["f1"]),
+                "test_precision": float(m_res["precision"]),
+                "test_recall": float(m_res["recall"]),
             })
 
     # 2. CryptoLSTM Multi-Seed Benchmark

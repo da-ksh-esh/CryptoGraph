@@ -1,6 +1,6 @@
 """Explanation Validation: Fidelity+, Fidelity-, Characterization scores, and Rank Correlation."""
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
@@ -18,6 +18,36 @@ class ExplanationValidator:
     def __init__(self, model: nn.Module):
         self.model = model
 
+    @staticmethod
+    def _get_exact_edge_partitions(
+        edge_mask: np.ndarray,
+        top_k: Optional[int] = None,
+        top_k_pct: float = 0.20
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        r"""
+        Determines exact top-k motif edges and remaining background edges by descending importance order.
+        Avoids percentile cutoff ambiguities on tied or binary masks.
+
+        Returns:
+            motif_indices: Indices of the exact top-k explanatory edges.
+            keep_indices: Indices of the remaining background edges (G \ M).
+        """
+        num_edges = len(edge_mask)
+        if num_edges == 0:
+            return np.array([], dtype=int), np.array([], dtype=int)
+
+        if top_k is not None:
+            k = min(num_edges, max(1, top_k))
+        else:
+            k = min(num_edges, max(1, int(np.ceil(num_edges * top_k_pct))))
+
+        sorted_indices = np.argsort(edge_mask)[::-1].copy()
+        motif_indices = np.ascontiguousarray(sorted_indices[:k], dtype=int)
+        top_k_set = set(motif_indices)
+        keep_indices = np.ascontiguousarray([i for i in range(num_edges) if i not in top_k_set], dtype=int)
+
+        return motif_indices, keep_indices
+
     def compute_fidelity_plus(
         self,
         node_features: torch.Tensor,
@@ -25,6 +55,7 @@ class ExplanationValidator:
         edge_mask: np.ndarray,
         target_idx: int,
         edge_weight: Optional[torch.Tensor] = None,
+        top_k: Optional[int] = None,
         top_k_pct: float = 0.20,
         horizon_idx: int = 0
     ) -> float:
@@ -39,9 +70,8 @@ class ExplanationValidator:
             y_orig = out_orig[0][target_idx] if isinstance(out_orig, tuple) else out_orig[target_idx]
             p_orig = float(torch.sigmoid(y_orig)[horizon_idx].item()) if y_orig.ndim > 0 else float(torch.sigmoid(y_orig).item())
 
-            # Mask out the top-k% most important edges
-            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0) if len(edge_mask) > 0 else 0.0
-            keep_indices = np.where(edge_mask < cutoff)[0]
+            # Mask out exactly the top-k most important edges
+            _, keep_indices = self._get_exact_edge_partitions(edge_mask, top_k=top_k, top_k_pct=top_k_pct)
 
             if len(keep_indices) == 0:
                 p_pruned = 0.0
@@ -63,6 +93,7 @@ class ExplanationValidator:
         edge_mask: np.ndarray,
         target_idx: int,
         edge_weight: Optional[torch.Tensor] = None,
+        top_k: Optional[int] = None,
         top_k_pct: float = 0.20,
         horizon_idx: int = 0
     ) -> float:
@@ -77,8 +108,7 @@ class ExplanationValidator:
             y_orig = out_orig[0][target_idx] if isinstance(out_orig, tuple) else out_orig[target_idx]
             p_orig = float(torch.sigmoid(y_orig)[horizon_idx].item()) if y_orig.ndim > 0 else float(torch.sigmoid(y_orig).item())
 
-            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0) if len(edge_mask) > 0 else 0.0
-            motif_indices = np.where(edge_mask >= cutoff)[0]
+            motif_indices, _ = self._get_exact_edge_partitions(edge_mask, top_k=top_k, top_k_pct=top_k_pct)
 
             if len(motif_indices) == 0:
                 motif_edge_index = torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
@@ -102,6 +132,7 @@ class ExplanationValidator:
         edge_mask: np.ndarray,
         target_idx: int,
         edge_weight: Optional[torch.Tensor] = None,
+        top_k: Optional[int] = None,
         top_k_pct: float = 0.20
     ) -> Dict[str, float]:
         r"""Computes raw logit L2 vector displacement for ablation and retention."""
@@ -110,9 +141,7 @@ class ExplanationValidator:
             out_orig = self.model(node_features, edge_index, edge_weight)
             y_orig = out_orig[0][target_idx] if isinstance(out_orig, tuple) else out_orig[target_idx]
 
-            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0) if len(edge_mask) > 0 else 0.0
-            keep_indices = np.where(edge_mask < cutoff)[0]
-            motif_indices = np.where(edge_mask >= cutoff)[0]
+            motif_indices, keep_indices = self._get_exact_edge_partitions(edge_mask, top_k=top_k, top_k_pct=top_k_pct)
 
             pruned_edge_index = edge_index[:, keep_indices] if len(keep_indices) > 0 else torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
             pruned_edge_weight = edge_weight[keep_indices] if (edge_weight is not None and len(keep_indices) > 0) else None
