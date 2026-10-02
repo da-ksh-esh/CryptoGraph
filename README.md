@@ -1,18 +1,24 @@
 # CryptoGraph-Secure 🛡️⚡
 
-A cybersecurity-focused deep learning framework that analyzes how price shocks propagate across interconnected cryptocurrencies using **Temporal Graph Neural Networks (TGNN)** and evaluates model resilience against adversarial market manipulation.
+A deep learning framework for how price shocks spread across cryptocurrencies: hourly market data for 30 coins,
+network analysis of the coin market, and temporal graph neural networks (TGN, DyGFormer) that predict which coins
+shock next, with motif-based explanations (TempME) and robustness tests.
+
+> **Confidential** — proprietary, all rights reserved (pending IP review). Do not share code, data or results outside the team.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Status
 
-- **📊 Dynamic Relationship Graph**: Rolling dynamic correlations & learned adaptive adjacency matrices between cryptocurrencies.
-- **⚡ Cryptocurrency Shock Detection**: Extreme Value Theory (EVT) and jump detection for flash crashes and sudden liquidity drains.
-- **🔗 Cross-Asset Spillover Analysis**: Quantifies spillover magnitude, transmission delay (lead-lag steps), and decay persistence.
-- **🧠 Temporal Graph Neural Network**: GATv2 spatial attention + Bi-directional GRU for multi-horizon price/return prediction.
-- **🚨 Cybersecurity & Anomaly Detection**: Unsupervised Temporal VGAE to flag wash trading, oracle manipulation, and corrupted feeds.
-- **🛡️ Adversarial Robustness Testing**: Benchmarks model degradation under feature (PGD/FGSM) and graph topology (DICE) attacks.
-- **📱 Interactive Dashboard**: Real-time Streamlit interface with interactive network graphs and perturbation stress-testing.
+| Part | Status |
+|---|---|
+| Daily data (20 coins, 2016–2026; Yahoo + Coin Metrics) | done — `data/processed/v1/` |
+| Hourly data (30 coins, 2020–2026; Binance, 1h + 2h) | done — `data/processed/v2/` |
+| EDA (notebook 01) and network analysis (notebook 02) | done |
+| Independent cascade baseline, Diebold–Yilmaz rankings, network node features | done |
+| Run tracking, data packaging, Colab runner | done (smoke-tested) |
+| LSTM / snapshot GNN / TGN / DyGFormer training, TempME explanations, robustness | planned — `docs/model_plan.md` |
+| User-facing view (`dashboard/` or `cryptograph-predict`) | deferred until models are trained |
 
 ---
 
@@ -21,25 +27,26 @@ A cybersecurity-focused deep learning framework that analyzes how price shocks p
 ```text
 CryptoGraph/
 ├── configs/
-│   ├── data/daily.yaml       # data window, universe, quality, splits, targets, graph, scaling
+│   ├── data/daily.yaml, hourly.yaml   # windows, universe, quality, features, labels, splits, graphs, network
 │   ├── model/                # lstm, tgn, dygformer, cascade, tgae
-│   ├── experiment/           # one YAML per training experiment
-│   └── robustness/           # perturbation settings (optional stage)
-├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv
+│   ├── experiment/           # one YAML per training run (smoke_lstm_daily.yaml = pipeline smoke test)
+│   └── robustness/           # perturbation settings
+├── colab/                    # runner.ipynb + README (Colab / Kaggle)
+├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv, sectors.csv
 ├── dashboard/                # Streamlit UI (deferred until models are trained)
-├── docs/                     # model plan, merge notes
-├── notebooks/                # 01 data & EDA, 03 Diebold-Yilmaz; archive/ holds superseded notebooks
-├── reports/                  # audit, quality and baseline tables, figures
-├── runs/                     # local experiment runs (gitignored)
+├── docs/                     # model_plan.md, hourly_data_notes.md, merge_notes.md
+├── notebooks/                # 01 data & EDA, 02 network analysis, 03-06 skeletons; archive/ = superseded notebooks
+├── reports/                  # audit, quality, baseline and network tables, figures
+├── runs/                     # local experiment runs + results.csv (gitignored)
 ├── src/cryptograph/
-│   ├── data/                 # sources, quality, features, graphs, datasets, universe; legacy.py (old file format)
-│   ├── network/              # centrality, communities, MST, topology, independent cascade (Stage 5)
+│   ├── data/                 # sources, quality, features, graphs, datasets, universe (daily + hourly)
+│   ├── network/              # centrality, communities, MST, topology, spillover, independent cascade, node features
 │   ├── models/               # LSTM, TGN, T-GAE; DyGFormer and snapshot-GNN placeholders
 │   ├── explain/              # edge-mask explainer, explanation validation (TempME adapter later)
 │   ├── robustness/           # perturbation tests, FGSM (TODO), anomaly scoring
-│   ├── training/             # seeding, losses, metrics, early stopping, loop
-│   ├── analysis/             # statistics, Diebold-Yilmaz (generalized FEVD), event studies, baselines
-│   ├── pipelines/            # build_data (cryptograph-data), train, evaluate, explain
+│   ├── training/             # seed, device, losses, metrics, early stopping, loop, run tracking, runner
+│   ├── analysis/             # statistics, lead-lag, Diebold-Yilmaz (generalized FEVD), event studies, baselines
+│   ├── pipelines/            # build_data (cryptograph-data), train (cryptograph-train), package_data, evaluate, explain
 │   └── common/               # logging, shared types
 └── tests/unit/{data,models,explain,robustness,training,analysis,network}, tests/integration/
 ```
@@ -48,25 +55,17 @@ CryptoGraph/
 
 ## 🚀 Quickstart
 
-### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 pip install -e .
-```
-
-### 2. Run Tests
-```bash
-pytest tests/
-```
-
-### 3. Launch Monitoring Dashboard
-```bash
-streamlit run dashboard/app.py
+pytest
+cryptograph-data --config configs/data/hourly.yaml --stage all     # fetch -> clean -> build -> network
+cryptograph-train --config configs/experiment/smoke_lstm_daily.yaml # pipeline smoke test -> runs/<run_id>/
 ```
 
 ---
 
-## 📦 Data
+## 📦 Daily data (`data/processed/v1/`)
 
 ### Reproduce everything
 
@@ -120,3 +119,32 @@ Raw downloads are write-once snapshots under `data/raw/` and are reused on later
 - Market caps come from Coin Metrics, which covers only about 20 coins and stops at its archive date.
 - Choosing coins by today's ranking introduces survivorship bias.
 - The sample is small by DL standards (about 3,650 days × 20 nodes).
+
+## ⏱️ Hourly data (`data/processed/v2/`) — the modelling dataset
+
+```bash
+cryptograph-data --config configs/data/hourly.yaml --stage audit    # 30-coin universe (checkpoint)
+cryptograph-data --config configs/data/hourly.yaml --stage fetch    # Binance archive, SHA-256 verified
+cryptograph-data --config configs/data/hourly.yaml --stage clean    # quality, 2h bars, USDT peg, cross-check
+cryptograph-data --config configs/data/hourly.yaml --stage build    # features, labels, splits, graphs, datasets
+cryptograph-data --config configs/data/hourly.yaml --stage network  # network features, rankings, cascade baseline
+```
+
+- **Source:** Binance public archive (data.binance.vision), 1h klines, 2020-01-01 → 2026-09-27, prices in USDT;
+  2h bars resampled from 1h. 30 model coins (≥ 2 years of hourly data, ≥ 90% test coverage) + LUNC, FTT as event coins.
+  Pitfalls (ticker changes, LUNA/LUNC, delistings, maintenance gaps, USDT peg) are in `docs/hourly_data_notes.md`.
+- **Per resolution** (`1h/`, `2h/`): `panel.pt` (features, masks, labels, deseasonalised returns), `lstm_index_<split>.pt`
+  (`PanelWindowDataset`), `graph_snapshots.pt` (`HourlySnapshotDataset`; |corr| threshold fitted on train),
+  `tgn_events.pt` (shock-triggered `TemporalData`, contagion labels for k = 1–24 h; 1.46M events at 1h),
+  `network_features.pt` (8 leakage-free node features per daily snapshot), `seasonality.json`, `scalers.pkl`,
+  `splits.json`, `metadata.json`, `data_dictionary.md`. `v2/rankings.csv`: coin rankings for explanation validation only.
+- **Splits:** same dates as daily (train → 2022-06-30, val → 2023-12-31, test → 2026-09-27) with a 7-day embargo.
+
+## 🧪 Training runs, Colab and data packages
+
+- `cryptograph-train --config configs/experiment/<name>.yaml --seed <n> --device auto|cpu|cuda` writes
+  `runs/<run_id>/` (resolved config, environment + git commit, log, metrics, checkpoint) and appends `runs/results.csv`.
+- `cryptograph-package pack --version v2` → `dist/cryptograph_data_v2.zip` with a SHA-256 manifest;
+  `cryptograph-package unpack <zip>` verifies every file. Data never goes into git.
+- `colab/runner.ipynb` runs the same commands on a Colab GPU (`colab/README.md`, incl. Kaggle).
+
