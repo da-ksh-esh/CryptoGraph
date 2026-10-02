@@ -47,9 +47,9 @@ CryptoGraph/
 │   ├── explain/         # TempME wrapper, edge attribution, fidelity validation
 │   ├── robustness/      # anomaly scoring, adversarial perturbations (FGSM)
 │   ├── training/        # loop, losses, metrics, seed, device, tracking
-│   └── pipelines/       # data.py, train.py, evaluate.py, explain.py, package_data.py
-├── reports/             # Verified audit CSVs, rankings, and baseline benchmarks
-├── tests/               # Pytest automated verification suite (40 unit tests)
+│   └── pipelines/       # data.py, train.py, evaluate.py, explain.py, predict.py, package_data.py
+├── reports/             # Verified empirical research CSVs and final_research_report.md
+├── tests/               # Pytest automated verification suite (50 unit & integration tests)
 ├── docs/                # model_plan.md, methodology specifications
 ├── colab/               # Headless cloud training runners (runner.ipynb)
 └── dashboard/           # Streamlit monitoring dashboard (preserved)
@@ -85,3 +85,16 @@ cryptograph-data --stage smoke
 # Creates verified zip with SHA-256 manifest
 cryptograph-package pack --version v2 --out data_v2.zip
 ```
+
+### 5. Real-Time Contagion Prediction CLI (`cryptograph-predict`)
+```bash
+# Run multi-horizon shock contagion inference with TempME attribution on the latest market state
+python -m cryptograph.pipelines.predict
+
+# Query a specific historical crisis date (e.g. August 5, 2024 Yen carry-trade unwind)
+python -m cryptograph.pipelines.predict --timestep 2024-08-05 --horizon 1 --threshold 0.50
+
+# Output machine-readable JSON or CSV
+python -m cryptograph.pipelines.predict --format json --output-file reports/live_prediction.json
+```
+
