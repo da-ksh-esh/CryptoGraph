@@ -89,6 +89,20 @@ def test_pack_unpack_roundtrip_verifies_hashes(tmp_path):
     assert (tmp_path / "dest" / "data/processed/v9/1h/a.bin").read_bytes() == (src / "data/processed/v9/1h/a.bin").read_bytes()
 
 
+def test_pack_code_has_sources_and_no_data(tmp_path):
+    root = tmp_path / "proj"
+    (root / "src" / "pkg" / "__pycache__").mkdir(parents=True)
+    (root / "src" / "pkg" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (root / "src" / "pkg" / "__pycache__" / "a.cpython-312.pyc").write_bytes(b"\0")
+    (root / "configs").mkdir()
+    (root / "configs" / "c.yaml").write_text("a: 1\n", encoding="utf-8")
+    (root / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+    _fake_project(root)
+    z = package_data.pack_code(tmp_path / "code.zip", root=root)
+    m = package_data.unpack(z, tmp_path / "dest")
+    assert set(m["files"]) == {"src/pkg/a.py", "configs/c.yaml", "pyproject.toml"}
+
+
 def test_unpack_detects_tampering_and_unsafe_paths(tmp_path):
     src = _fake_project(tmp_path / "src")
     z = package_data.pack("v9", tmp_path / "pkg.zip", root=src)

@@ -51,6 +51,34 @@ def pack(version: str, out: Path | None = None, root: Path = PROJECT_ROOT) -> Pa
     return out
 
 
+CODE_PATHS = ("src", "configs", "pyproject.toml", "requirements.txt", "README.md")
+
+
+def pack_code(out: Path | None = None, root: Path = PROJECT_ROOT) -> Path:
+    """Zip the source code and configs (no data, runs, notebooks or git history) for running on Colab / Kaggle
+    without cloning. The manifest records the git commit and whether there were uncommitted changes."""
+    from ..training.tracking import git_info
+
+    files = []
+    for rel in CODE_PATHS:
+        p = root / rel
+        if p.is_file():
+            files.append(p)
+        elif p.is_dir():
+            files += [f for f in p.rglob("*") if f.is_file() and "__pycache__" not in f.parts
+                      and not f.name.endswith((".pyc", ".egg-info")) and ".egg-info" not in str(f)]
+    manifest = {"kind": "code", "created_utc": utc_now(), "git": git_info(root),
+                "files": {f.relative_to(root).as_posix(): {"bytes": f.stat().st_size, "sha256": sha256_file(f)}
+                          for f in sorted(files)}}
+    out = Path(out) if out else root / "dist" / "cryptograph_code.zip"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for rel in manifest["files"]:
+            z.write(root / rel, rel)
+        z.writestr(MANIFEST, json.dumps(manifest, indent=2))
+    return out
+
+
 def unpack(zip_path: Path, dest: Path = PROJECT_ROOT) -> dict:
     zip_path, dest = Path(zip_path), Path(dest).resolve()
     with zipfile.ZipFile(zip_path) as z:
@@ -77,16 +105,23 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("pack")
     p.add_argument("--version", required=True, choices=["v1", "v2"])
     p.add_argument("--out", default=None)
+    c = sub.add_parser("pack-code")
+    c.add_argument("--out", default=None)
     u = sub.add_parser("unpack")
     u.add_argument("zip")
     u.add_argument("--dest", default=str(PROJECT_ROOT))
     args = parser.parse_args(argv)
-    if args.cmd == "pack":
+    if args.cmd == "pack-code":
+        out = pack_code(Path(args.out) if args.out else None)
+        print(f"packed source code -> {out} ({out.stat().st_size / 1e6:.2f} MB)")
+    elif args.cmd == "pack":
         out = pack(args.version, Path(args.out) if args.out else None)
         print(f"packed data/processed/{args.version} -> {out} ({out.stat().st_size / 1e6:.1f} MB)")
     else:
         m = unpack(Path(args.zip), Path(args.dest))
-        print(f"unpacked {len(m['files'])} files of data {m['version']} (commit {m['git']['commit']}); all SHA-256 verified")
+        what = f"data {m['version']}" if "version" in m else "source code"
+        print(f"unpacked {len(m['files'])} files of {what} (commit {m['git']['commit']}"
+              f"{', uncommitted changes' if m['git'].get('dirty') else ''}); all SHA-256 verified")
 
 
 if __name__ == "__main__":

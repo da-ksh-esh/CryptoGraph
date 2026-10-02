@@ -59,8 +59,9 @@ def cascade_baseline(cfg: HourlyConfig, res: str, p: dict, ev: dict, shock: np.n
         d = ev[s]
         t, src, dst = d.t.numpy(), d.src.numpy(), d.dst.numpy()
         shocked = src_all[t]
+        on_sample = p["sample_mask"][s].numpy()[t]          # same rule as the models: embargo, label window in split
         for ki, (kh, k) in enumerate(zip(k_hours, kb)):
-            m = d.y_mask[:, ki].numpy()
+            m = d.y_mask[:, ki].numpy() & on_sample
             y = d.y[:, ki].numpy()[m]
             scores = {"receiver base rate": model.receiver_base(k, dst[m]),
                       "pairwise p_ij": model.pairwise(k, src[m], dst[m]),
