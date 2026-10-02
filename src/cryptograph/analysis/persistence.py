@@ -209,15 +209,21 @@ class ShockPersistenceAnalyzer:
             if sector not in sector_durations:
                 sector_durations[sector] = []
 
-            shock_steps = np.where(shocks[:, i])[0]
-            # Sample up to 50 shock events per asset
-            sample_steps = shock_steps[:50]
-            for t in sample_steps:
+            # De-cluster shocks: enforce a minimum 24-hour refractory period between independent shock episodes
+            raw_shocks = np.where(shocks[:, i])[0]
+            distinct_episodes = []
+            last_t = -999
+            for t in raw_shocks:
+                if t - last_t >= 24:
+                    distinct_episodes.append(t)
+                    last_t = t
+
+            for t in distinct_episodes:
                 vol_window = features[t : min(T, t + 48), i, 1]
                 hl = self.estimate_half_life(vol_window)
                 sector_durations[sector].append(hl)
 
-        # Retain sectors with >= 10 samples
+        # Retain sectors with >= 10 independent samples
         valid_groups = [dur for s, dur in sector_durations.items() if len(dur) >= 10]
         if len(valid_groups) >= 2:
             stat, p_val = kruskal(*valid_groups)
@@ -227,5 +233,6 @@ class ShockPersistenceAnalyzer:
         return {
             "kruskal_statistic": float(stat),
             "p_value": float(p_val),
-            "num_sectors": len(valid_groups)
+            "num_sectors": len(valid_groups),
+            "total_independent_episodes": sum(len(g) for g in valid_groups)
         }

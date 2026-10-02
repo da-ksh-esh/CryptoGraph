@@ -72,6 +72,9 @@ def test_dual_perturbation():
 
     tester = DualPerturbationTester(model, explainer)
     results = tester.run_stress_test(x, edge_index, target_idx=0, epsilon_levels=[0.05])
-    assert len(results) == 1
-    assert "prediction_drift_mse" in results[0]
-    assert "explanation_jaccard_stability" in results[0]
+    assert len(results) == 2  # Gaussian random perturbation + FGSM adversarial attack
+    for res in results:
+        assert "perturbation_type" in res
+        assert "prediction_drift_mse" in res
+        assert "explanation_jaccard_stability" in res
+

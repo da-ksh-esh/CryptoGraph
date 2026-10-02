@@ -1,7 +1,9 @@
-"""TempME: Temporal Motif Explainer for Dynamic Graph Neural Networks.
+"""Temporal Edge-Mask Explainer for Dynamic Graph Neural Networks (TempME Adapter).
 
-Based on Chen & Ying (NeurIPS 2023): 'Towards the Explainability of Temporal Graph Neural Networks via Motif Discovery'.
-Discovers minimal, influential temporal motifs (subgraphs of dynamic edges) that causally explain predictions.
+Learns continuous edge importance masks over dynamic computation subgraphs to causally
+attribute shock contagion predictions to specific cross-asset transmission channels.
+Optimization objective minimizes prediction retention MSE while penalizing mask density (L1)
+and promoting concentrated attention (Shannon entropy).
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -14,11 +16,15 @@ from ..common.logger import get_logger
 logger = get_logger(__name__)
 
 
-class TempME:
+class TemporalEdgeMaskExplainer:
     """
-    Temporal Motif Explainer for Dynamic GNNs / TGN models.
-    Identifies the minimal subgraph of dynamic interaction edges and temporal context
+    Temporal Edge-Mask Explainer for dynamic GNNs and TGN models.
+    Identifies influential interaction edges in the local computation subgraph
     responsible for predicting shock contagion at target nodes.
+
+    Objective:
+        L = MSE(f(X, E, M * W), f(X, E, W)) + lambda_sparse * mean(M) + lambda_entropy * H(M)
+        (Parameterized continuous edge-mask optimization with sparsity and entropy penalties).
     """
 
     def __init__(
@@ -167,3 +173,8 @@ class TempME:
             "sparsity": sparsity,
             "motif_entropy": entropy
         }
+
+
+# Alias for backward compatibility
+TempME = TemporalEdgeMaskExplainer
+

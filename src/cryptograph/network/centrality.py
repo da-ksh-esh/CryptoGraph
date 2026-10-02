@@ -18,10 +18,32 @@ class NetworkCentralityAnalyzer:
         betweenness = nx.betweenness_centrality(G)
         closeness = nx.closeness_centrality(G)
 
-        try:
-            eigenvector = nx.eigenvector_centrality_numpy(G, weight="weight")
-        except Exception:
-            eigenvector = {n: 0.0 for n in G.nodes()}
+        # Weighted eigenvector centrality via principal eigenvector of adjacency matrix
+        nodes = list(G.nodes())
+        num_nodes = len(nodes)
+        if num_nodes == 0:
+            eigenvector = {}
+        elif G.number_of_edges() == 0:
+            eigenvector = {n: 0.0 for n in nodes}
+        else:
+            try:
+                adj = nx.to_numpy_array(G, nodelist=nodes, weight="weight")
+                if G.is_directed():
+                    from scipy.sparse.linalg import eigs
+                    vals, vecs = eigs(adj.T, k=1, which="LM")
+                    ev = np.abs(vecs[:, 0].real)
+                else:
+                    vals, vecs = np.linalg.eigh(adj)
+                    ev = np.abs(vecs[:, -1])
+                s = np.sum(ev)
+                if s > 1e-12:
+                    ev = ev / s
+                eigenvector = {n: float(ev[idx]) for idx, n in enumerate(nodes)}
+            except Exception:
+                try:
+                    eigenvector = nx.eigenvector_centrality(G, weight="weight", max_iter=1000)
+                except Exception:
+                    eigenvector = {n: 0.0 for n in nodes}
 
         if G.is_directed():
             pagerank = nx.pagerank(G, alpha=0.85, weight="weight")

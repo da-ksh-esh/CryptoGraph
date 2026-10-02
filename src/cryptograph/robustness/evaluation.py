@@ -57,14 +57,17 @@ def evaluate_tgae_anomalies(
     events_df = pd.read_csv(events_csv_path)
     records = []
 
+    from scipy import stats
+
     with torch.no_grad():
-        # Baseline normal reconstruction error
+        # Baseline normal reconstruction error and variance
         normal_errors = []
-        for t in train_idxs[:200]:
+        for t in train_idxs[:500]:
             x_t = features[t]
             x_rec, _, _ = gae(x_t)
             normal_errors.append(float(torch.mean((x_t - x_rec) ** 2).item()))
         baseline_err = float(np.mean(normal_errors))
+        baseline_std = float(np.std(normal_errors, ddof=1))
 
         for _, row in events_df.iterrows():
             ev_name = str(row.get("name", row.get("event", "Event")))
@@ -85,22 +88,28 @@ def evaluate_tgae_anomalies(
             top_asset = asset_names[top_asset_idx]
 
             anomaly_ratio = event_mean_err / max(1e-6, baseline_err)
+            z_score = float((event_mean_err - baseline_err) / max(1e-6, baseline_std))
+            p_val = float(1.0 - stats.norm.cdf(z_score))
+            is_stat_anom = bool(p_val < 0.01)
 
             records.append({
                 "event_name": ev_name,
                 "event_date": ev_date,
                 "timestamp": timestamps[t_ev],
                 "baseline_reconstruction_error": baseline_err,
+                "baseline_std": baseline_std,
                 "event_reconstruction_error": event_mean_err,
                 "anomaly_ratio": anomaly_ratio,
+                "z_score": z_score,
+                "p_value": p_val,
                 "most_anomalous_asset": top_asset,
-                "is_statistical_anomaly": bool(anomaly_ratio >= 1.5)
+                "is_statistical_anomaly": is_stat_anom
             })
 
     res_df = pd.DataFrame(records)
     Path(output_csv_path).parent.mkdir(parents=True, exist_ok=True)
     res_df.to_csv(output_csv_path, index=False)
-    logger.info(f"Saved T-GAE anomaly evaluation to {output_csv_path}.")
+    logger.info(f"Saved T-GAE anomaly evaluation with rigorous p-values to {output_csv_path}.")
     return res_df
 
 

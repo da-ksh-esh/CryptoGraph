@@ -14,7 +14,8 @@ logger = get_logger(__name__)
 
 
 def run_explanation_benchmark(
-    model: torch.nn.Module,
+    model: Optional[torch.nn.Module] = None,
+    checkpoint_path: Optional[str] = None,
     dataset_path: str = "data/processed/v2/1h/processed_dataset.pt",
     network_features_path: Optional[str] = "data/processed/v2/network_features.pt",
     rankings_csv_path: str = "reports/rankings.csv",
@@ -52,9 +53,21 @@ def run_explanation_benchmark(
     dy_net_series = rankings_df["dy_net_spillover"] if "dy_net_spillover" in rankings_df else pd.Series(dtype=float)
     pagerank_series = rankings_df["pagerank"] if "pagerank" in rankings_df else pd.Series(dtype=float)
 
-    # Find test timesteps with shock occurrences
-    test_shock_steps = [t for t in test_indices if (shocks[t] & act_mask[t]).any()]
-    sample_steps = test_shock_steps[:num_sample_events] if len(test_shock_steps) > num_sample_events else test_shock_steps
+    if model is None:
+        if checkpoint_path is None:
+            raise ValueError("Either model or checkpoint_path must be provided.")
+        from ..models.tgn import CryptoTGN
+        ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        model = CryptoTGN(
+            num_nodes=len(asset_names),
+            raw_msg_dim=9,
+            node_feat_dim=features.shape[-1],
+            memory_dim=64,
+            embedding_dim=64,
+            out_horizons=len(data.get("horizons", [1, 3, 6, 12, 24]))
+        )
+        model.load_state_dict(ckpt["model_state_dict"])
+        model.eval()
 
     explainer = TempME(model, num_epochs=20, lr=0.05, sparsity_weight=0.01, entropy_weight=0.005)
     validator = ExplanationValidator(model)
@@ -69,6 +82,10 @@ def run_explanation_benchmark(
 
     returns_np = data["features"][:, :, 0].numpy()
     N = len(asset_names)
+
+    # Find test timesteps with shock occurrences
+    test_shock_steps = [t for t in test_indices if (shocks[t] & act_mask[t]).any()]
+    sample_steps = test_shock_steps[:num_sample_events] if len(test_shock_steps) > num_sample_events else test_shock_steps
 
     logger.info(f"Running TempME explanation benchmark across {len(sample_steps)} test shock events...")
 
@@ -153,6 +170,21 @@ def run_explanation_benchmark(
     exp_csv = out_dir / "tempme_explanations.csv"
     df_exp.to_csv(exp_csv, index=False)
 
+    # Statistical significance testing on Spearman rank agreement with DY NET
+    spearman_dy_arr = np.array(spearman_dy_list) if spearman_dy_list else np.array([])
+    if len(spearman_dy_arr) >= 5:
+        from scipy import stats
+        # Fisher z-transformation
+        z_scores = np.arctanh(np.clip(spearman_dy_arr, -0.9999, 0.9999))
+        t_stat, p_val_fisher = stats.ttest_1samp(z_scores, 0.0)
+        try:
+            w_stat, p_val_wilcoxon = stats.wilcoxon(spearman_dy_arr)
+        except Exception:
+            w_stat, p_val_wilcoxon = 0.0, 1.0
+    else:
+        t_stat, p_val_fisher = 0.0, 1.0
+        w_stat, p_val_wilcoxon = 0.0, 1.0
+
     # Save aggregate validation table
     summary_metrics = {
         "mean_fidelity_plus": float(np.mean(f_plus_list)) if f_plus_list else 0.0,
@@ -160,6 +192,10 @@ def run_explanation_benchmark(
         "mean_sparsity": float(np.mean(sparsity_list)) if sparsity_list else 1.0,
         "mean_motif_entropy": float(np.mean(entropy_list)) if entropy_list else 0.0,
         "mean_spearman_dy_net": float(np.mean(spearman_dy_list)) if spearman_dy_list else 0.0,
+        "fisher_z_t_statistic": float(t_stat),
+        "fisher_z_p_value": float(p_val_fisher),
+        "wilcoxon_w_statistic": float(w_stat),
+        "wilcoxon_p_value": float(p_val_wilcoxon),
         "mean_spearman_pagerank": float(np.mean(spearman_pr_list)) if spearman_pr_list else 0.0,
         "sample_events_evaluated": len(explanation_records)
     }
@@ -170,3 +206,7 @@ def run_explanation_benchmark(
 
     logger.info(f"Saved TempME explanation benchmarks to {exp_csv} and {val_csv}.")
     return summary_metrics
+
+
+# Alias for backward compatibility
+run_explanation_evaluation = run_explanation_benchmark

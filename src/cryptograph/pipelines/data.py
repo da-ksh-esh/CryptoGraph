@@ -136,8 +136,8 @@ def process_hourly_dataset(
 
     horizons = cfg.get("horizons_hours", [1, 3, 6, 12, 24])
     if resolution == "2h":
-        # Convert hours to bars (e.g. 2h, 6h, 12h, 24h)
-        horizons = [max(1, h // 2) for h in horizons]
+        # Distinct 2-hour bars representing 2h, 4h, 6h, 12h, and 24h horizons (no duplicates)
+        horizons = [1, 2, 3, 6, 12]
 
     target_builder = ContagionTargetBuilder(horizons=horizons, shock_quantile=0.95)
     target_builder.fit_thresholds(vola_matrix, splits.train_mask)

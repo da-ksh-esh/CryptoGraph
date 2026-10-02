@@ -13,6 +13,7 @@ from ..common.logger import get_logger
 
 from ..training.lstm_trainer import train_lstm_experiment
 from ..training.tgn_trainer import train_tgn_experiment
+from ..training.dygformer_trainer import train_dygformer_experiment
 
 logger = get_logger(__name__)
 
@@ -37,12 +38,19 @@ def run_training(config_path: str, seed: int = 42, device_name: str = "auto") ->
     model_type = config.get("model", {}).get("type", "dummy").lower()
     dataset_path = config.get("data", {}).get("dataset_path", "data/processed/v2/1h/processed_dataset.pt")
     
-    if Path(dataset_path).exists() and model_type in ("lstm", "tgn"):
+    if Path(dataset_path).exists() and model_type in ("lstm", "tgn", "dygformer"):
         logger.info(f"Loading processed dataset from {dataset_path}...")
         dataset_dict = torch.load(dataset_path, weights_only=False)
 
         if model_type == "lstm":
             metrics = train_lstm_experiment(
+                config=config,
+                dataset_dict=dataset_dict,
+                device=device,
+                tracker=tracker
+            )
+        elif model_type == "dygformer":
+            metrics = train_dygformer_experiment(
                 config=config,
                 dataset_dict=dataset_dict,
                 device=device,

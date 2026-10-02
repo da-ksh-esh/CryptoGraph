@@ -1,2 +1,2 @@
-mean_fidelity_plus,mean_fidelity_minus,mean_sparsity,mean_motif_entropy,mean_spearman_dy_net,mean_spearman_pagerank,sample_events_evaluated
-1.2262895107269287,0.44352106004953384,0.9983333333333333,5.006238043308258,0.4418242491657397,-0.25278086763070073,8
+mean_fidelity_plus,mean_fidelity_minus,mean_sparsity,mean_motif_entropy,mean_spearman_dy_net,fisher_z_t_statistic,fisher_z_p_value,wilcoxon_w_statistic,wilcoxon_p_value,mean_spearman_pagerank,sample_events_evaluated
+-0.10225250273942947,0.006428782641887665,0.9986666666666666,5.006915140151977,0.42077864293659617,36.21012376068482,4.626437451904883e-11,0.0,0.001953125,-0.21179087875417127,10
