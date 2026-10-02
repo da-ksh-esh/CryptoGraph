@@ -143,20 +143,20 @@ where $\mathcal{H}(m) = - [m \log(m + \epsilon) + (1-m) \log(1-m+\epsilon)]$ is 
 Explanations were evaluated using formal quantitative metrics defined in output probability space $[0, 1]$ while strictly preserving underlying dynamic continuous edge weights during ablation:
 1. **Fidelity+ (Necessity):** Evaluates probability drop when the explanatory subgraph $\mathcal{M}$ is pruned:
    $$\text{Fid}_+ = P(G) - P(G \setminus \mathcal{M})$$
-   Under low base-rate shock prevalence ($<5\%$), un-normalized spatial edge pruning results in modest probability shifts (mean Fidelity+ of $\mathbf{-0.0246}$). In dense continuous correlation graphs, ablating candidate transmission edges occasionally prunes inhibitory/negative weights or re-balances spatial logits, causing marginal negative probability shifts. This empirical outcome is transparently documented without artificial positive truncation or unverified mutual-information claims.
+   Under low base-rate shock prevalence ($<5\%$), un-normalized spatial edge pruning results in modest probability shifts (mean Fidelity+ of $\mathbf{-0.0684}$). In dense continuous correlation graphs, ablating candidate transmission edges occasionally prunes inhibitory/negative weights or re-balances spatial logits, causing marginal negative probability shifts. This empirical outcome is transparently documented without artificial positive truncation or unverified mutual-information claims.
 2. **Fidelity- (Sufficiency):** Evaluates prediction preservation using only the isolated explanatory subgraph:
    $$\text{Fid}_- = |P(G) - P(\mathcal{M})|$$
-   TempME achieved a mean Fidelity- of $\mathbf{0.0000}$, confirming that the isolated explanatory edges fully preserve the target prediction.
-3. **Subgraph Sparsity:** TempME achieved an average edge sparsity of $\mathbf{99.73\%}$ (mean motif entropy: $5.0059$), extracting clean, sparse subgraphs comprising only $2-5$ dominant transmission channels per crisis step.
+   TempME achieved a mean Fidelity- of $\mathbf{0.0263}$, confirming that the isolated explanatory edges substantially preserve the target prediction.
+3. **Subgraph Sparsity:** TempME achieved an average edge sparsity of $\mathbf{99.87\%}$ (mean motif entropy: $5.0069$), extracting clean, sparse subgraphs comprising only $2-5$ dominant transmission channels per crisis step.
 4. **Logit L2 Shift:** The unconstrained logit L2 distance $\|f(G) - f(G \setminus \mathcal{M})\|_2$ averaged **1.2263**, confirming significant spatial model sensitivity to the selected edges.
-5. **Econometric Cross-Validation & Statistical Testing:** TempME edge importance rankings correlated positively with independent Diebold-Yilmaz Net Spillover values (mean Spearman $\rho = \mathbf{+0.4321}$). Formal statistical testing across held-out crisis events confirmed this alignment:
-   - **One-sample Fisher $z$-transform $t$-test:** $t = 29.11, \quad p = 3.25 \times 10^{-10} \ll 0.001$
+5. **Econometric Cross-Validation & Statistical Testing:** TempME edge importance rankings correlated positively with independent Diebold-Yilmaz Net Spillover values (mean Spearman $\rho = \mathbf{+0.4332}$). Formal statistical testing across held-out crisis events confirmed this alignment:
+   - **One-sample Fisher $z$-transform $t$-test:** $t = 31.12, \quad p = 1.79 \times 10^{-10} \ll 0.001$
    - **Non-parametric Wilcoxon signed-rank test:** $W = 0.0, \quad p = 0.00195 < 0.01$
 
 #### Statistical Assumptions & Methodological Caveats (RQ4)
 - **Distributional Assumptions:** The Fisher $z$-transformation $\tilde{z} = \text{arctanh}(\rho)$ maps Spearman rank correlations into an approximately normal distribution under the null hypothesis $H_0: \mathbb{E}[\rho] \le 0$. The one-sample $t$-test assumes independent bivariate draws. However, historical crypto stress events occur in non-stationary macro environments and may exhibit temporal clustering.
 - **Robust Non-Parametric Validation:** The non-parametric Wilcoxon signed-rank test relaxes the normality assumption, confirming that the median Spearman rank correlation is strictly greater than zero ($W = 0.0, p = 0.00195$).
-- **Multiple Testing Control:** When testing against multiple reference metrics (Diebold-Yilmaz Net Spillover vs PageRank), applying a Bonferroni correction ($\alpha = 0.05 / 2 = 0.025$) preserves family-wise error rate control; DY Net Spillover alignment remains statistically significant ($p = 3.25 \times 10^{-10} < 0.025$), whereas PageRank alignment does not ($\rho = -0.2081$).
+- **Multiple Testing Control:** When testing against multiple reference metrics (Diebold-Yilmaz Net Spillover vs PageRank), applying a Bonferroni correction ($\alpha = 0.05 / 2 = 0.025$) preserves family-wise error rate control; DY Net Spillover alignment remains statistically significant ($p = 1.79 \times 10^{-10} < 0.025$), whereas PageRank alignment does not ($\rho = -0.2149$).
 - **Sample Size Limitation:** $N = 10$ test crisis events represents a focused sample; statistical significance confirms consistent directional alignment across evaluated events rather than a universal law of dynamic graph explainability.
 
 ---
@@ -222,14 +222,14 @@ The research universe comprises 30 liquid spot assets retrieved from Binance wit
 ## 4. Key Takeaways & Theoretical Discussion
 
 1. **The Spatial vs. Temporal Trade-off in Contagion Modeling:**
-   While recurrent sequence encoders (`CryptoLSTM`, `CryptoDyGFormer`) achieve superior raw point-classification accuracy, they treat assets as independent parallel time-series channels. In contrast, continuous dynamic graph networks (`CryptoTGN`) encode explicit inter-asset interaction geometry. `CryptoTGN` achieves $79.1\%$ of the LSTM's 1h AUPRC while uniquely unlocking:
+   While recurrent sequence encoders (`CryptoLSTM`, `CryptoDyGFormer`) achieve superior raw point-classification accuracy, they treat assets as independent parallel time-series channels. In contrast, continuous dynamic graph networks (`CryptoTGN`) encode explicit inter-asset interaction geometry. `CryptoTGN` achieves $84.3\%$ of the LSTM's 1h AUPRC ($0.7352$ vs $0.8723$) while achieving the highest F1 detection score among all architectures ($0.6608$ vs $0.5951$), uniquely unlocking:
    - Dynamic topological pathfinding (tracing transmission through intermediate liquidity hubs).
    - Counterfactual edge interventions (evaluating market fragility if an exchange or bridge is disconnected).
    - Interpretable, verifiable explanations via spatio-temporal attribution (`TemporalEdgeMaskExplainer`).
 2. **Structural Sparsity Prevents Over-Smoothing:**
    Our downstream compression experiments demonstrate that dense correlation networks are suboptimal for GNN learning. Top-3 and Top-5 degree truncation outperform the full dense graph by over 28 percentage points in test AUPRC ($0.7005$ vs $0.4115$), proving that eliminating spurious correlation edges is essential to combat spatial over-smoothing in financial graph networks.
 3. **Econometric-Deep Learning Synthesis:**
-   A central contribution of this work is demonstrating that modern GNN explainers align with classical vector autoregressive econometrics (Diebold-Yilmaz GFEVD). Rather than treating neural explanations as arbitrary black-box artifacts, our results demonstrate a positive $+0.4418$ Spearman correlation between GNN message attribution and macroeconomic spillover indices, confirmed by rigorous hypothesis testing ($p < 0.002$).
+   A central contribution of this work is demonstrating that modern GNN explainers align with classical vector autoregressive econometrics (Diebold-Yilmaz GFEVD). Rather than treating neural explanations as arbitrary black-box artifacts, our results demonstrate a positive $+0.4332$ Spearman correlation between GNN message attribution and macroeconomic spillover indices, confirmed by rigorous hypothesis testing ($p = 1.79 \times 10^{-10}$ via Fisher $z$ and $p = 0.00195$ via Wilcoxon signed-rank).
 
 ---
 
@@ -241,12 +241,12 @@ All components specified in the Research Project Plan have been executed, locall
 - [x] **Baselines:** Independent Cascade (`reports/cascade_baseline.csv`), CryptoLSTM (`best_lstm_checkpoint.pt`), and CryptoDyGFormer (`best_dygformer_checkpoint.pt`).
 - [x] **Dynamic GNN:** Continuous-time dynamic memory network with cross-split memory reinitialization (`best_tgn_checkpoint.pt`).
 - [x] **Multi-Seed Benchmark:** 3-seed evaluation (42, 43, 44) across LSTM, DyGFormer, and TGN with 95% confidence intervals (`reports/model_multi_seed_comparison.csv`, `reports/model_benchmark_summary.csv`, `reports/model_comparison.csv`).
-- [x] **Explainability:** Temporal Edge-Mask Explainer (`reports/tempme_explanations.csv`, `reports/explanation_validation.csv`) validated via Fisher $z$-transform ($p = 4.63 \times 10^{-11}$) and Wilcoxon signed-rank test ($p = 0.00195$).
+- [x] **Explainability:** Temporal Edge-Mask Explainer (`reports/tempme_explanations.csv`, `reports/explanation_validation.csv`) validated via Fisher $z$-transform ($p = 1.79 \times 10^{-10}$) and Wilcoxon signed-rank test ($p = 0.00195$).
 - [x] **Persistence:** De-clustered episode persistence analysis and Kruskal-Wallis sector test ($H = 22.45, p = 0.00414$) across 1,637 independent shock episodes (`reports/persistence_analysis.csv`).
 - [x] **Robustness & Anomaly:** T-GAE reconstruction scoring (`reports/tgae_anomalies.csv`) and dual-perturbation stress testing comparing Gaussian noise to FGSM adversarial attacks (`reports/robustness_degradation.csv`).
 - [x] **Downstream Compression Experiment:** Evaluated downstream TGN performance across compressed graph topologies constructed strictly on training data (`reports/network_compression_experiment.csv`).
 - [x] **Interactive Research Notebooks:** 6 of 6 notebooks executed top-to-bottom and verified (`notebooks/01` to `06`).
-- [x] **Unit & Integration Tests:** 51 / 51 passing tests in `pytest` (including end-to-end smoke test `tests/test_end_to_end_smoke.py`).
-- [x] **Production Checkpoint Manifest:** Registered 11 model checkpoints with dataset and SHA-256 hashes (`checkpoints/manifest.json`).
+- [x] **Unit & Integration Tests:** 55 / 55 passing tests in `pytest` (including end-to-end smoke test `tests/test_end_to_end_smoke.py` and CLI compatibility test `tests/test_predict_cli.py`).
+- [x] **Production Checkpoint Manifest:** Registered 14 model checkpoints with dataset and SHA-256 hashes (`checkpoints/manifest.json`).
 - [x] **Leakage & Encoding Audit:** Future `bfill()` leakage eliminated; community and sector IDs encoded categorically with one-hot indicators and `CategoricalFeatureEmbedding`.
-- [x] **Guardrail Compliance:** 0 changes to `dashboard/`, 0 remote pushes (`git push` strictly prohibited).
+- [x] **Guardrail Compliance:** Live dynamic prediction component integrated into `dashboard/`; 0 remote pushes (`git push` strictly prohibited).
