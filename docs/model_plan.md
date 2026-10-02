@@ -19,6 +19,10 @@ Direction (`y_ret`) is reported only as a sanity check: notebook 01 shows it is 
 - Run 5 seeds and report mean ± std. Compare against the best baseline with a block bootstrap over days.
 - 1h is the main resolution and 2h the robustness check.
 - Every run goes through `cryptograph-train` / `cryptograph.training.runner` and is logged in `runs/` (Phase C).
+- Test metrics are computed only when an experiment sets `evaluate_test: true` (final models); development and
+  tuning runs report validation only.
+- Compute: one TGN pass over the full 1h stream takes about 1–2 minutes on a laptop CPU (≈17 ms per 200-event
+  batch), so TGN development runs locally; Colab is for seeds × configurations sweeps and DyGFormer.
 
 **Baselines to beat (T1, 1h, from `reports/cascade_baseline.csv`):**
 
@@ -27,6 +31,16 @@ Direction (`y_ret`) is reported only as a sanity check: notebook 01 shows it is 
 | 1h | 0.086 / 0.107 | **0.117 / 0.160** |
 | 3h | 0.174 / 0.207 | 0.212 / 0.280 |
 | 24h | 0.592 / 0.631 | 0.578 / 0.672 |
+
+**Baselines to beat (T2/T3, 1h, on the LSTM sample set; `reports/hourly_baselines_1h.csv`, stage `baselines`):**
+
+| Task | Best simple baseline | val | test | Reference |
+|---|---|---|---|---|
+| T2 next-hour shock (AUPRC) | logistic on 4 rules (\|z\| now, shock now, own shocks last 24h, market breadth), train-fitted | 0.079 | 0.095 | base rate 0.037 / 0.039 |
+| T3 RV, 1h (MSE) | HAR-RV (1h, 24h, 168h trailing RV), train-fitted | 4.02e-5 | 5.01e-5 | persistence 6.80e-5 / 8.43e-5 |
+| T3 RV, 24h (MSE) | HAR-RV | 1.47e-5 | 1.68e-5 | persistence 1.86e-5 / 2.16e-5 |
+
+At 2h the "1h" horizon is one 2-hour bar.
 
 ## 2. Models
 
@@ -37,7 +51,7 @@ Direction (`y_ret`) is reported only as a sanity check: notebook 01 shows it is 
 | Diebold–Yilmaz (VAR, GFEVD) | statistical reference | rankings only | returns | ***done*** | `analysis/connectedness.py`, `network/spillover.py` |
 | LSTM (no graph) | deep baseline | T2, T3; T1 via receiver risk | 168-bar windows per coin | runner wired up (smoke run) | `models/lstm.py`, `training/runner.py` |
 | Snapshot GNN (GCN/GAT + GRU) | graph ablation | T1–T3 | daily graph snapshots + panel | stub | `models/snapshot_gnn.py` |
-| **TGN** | main model | T1 (edge head), T2 (node head) | event stream + node features | model class exists; training to build | `models/tgn.py` |
+| **TGN** | main model | T1 (edge head), T2 (node head) | event stream + node features | `ContagionTGN` + stream trainer wired up (T1); first dev run | `models/tgn.py`, `training/tgn_task.py` |
 | DyGFormer | comparison TGNN | T1 | event stream via DyGLib adapter | feasibility below | `models/dygformer.py` |
 | T-GAE | anomaly / robustness | reconstruction error | snapshots | model class exists | `models/tgae.py` |
 | TempME | explainer | explains T1 | trained TGNN + events | feasibility below | `explain/` |
