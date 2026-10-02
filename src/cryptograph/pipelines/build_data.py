@@ -14,6 +14,7 @@ Hourly (Binance), configs/data/hourly.yaml (selected because it declares `resolu
     cryptograph-data --config configs/data/hourly.yaml --stage clean    # quality, cleaning, 2h, peg, cross-check
     cryptograph-data --config configs/data/hourly.yaml --stage build    # features, labels, graphs, datasets (1h, 2h)
     cryptograph-data --config configs/data/hourly.yaml --stage network  # network features, rankings, cascade baseline
+    cryptograph-data --config configs/data/hourly.yaml --stage baselines  # naive T2/T3 baselines on the LSTM samples
 
 Add --refresh to re-download raw snapshots. Each stage reads only artifacts written by
 earlier stages, so stages can be re-run independently.
@@ -69,8 +70,9 @@ HOURLY_STAGES: dict[str, Callable] = {
     "clean": _stage("hourly_clean"),
     "build": _stage("hourly_build"),
     "network": _stage("network_build"),
+    "baselines": _stage("hourly_baselines"),
 }
-HOURLY_ALL_ORDER = ["fetch", "clean", "build", "network"]
+HOURLY_ALL_ORDER = ["fetch", "clean", "build", "network", "baselines"]
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -41,3 +41,33 @@ def shock_score_rule(score: np.ndarray, y_shock: np.ndarray, mask: np.ndarray, s
 
 def to_frame(rows: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows)
+
+
+def trailing_rv(r: np.ndarray, h: int) -> np.ndarray:
+    """(T, N) returns -> sqrt(mean of squared returns over t-h+1..t); NaN if any bar is missing. This is the
+    persistence forecast of the forward realized volatility over the next h bars."""
+    sq = r.astype(np.float64) ** 2
+    csum = np.vstack([np.zeros((1, r.shape[1])), np.cumsum(np.where(np.isnan(sq), 0.0, sq), axis=0)])
+    cnan = np.vstack([np.zeros((1, r.shape[1])), np.cumsum(np.isnan(sq), axis=0)])
+    out = np.full(r.shape, np.nan)
+    t = np.arange(h - 1, r.shape[0])
+    v = np.sqrt((csum[t + 1] - csum[t + 1 - h]) / h)
+    v[(cnan[t + 1] - cnan[t + 1 - h]) > 0] = np.nan
+    out[t] = v
+    return out
+
+
+def har_design(r: np.ndarray, windows: tuple[int, ...] = (1, 24, 168)) -> np.ndarray:
+    """HAR-RV regressors (Corsi 2009) in bars: trailing realized volatility over each window -> (T, N, len(windows))."""
+    return np.stack([trailing_rv(r, w) for w in windows], axis=-1)
+
+
+def har_fit(X: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """OLS of y on [1, X] over finite rows. X (S, P), y (S,) -> coefficients (P + 1,)."""
+    ok = np.isfinite(X).all(axis=1) & np.isfinite(y)
+    Z = np.hstack([np.ones((int(ok.sum()), 1)), X[ok]])
+    return np.linalg.lstsq(Z, y[ok], rcond=None)[0]
+
+
+def har_predict(X: np.ndarray, beta: np.ndarray) -> np.ndarray:
+    return np.clip(beta[0] + X @ beta[1:], 0.0, None)
