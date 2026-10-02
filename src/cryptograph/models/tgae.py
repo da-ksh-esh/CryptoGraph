@@ -1,61 +1,124 @@
-"""T-GAE: Temporal Graph Autoencoder for market-data anomaly and manipulation detection."""
+"""T-GAE: Spatio-Temporal Graph Autoencoder with GCN and GRU for anomaly and manipulation detection."""
 
-from typing import Tuple
+from typing import Tuple, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric.nn import GCNConv
+
 
 class TemporalGAE(nn.Module):
     """
-    Temporal Graph Autoencoder (T-GAE) that reconstructs both node features
-    and dynamic graph connectivity. Unusually high reconstruction errors
-    flag manipulated market feeds (oracle exploitation, wash trading, flash loan anomalies).
+    Spatio-Temporal Graph Autoencoder (T-GAE).
+    Combines spatial GCN neighbor convolution with temporal GRU cell state evolution
+    and joint feature MSE + adjacency BCE reconstruction loss.
     """
 
-    def __init__(self, in_features: int = 8, hidden_dim: int = 64, latent_dim: int = 32, dropout: float = 0.1):
+    def __init__(
+        self,
+        in_features: int = 8,
+        hidden_dim: int = 64,
+        latent_dim: int = 32,
+        dropout: float = 0.1
+    ):
         super().__init__()
-        # Encoder: compress spatial and temporal features
-        self.enc_fc1 = nn.Linear(in_features, hidden_dim)
-        self.enc_fc2 = nn.Linear(hidden_dim, latent_dim)
+        self.in_features = in_features
+        self.hidden_dim = hidden_dim
+        self.latent_dim = latent_dim
+
+        # 1. Spatial Graph Convolution
+        self.gcn = GCNConv(in_features, hidden_dim)
+
+        # 2. Temporal Recurrence (GRU Cell)
+        self.temporal_gru = nn.GRUCell(hidden_dim, latent_dim)
         self.dropout = nn.Dropout(dropout)
 
-        # Decoder: reconstruct feature vectors
-        self.dec_fc1 = nn.Linear(latent_dim, hidden_dim)
-        self.dec_fc2 = nn.Linear(hidden_dim, in_features)
+        # 3. Feature Decoder
+        self.feature_decoder = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, in_features)
+        )
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        h = F.relu(self.enc_fc1(x))
-        h = self.dropout(h)
-        return self.enc_fc2(h)
+    def encode(
+        self,
+        x: torch.Tensor,
+        edge_index: Optional[torch.Tensor] = None,
+        h_prev: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        num_nodes = x.size(0)
+        if edge_index is None or edge_index.numel() == 0:
+            nodes = torch.arange(num_nodes, device=x.device)
+            edge_index = torch.stack([nodes, nodes], dim=0)
+
+        # Spatial aggregation
+        h_spatial = F.relu(self.gcn(x, edge_index))
+        h_spatial = self.dropout(h_spatial)
+
+        # Temporal recurrence
+        if h_prev is None:
+            h_prev = torch.zeros(num_nodes, self.latent_dim, device=x.device)
+        z = self.temporal_gru(h_spatial, h_prev)
+
+        return z, z
 
     def decode(self, z: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # Feature reconstruction
-        h = F.relu(self.dec_fc1(z))
-        x_recon = self.dec_fc2(h)
+        x_recon = self.feature_decoder(z)
 
         # Graph adjacency reconstruction (inner product decoder)
-        adj_recon = torch.sigmoid(torch.mm(z, z.t()))
+        adj_logits = torch.mm(z, z.t())
+        adj_recon = torch.sigmoid(adj_logits)
+
         return x_recon, adj_recon
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self,
+        x: torch.Tensor,
+        edge_index: Optional[torch.Tensor] = None,
+        h_prev: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Args:
             x: Node features of shape (num_nodes, in_features)
+            edge_index: Optional graph edge index (2, E)
+            h_prev: Optional previous temporal hidden state (num_nodes, latent_dim)
         Returns:
-            x_recon: Reconstructed features
-            adj_recon: Reconstructed probability adjacency matrix (num_nodes, num_nodes)
-            z: Latent node embeddings
+            x_recon: Reconstructed features (num_nodes, in_features)
+            adj_recon: Reconstructed adjacency matrix (num_nodes, num_nodes)
+            z: Latent node embeddings (num_nodes, latent_dim)
         """
-        z = self.encode(x)
+        z, _ = self.encode(x, edge_index, h_prev)
         x_recon, adj_recon = self.decode(z)
         return x_recon, adj_recon, z
 
-    def compute_anomaly_scores(self, x: torch.Tensor, alpha: float = 0.7) -> torch.Tensor:
+    def loss_function(
+        self,
+        x: torch.Tensor,
+        x_recon: torch.Tensor,
+        adj_target: torch.Tensor,
+        adj_recon: torch.Tensor,
+        alpha: float = 0.7
+    ) -> torch.Tensor:
+        """
+        Joint Spatio-Temporal Graph Autoencoder loss:
+        L = alpha * MSE(X, X_hat) + (1 - alpha) * BCE(A, A_hat)
+        """
+        feat_loss = F.mse_loss(x_recon, x)
+        adj_loss = F.binary_cross_entropy(adj_recon, adj_target)
+        return alpha * feat_loss + (1.0 - alpha) * adj_loss
+
+    def compute_anomaly_scores(
+        self,
+        x: torch.Tensor,
+        edge_index: Optional[torch.Tensor] = None,
+        alpha: float = 0.7
+    ) -> torch.Tensor:
         """
         Calculates per-node anomaly score combining feature reconstruction MSE
-        and connectivity deviation.
+        and spatial connectivity deviation.
         """
-        x_recon, adj_recon, _ = self.forward(x)
+        x_recon, adj_recon, _ = self.forward(x, edge_index)
         feat_mse = torch.mean((x - x_recon) ** 2, dim=-1)
         return feat_mse
 

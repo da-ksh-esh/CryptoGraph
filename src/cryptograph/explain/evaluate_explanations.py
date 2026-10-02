@@ -120,6 +120,27 @@ def run_explanation_benchmark(
         e_w = torch.tensor(weights, dtype=torch.float32)
         x_t = features[t]
 
+        # Reconstruct continuous memory states up to timestep t
+        model.reset_memory()
+        w_hist = max(0, t - 168)
+        with torch.no_grad():
+            for tau in range(w_hist, t + 1):
+                shocked_tau = torch.where(shocks[tau] & act_mask[tau])[0]
+                active_tau = torch.where(act_mask[tau])[0]
+                if len(shocked_tau) > 0 and len(active_tau) > 1:
+                    src_l, dst_l = [], []
+                    for s in shocked_tau:
+                        for d in active_tau:
+                            if d != s:
+                                src_l.append(s)
+                                dst_l.append(d)
+                    if len(src_l) > 0:
+                        s_t = torch.tensor(src_l, dtype=torch.long)
+                        d_t = torch.tensor(dst_l, dtype=torch.long)
+                        ts_t = torch.full((len(src_l),), tau, dtype=torch.long)
+                        msg_t = features[tau, s_t, :model.raw_msg_dim]
+                        model.update_memory(s_t, d_t, msg_t, ts_t)
+
         # Generate explanation
         exp_res = explainer.explain(
             target_node_idx=target_node,
@@ -133,9 +154,9 @@ def run_explanation_benchmark(
         sparsity = exp_res["sparsity"]
         entropy = exp_res["motif_entropy"]
 
-        # Quantitative validation metrics
-        f_plus = validator.compute_fidelity_plus(x_t, e_idx, edge_mask, target_idx=target_node, top_k_pct=0.20)
-        f_minus = validator.compute_fidelity_minus(x_t, e_idx, edge_mask, target_idx=target_node, top_k_pct=0.20)
+        # Quantitative validation metrics with preserved edge weights
+        f_plus = validator.compute_fidelity_plus(x_t, e_idx, edge_mask, target_idx=target_node, edge_weight=e_w, top_k_pct=0.20)
+        f_minus = validator.compute_fidelity_minus(x_t, e_idx, edge_mask, target_idx=target_node, edge_weight=e_w, top_k_pct=0.20)
 
         # Convert node attributions to asset names
         node_attrib_named = {asset_names[node_id]: score for node_id, score in exp_res["node_attributions"].items()}

@@ -39,10 +39,16 @@ class TemporalPatchEncoder(nn.Module):
         return self.proj(x_patched)
 
 
-class CryptoDyGFormer(nn.Module):
+class PatchTemporalTransformer(nn.Module):
     """
-    Dynamic Graph Transformer baseline for continuous-time cryptocurrency contagion.
-    Uses temporal interaction patching and multi-head self-attention without recurrent memory cells.
+    Patch-based Temporal Transformer baseline for multi-horizon cryptocurrency shock forecasting.
+
+    ARCHITECTURAL SPECIFICATION:
+    Applies temporal sequence patching (inspired by patching concepts in Yu et al., NeurIPS 2023)
+    and multi-head self-attention across temporal history patches.
+    NOTE: This model operates as a non-graph sequential Transformer baseline without
+    dynamic neighbor co-occurrence encoding. For spatial-temporal interaction routing,
+    see CryptoTGN.
     """
 
     def __init__(
@@ -83,7 +89,7 @@ class CryptoDyGFormer(nn.Module):
             preds: (batch_size, out_horizons)
         """
         # Patching
-        h_patches = self.patch_encoder(x_seq) # (B, num_patches, hidden_dim)
+        h_patches = self.patch_encoder(x_seq)  # (B, num_patches, hidden_dim)
 
         # Multi-layer Transformer self-attention across temporal patches
         h_trans = self.transformer(h_patches)
@@ -95,5 +101,7 @@ class CryptoDyGFormer(nn.Module):
         return self.forecast_head(h_pooled)
 
 
-# Alias for backward compatibility
-DyGFormerAdapter = CryptoDyGFormer
+# Aliases for backward compatibility
+CryptoDyGFormer = PatchTemporalTransformer
+DyGFormerAdapter = PatchTemporalTransformer
+

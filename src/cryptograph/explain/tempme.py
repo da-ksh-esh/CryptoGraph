@@ -131,13 +131,14 @@ class TemporalEdgeMaskExplainer:
             # 1. Fidelity loss (MSE to original prediction)
             pred_loss = torch.mean((masked_pred - target_pred) ** 2)
 
-            # 2. Sparsity penalty
+            # 2. Sparsity penalty (encourage fewer edges)
             norm_weights = torch.sigmoid(mask_param)
             sparse_loss = self.sparsity_weight * torch.mean(norm_weights)
 
-            # 3. Entropy penalty
-            p = norm_weights / (torch.sum(norm_weights) + 1e-8)
-            entropy_loss = -self.entropy_weight * torch.sum(p * torch.log(p + 1e-8))
+            # 3. Binary entropy penalty (penalizes uncertain intermediate values, driving weights to {0, 1})
+            eps = 1e-7
+            binary_entropy = -(norm_weights * torch.log(norm_weights + eps) + (1.0 - norm_weights) * torch.log(1.0 - norm_weights + eps))
+            entropy_loss = self.entropy_weight * torch.mean(binary_entropy)
 
             loss = pred_loss + sparse_loss + entropy_loss
             loss.backward()

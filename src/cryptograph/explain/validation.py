@@ -1,6 +1,6 @@
 """Explanation Validation: Fidelity+, Fidelity-, Characterization scores, and Rank Correlation."""
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
@@ -24,30 +24,31 @@ class ExplanationValidator:
         edge_index: torch.Tensor,
         edge_mask: np.ndarray,
         target_idx: int,
+        edge_weight: Optional[torch.Tensor] = None,
         top_k_pct: float = 0.20,
         horizon_idx: int = 0
     ) -> float:
         r"""
         Computes Probability-based Fidelity+ (Confidence Drop):
         Fidelity+ = P(G)[target] - P(G \ M)[target]
-        Bounded in [-1, 1], where higher positive values indicate that the identified
-        explanatory edges M are truly necessary to maintain the shock prediction confidence.
+        Preserves original continuous edge weights during ablation.
         """
         self.model.eval()
         with torch.no_grad():
-            out_orig = self.model(node_features, edge_index)
+            out_orig = self.model(node_features, edge_index, edge_weight)
             y_orig = out_orig[0][target_idx] if isinstance(out_orig, tuple) else out_orig[target_idx]
             p_orig = float(torch.sigmoid(y_orig)[horizon_idx].item()) if y_orig.ndim > 0 else float(torch.sigmoid(y_orig).item())
 
             # Mask out the top-k% most important edges
-            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0)
+            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0) if len(edge_mask) > 0 else 0.0
             keep_indices = np.where(edge_mask < cutoff)[0]
 
             if len(keep_indices) == 0:
                 p_pruned = 0.0
             else:
                 pruned_edge_index = edge_index[:, keep_indices]
-                out_pruned = self.model(node_features, pruned_edge_index)
+                pruned_edge_weight = edge_weight[keep_indices] if edge_weight is not None else None
+                out_pruned = self.model(node_features, pruned_edge_index, pruned_edge_weight)
                 y_pruned = out_pruned[0][target_idx] if isinstance(out_pruned, tuple) else out_pruned[target_idx]
                 p_pruned = float(torch.sigmoid(y_pruned)[horizon_idx].item()) if y_pruned.ndim > 0 else float(torch.sigmoid(y_pruned).item())
 
@@ -61,30 +62,32 @@ class ExplanationValidator:
         edge_index: torch.Tensor,
         edge_mask: np.ndarray,
         target_idx: int,
+        edge_weight: Optional[torch.Tensor] = None,
         top_k_pct: float = 0.20,
         horizon_idx: int = 0
     ) -> float:
         r"""
         Computes Probability-based Fidelity- (Prediction Retention under isolated motif):
         Fidelity- = |P(G)[target] - P(M)[target]|
-        Bounded in [0, 1], where lower values indicate that the isolated explanatory edges M
-        alone are sufficient to preserve the model's confidence.
+        Preserves original continuous edge weights for the isolated motif subgraph.
         """
         self.model.eval()
         with torch.no_grad():
-            out_orig = self.model(node_features, edge_index)
+            out_orig = self.model(node_features, edge_index, edge_weight)
             y_orig = out_orig[0][target_idx] if isinstance(out_orig, tuple) else out_orig[target_idx]
             p_orig = float(torch.sigmoid(y_orig)[horizon_idx].item()) if y_orig.ndim > 0 else float(torch.sigmoid(y_orig).item())
 
-            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0)
+            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0) if len(edge_mask) > 0 else 0.0
             motif_indices = np.where(edge_mask >= cutoff)[0]
 
             if len(motif_indices) == 0:
                 motif_edge_index = torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
+                motif_edge_weight = None
             else:
                 motif_edge_index = edge_index[:, motif_indices]
+                motif_edge_weight = edge_weight[motif_indices] if edge_weight is not None else None
 
-            out_motif = self.model(node_features, motif_edge_index)
+            out_motif = self.model(node_features, motif_edge_index, motif_edge_weight)
             y_motif = out_motif[0][target_idx] if isinstance(out_motif, tuple) else out_motif[target_idx]
             p_motif = float(torch.sigmoid(y_motif)[horizon_idx].item()) if y_motif.ndim > 0 else float(torch.sigmoid(y_motif).item())
 
@@ -98,24 +101,27 @@ class ExplanationValidator:
         edge_index: torch.Tensor,
         edge_mask: np.ndarray,
         target_idx: int,
+        edge_weight: Optional[torch.Tensor] = None,
         top_k_pct: float = 0.20
     ) -> Dict[str, float]:
         r"""Computes raw logit L2 vector displacement for ablation and retention."""
         self.model.eval()
         with torch.no_grad():
-            out_orig = self.model(node_features, edge_index)
+            out_orig = self.model(node_features, edge_index, edge_weight)
             y_orig = out_orig[0][target_idx] if isinstance(out_orig, tuple) else out_orig[target_idx]
 
-            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0)
+            cutoff = np.percentile(edge_mask, (1.0 - top_k_pct) * 100.0) if len(edge_mask) > 0 else 0.0
             keep_indices = np.where(edge_mask < cutoff)[0]
             motif_indices = np.where(edge_mask >= cutoff)[0]
 
             pruned_edge_index = edge_index[:, keep_indices] if len(keep_indices) > 0 else torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
-            out_pruned = self.model(node_features, pruned_edge_index)
+            pruned_edge_weight = edge_weight[keep_indices] if (edge_weight is not None and len(keep_indices) > 0) else None
+            out_pruned = self.model(node_features, pruned_edge_index, pruned_edge_weight)
             y_pruned = out_pruned[0][target_idx] if isinstance(out_pruned, tuple) else out_pruned[target_idx]
 
             motif_edge_index = edge_index[:, motif_indices] if len(motif_indices) > 0 else torch.empty((2, 0), dtype=torch.long, device=edge_index.device)
-            out_motif = self.model(node_features, motif_edge_index)
+            motif_edge_weight = edge_weight[motif_indices] if (edge_weight is not None and len(motif_indices) > 0) else None
+            out_motif = self.model(node_features, motif_edge_index, motif_edge_weight)
             y_motif = out_motif[0][target_idx] if isinstance(out_motif, tuple) else out_motif[target_idx]
 
             shift_plus = float(torch.norm(y_orig - y_pruned, p=2).item())

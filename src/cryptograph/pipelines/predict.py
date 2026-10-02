@@ -184,6 +184,31 @@ def predict_contagion(
 
         model.load_state_dict(ckpt["model_state_dict"])
         model.eval()
+        model.reset_memory()
+
+        # Reconstruct historical memory states over preceding 168 hours
+        shocks = data.get("shocks")
+        act_mask = data.get("active_mask")
+        warmup_start = max(0, t_idx - 168)
+        if shocks is not None and act_mask is not None:
+            logger.info(f"Reconstructing historical TGN memory over warmup timesteps [{warmup_start}:{t_idx}]...")
+            with torch.no_grad():
+                for tau in range(warmup_start, t_idx + 1):
+                    shocked = torch.where(shocks[tau] & act_mask[tau])[0]
+                    active = torch.where(act_mask[tau])[0]
+                    if len(shocked) > 0 and len(active) > 1:
+                        src_list, dst_list = [], []
+                        for s in shocked:
+                            for d in active:
+                                if d != s:
+                                    src_list.append(s)
+                                    dst_list.append(d)
+                        if len(src_list) > 0:
+                            src = torch.tensor(src_list, dtype=torch.long, device=device)
+                            dst = torch.tensor(dst_list, dtype=torch.long, device=device)
+                            ts = torch.full((len(src_list),), tau, dtype=torch.long, device=device)
+                            msg = fused_features[tau, src, :raw_msg_dim].to(device)
+                            model.update_memory(src, dst, msg, ts)
 
         # Build dynamic correlation graph at t_idx
         lookback_window = 24

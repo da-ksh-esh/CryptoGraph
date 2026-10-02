@@ -87,49 +87,50 @@ def evaluate_tgn(
     edge_indices: List[torch.Tensor],
     edge_weights: List[torch.Tensor],
     device: torch.device = torch.device("cpu"),
-    reset_memory: bool = False
+    reset_memory: bool = False,
+    warmup_indices: Optional[List[int]] = None
 ) -> Dict[str, float]:
     """
     Evaluates CryptoTGN causally across target_indices without lookahead leakage.
 
-    NOTE ON EVENT CONSTRUCTION:
-    Interaction events in this framework are SYNTHETIC SHOCK-TRIGGERED CONTAGION BROADCASTS,
-    not individual microstructural exchange trade executions. Whenever an asset exceeds
-    its rolling volatility shock threshold (shocks[t, s] = True), synthetic broadcast messages
-    (s -> d) are created to all active peer assets d != s.
-
-    MEMORY LEAKAGE CONTROL:
-    If reset_memory=True, internal node memory s_i(t) is reinitialized to zero before the split.
-    During evaluation, memory evolves strictly causally: at timestep t, predictions are generated
-    using memory states s_i(t) BEFORE the current shock interaction is incorporated into memory.
+    MEMORY LEAKAGE CONTROL & ORDER HARMONIZATION:
+    - If reset_memory=True, internal node memory s_i(t) is reinitialized to zero before evaluation.
+    - If warmup_indices is provided, historical shock interactions over that lookback window
+      are processed to reconstruct continuous node memory states before evaluating target_indices.
+    - In both training and evaluation, the memory-update order is identical: at timestep t,
+      shock broadcast interaction events occurring at t are processed into memory s_i(t),
+      and then spatial message-passing predicts future propagation targets y_t in (t, t+h].
     """
     model.eval()
     if reset_memory:
         model.reset_memory()
+
+    # Reconstruct historical memory states using preceding warmup timesteps
+    if warmup_indices:
+        with torch.no_grad():
+            for t_w in warmup_indices:
+                shocked_w = torch.where(shocks[t_w] & active_mask[t_w])[0]
+                active_w = torch.where(active_mask[t_w])[0]
+                if len(shocked_w) > 0 and len(active_w) > 1:
+                    src_list, dst_list = [], []
+                    for s in shocked_w:
+                        for d in active_w:
+                            if d != s:
+                                src_list.append(s)
+                                dst_list.append(d)
+                    if len(src_list) > 0:
+                        src = torch.tensor(src_list, dtype=torch.long, device=device)
+                        dst = torch.tensor(dst_list, dtype=torch.long, device=device)
+                        ts = torch.full((len(src_list),), t_w, dtype=torch.long, device=device)
+                        msg = features[t_w, src, :model.raw_msg_dim].to(device)
+                        model.update_memory(src, dst, msg, ts)
 
     all_scores = [[] for _ in range(len(horizons))]
     all_trues = [[] for _ in range(len(horizons))]
 
     with torch.no_grad():
         for t in target_indices:
-            # 1. Spatial forward pass using current memory s_i(t) (BEFORE shock update at t)
-            e_idx = edge_indices[t].to(device)
-            e_w = edge_weights[t].to(device) if edge_weights[t].numel() > 0 else None
-            x_t = features[t].to(device)
-
-            preds, _ = model(x_t, e_idx, e_w)
-            probs = torch.sigmoid(preds)
-
-            mask_t = (validity_mask[t] & active_mask[t].unsqueeze(-1)).to(device)
-            y_t = targets[t].float().to(device)
-
-            for k in range(len(horizons)):
-                valid_k = mask_t[:, k]
-                if valid_k.sum() > 0:
-                    all_scores[k].append(probs[:, k][valid_k].cpu().numpy())
-                    all_trues[k].append(y_t[:, k][valid_k].cpu().numpy())
-
-            # 2. Causal memory update: process synthetic shock broadcast occurring at t AFTER predicting t
+            # 1. Dynamic memory update on shock occurrences at t (IDENTICAL TO TRAINING ORDER)
             shocked = torch.where(shocks[t] & active_mask[t])[0]
             active = torch.where(active_mask[t])[0]
 
@@ -146,6 +147,24 @@ def evaluate_tgn(
                     ts = torch.full((len(src_list),), t, dtype=torch.long, device=device)
                     msg = features[t, src, :model.raw_msg_dim].to(device)
                     model.update_memory(src, dst, msg, ts)
+
+            # 2. Spatial forward pass using updated memory states to predict future horizons (t, t+h]
+            e_idx = edge_indices[t].to(device)
+            e_w = edge_weights[t].to(device) if edge_weights[t].numel() > 0 else None
+            x_t = features[t].to(device)
+
+            preds, _ = model(x_t, e_idx, e_w)
+            probs = torch.sigmoid(preds)
+
+            mask_t = (validity_mask[t] & active_mask[t].unsqueeze(-1)).to(device)
+            y_t = targets[t].float().to(device)
+
+            for k in range(len(horizons)):
+                valid_k = mask_t[:, k]
+                if valid_k.sum() > 0:
+                    all_scores[k].append(probs[:, k][valid_k].cpu().numpy())
+                    all_trues[k].append(y_t[:, k][valid_k].cpu().numpy())
+
 
     metrics = {}
     auprcs = []
@@ -342,7 +361,8 @@ def train_tgn_experiment(
         filename="best_tgn_checkpoint.pt"
     )
 
-    # Final evaluation on test split with explicit memory reset to prevent cross-split leakage
+    # Final evaluation on test split with memory reset + historical warmup reconstruction
+    warmup_hist = val_indices[-168:] if len(val_indices) >= 168 else val_indices
     test_metrics = evaluate_tgn(
         model=model,
         features=features,
@@ -355,7 +375,8 @@ def train_tgn_experiment(
         edge_indices=edge_indices,
         edge_weights=edge_weights,
         device=device,
-        reset_memory=True
+        reset_memory=True,
+        warmup_indices=warmup_hist
     )
 
     logger.info(

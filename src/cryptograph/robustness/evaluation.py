@@ -35,20 +35,30 @@ def evaluate_tgae_anomalies(
 
     T, N, F = features.shape
 
-    # Train Temporal GAE on training set
+    from ..training.tgn_trainer import build_topk_dynamic_edges
+    returns_np = features[:, :, 0].numpy()
+    edge_indices, _ = build_topk_dynamic_edges(returns_np, top_k=5, window=24)
+
+    # Train Spatio-Temporal GAE on training set
     gae = TemporalGAE(in_features=F, hidden_dim=64, latent_dim=32)
     optimizer = torch.optim.Adam(gae.parameters(), lr=1e-3)
 
-    logger.info("Training TemporalGAE on train split for anomaly calibration...")
+    logger.info("Training Spatio-Temporal GAE on train split with joint feature + adjacency loss...")
     gae.train()
-    # Train over a representative sample of 1000 train timesteps
-    sample_idxs = train_idxs[:1000]
-    for _ in range(5):
+    sample_idxs = train_idxs[:500]
+    h_prev = None
+    for _ in range(3):
         for t in sample_idxs:
             x_t = features[t]
+            e_idx = edge_indices[t]
+            adj_target = torch.zeros((N, N), dtype=torch.float32)
+            if e_idx.numel() > 0:
+                adj_target[e_idx[0], e_idx[1]] = 1.0
+            np.fill_diagonal(adj_target.numpy(), 1.0)
+
             optimizer.zero_grad()
-            x_recon, adj_recon, _ = gae(x_t)
-            loss = torch.mean((x_t - x_recon) ** 2)
+            x_recon, adj_recon, h_prev = gae(x_t, e_idx, h_prev.detach() if h_prev is not None else None)
+            loss = gae.loss_function(x_t, x_recon, adj_target, adj_recon, alpha=0.7)
             loss.backward()
             optimizer.step()
 
@@ -64,7 +74,8 @@ def evaluate_tgae_anomalies(
         normal_errors = []
         for t in train_idxs[:500]:
             x_t = features[t]
-            x_rec, _, _ = gae(x_t)
+            e_idx = edge_indices[t]
+            x_rec, _, _ = gae(x_t, e_idx)
             normal_errors.append(float(torch.mean((x_t - x_rec) ** 2).item()))
         baseline_err = float(np.mean(normal_errors))
         baseline_std = float(np.std(normal_errors, ddof=1))
@@ -79,7 +90,8 @@ def evaluate_tgae_anomalies(
 
             t_ev = matching[0]
             x_ev = features[t_ev]
-            x_rec, _, _ = gae(x_ev)
+            e_idx_ev = edge_indices[t_ev]
+            x_rec, _, _ = gae(x_ev, e_idx_ev)
             per_node_err = torch.mean((x_ev - x_rec) ** 2, dim=-1).cpu().numpy()
             event_mean_err = float(np.mean(per_node_err))
 
