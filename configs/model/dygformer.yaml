@@ -1,5 +1,8 @@
-# DyGFormer (Yu et al., NeurIPS 2023) via a DyGLib adapter.
-# Placeholder: settings are filled in after the DyGLib feasibility check (docs/model_plan.md).
+# DyGFormer (Yu et al., NeurIPS 2023) via a DyGLib adapter (official code, MIT, vendored as a pinned submodule).
+# Feasibility: docs/model_plan.md section 4 — exporter to ml_<name>.csv/.npy, our fixed-date splits (no new-node
+# masking), DyGLib backbone embeddings + our 5-horizon edge head. Not implemented yet.
 model_name: "DyGFormer"
 backend: "dyglib"
-status: "not implemented"
+status: "feasible with adapter (3-5 days); not implemented"
+patch_size: 2
+max_input_sequence_length: 64
