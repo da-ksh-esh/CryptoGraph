@@ -81,3 +81,15 @@ def test_threshold_for_density_hits_target():
     acts2 = [np.r_[np.ones(5, bool), np.zeros(5, bool)] for _ in acts]
     thr3, d3 = threshold_for_density(mats, acts2, 0.30)
     assert d3 <= 0.30
+
+
+def test_event_window_hourly_and_daily():
+    from cryptograph.analysis.event_study import event_window
+
+    t = pd.date_range("2022-11-01", periods=200, freq="h")
+    r = pd.DataFrame({"A": 0.01}, index=t)
+    w = event_window(r, pd.Timestamp("2022-11-03 00:00"), pre=5, post=10, freq="h")
+    assert list(w.index) == list(range(-5, 11)) and np.isclose(w.loc[-1, "A"], 0) and np.isclose(w.loc[10, "A"], 0.11)
+    d = pd.DataFrame({"A": 0.02}, index=pd.date_range("2022-01-01", periods=60, freq="D"))
+    wd = event_window(d, pd.Timestamp("2022-01-20"), pre=3, post=4)
+    assert np.isclose(wd.loc[4, "A"], 0.10)

@@ -6,11 +6,15 @@ import numpy as np
 import pandas as pd
 
 
-def event_window(r: pd.DataFrame, date: pd.Timestamp, pre: int = 10, post: int = 30) -> pd.DataFrame:
-    """Cumulative log return per coin from day -pre to +post (0 = event day, cum. return 0 at day -1)."""
-    idx = pd.date_range(date - pd.Timedelta(days=pre), date + pd.Timedelta(days=post), freq="D")
+def event_window(r: pd.DataFrame, date: pd.Timestamp, pre: int = 10, post: int = 30, freq: str = "D") -> pd.DataFrame:
+    """Cumulative log return per coin from bar -pre to +post (0 = event bar, cum. return 0 at bar -1).
+
+    freq = "D" (daily bars) or "h" (hourly bars); `pre`/`post` count bars."""
+    step = pd.Timedelta(1, unit="h" if freq.lower() == "h" else "D")
+    date = pd.Timestamp(date)
+    idx = pd.date_range(date - pre * step, date + post * step, freq=step)
     w = r.reindex(idx)
-    base = w.loc[: date - pd.Timedelta(days=1)]
+    base = w.loc[: date - step]
     cum = w.fillna(0).cumsum() - base.fillna(0).sum()
     cum[w.isna()] = np.nan
     cum.index = range(-pre, post + 1)
