@@ -5,9 +5,9 @@ from cryptograph.pipelines._experiment import load_experiment
 
 
 @pytest.mark.parametrize("module", [train, evaluate, explain])
-def test_stub_entry_points_parse_and_exit_cleanly(module, tmp_path):
+def test_entry_points_exit_cleanly_for_models_not_built_yet(module, tmp_path):
     cfg = tmp_path / "demo.yaml"
-    cfg.write_text("model: lstm\nseed: 1\n", encoding="utf-8")
+    cfg.write_text("model: tgn\nseed: 1\n", encoding="utf-8")
     with pytest.raises(SystemExit) as exc:
         module.main(["--config", str(cfg), "--seed", "3"])
     assert exc.value.code == 2

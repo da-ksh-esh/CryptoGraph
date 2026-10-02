@@ -1,0 +1,25 @@
+# Phase C smoke test: proves the runs/ flow (config, env, log, metrics, checkpoint, results.csv)
+# on the daily v1 data with a tiny LSTM for 1 epoch. NOT a result; do not report its metrics.
+name: smoke_lstm_daily
+seed: 0
+device: auto
+deterministic: true
+data:
+  config: configs/data/daily.yaml
+  version: v1            # data/processed/v1/lstm_<split>.pt
+  resolution: null       # "1h" / "2h" -> data/processed/v2/<res>/ (PanelWindowDataset)
+model:
+  name: lstm
+  config: configs/model/lstm.yaml
+  overrides: {hidden_dim: 8}
+target: y_rv             # forward realized volatility at every horizon
+loss: huber
+training:
+  epochs: 1
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 10
+  max_train_batches: 20  # smoke test only
+  max_eval_samples: 5000
+  num_workers: 0
