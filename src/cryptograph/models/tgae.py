@@ -58,3 +58,7 @@ class TemporalGAE(nn.Module):
         x_recon, adj_recon, _ = self.forward(x)
         feat_mse = torch.mean((x - x_recon) ** 2, dim=-1)
         return feat_mse
+
+
+# Alias for backward compatibility
+TemporalGraphAE = TemporalGAE
