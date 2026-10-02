@@ -62,6 +62,8 @@ dev = [
 
 [project.scripts]
 cryptograph-data = "cryptograph.pipelines.build_data:main"
+cryptograph-train = "cryptograph.pipelines.train:main"
+cryptograph-package = "cryptograph.pipelines.package_data:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
