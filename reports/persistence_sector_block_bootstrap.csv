@@ -1,0 +1,46 @@
+record_type,sector,comparison,episode_count,estimate_hours,ci_95_low,ci_95_high,block_hours,bootstrap_replicates,inference_status
+sector_median,AI,,53,19.0,14.0,22.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,DeFi,,187,15.0,13.0,17.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,DePIN,,125,15.0,11.0,18.51249999999999,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,Infrastructure,,51,14.0,11.0,17.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,Interoperability,,107,12.0,9.0,14.012499999999989,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,Layer 1,,649,12.0,11.0,15.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,Layer 2,,125,15.0,12.0,17.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,Meme,,139,15.0,12.4875,19.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median,Payments,,201,15.0,13.0,17.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - DeFi,240,4.0,-1.0,6.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - DePIN,178,4.0,-1.0,8.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - Infrastructure,104,5.0,-0.5,8.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - Interoperability,160,7.0,2.0,10.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - Layer 1,702,7.0,2.0,9.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - Layer 2,178,4.0,-1.0,7.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - Meme,192,4.0,-1.5,6.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,AI,AI - Payments,254,4.0,-1.0,7.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DeFi,DeFi - DePIN,312,0.0,-3.0,4.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DeFi,DeFi - Infrastructure,238,1.0,-1.5,5.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DeFi,DeFi - Interoperability,294,3.0,1.0,6.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DeFi,DeFi - Layer 1,836,3.0,1.0,5.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DeFi,DeFi - Layer 2,312,0.0,-2.0,2.5,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DeFi,DeFi - Meme,326,0.0,-3.5124999999999993,3.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DeFi,DeFi - Payments,388,0.0,-2.0,3.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DePIN,DePIN - Infrastructure,176,1.0,-3.0,5.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DePIN,DePIN - Interoperability,232,3.0,-1.0,6.012499999999989,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DePIN,DePIN - Layer 1,774,3.0,-1.0,5.5,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DePIN,DePIN - Layer 2,250,0.0,-4.0,3.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DePIN,DePIN - Meme,264,0.0,-5.0,3.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,DePIN,DePIN - Payments,326,0.0,-4.0,4.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Infrastructure,Infrastructure - Interoperability,158,2.0,-1.0,5.5,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Infrastructure,Infrastructure - Layer 1,700,2.0,-2.0,5.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Infrastructure,Infrastructure - Layer 2,176,-1.0,-5.0,2.0124999999999886,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Infrastructure,Infrastructure - Meme,190,-1.0,-6.0,2.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Infrastructure,Infrastructure - Payments,252,-1.0,-4.0,3.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Interoperability,Interoperability - Layer 1,756,0.0,-3.0,2.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Interoperability,Interoperability - Layer 2,232,-3.0,-6.0,-1.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Interoperability,Interoperability - Meme,246,-3.0,-8.0,0.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Interoperability,Interoperability - Payments,308,-3.0,-6.0,0.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Layer 1,Layer 1 - Layer 2,774,-3.0,-5.0,-0.5,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Layer 1,Layer 1 - Meme,788,-3.0,-7.0,0.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Layer 1,Layer 1 - Payments,850,-3.0,-5.0,0.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Layer 2,Layer 2 - Meme,264,0.0,-4.0,3.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Layer 2,Layer 2 - Payments,326,0.0,-2.0124999999999993,3.0,24,1000,joint_temporal_block_bootstrap_descriptive
+sector_median_difference,Meme,Meme - Payments,340,0.0,-2.0124999999999993,4.0,24,1000,joint_temporal_block_bootstrap_descriptive

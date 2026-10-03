@@ -255,6 +255,44 @@ def run_smoke_test() -> bool:
     return True
 
 
+def verify_processed_artifact(path: Path, resolution: Optional[str] = None) -> None:
+    """Load an existing dataset and validate the fields needed by downstream pipelines."""
+    if not path.is_file():
+        raise FileNotFoundError(f"Processed dataset not found: {path}")
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    required = {"features", "active_mask", "timestamps", "asset_names"}
+    if resolution != "1d":
+        required |= {"targets_shock", "shocks", "split_indices"}
+    missing = sorted(required - payload.keys())
+    if missing:
+        raise ValueError(f"Invalid processed dataset {path}; missing fields: {', '.join(missing)}")
+    features = payload["features"]
+    if not isinstance(features, torch.Tensor) or features.ndim != 3:
+        raise ValueError(f"Invalid features tensor in {path}; expected shape (time, assets, features)")
+    if features.shape[0] != len(payload["timestamps"]) or features.shape[1] != len(payload["asset_names"]):
+        raise ValueError(f"Dataset dimensions do not match timestamps/assets in {path}")
+    if not torch.isfinite(features).all():
+        raise ValueError(f"Dataset features contain non-finite values: {path}")
+    logger.info("Verified processed dataset: %s", path)
+
+
+def resolve_pipeline_targets(stage: str, resolution: Optional[str], config_path: str) -> List[tuple[str, Path]]:
+    """Resolve the exact artifacts a build/verify invocation is meant to handle."""
+    is_daily = resolution == "1d" or (resolution is None and "daily" in config_path.lower())
+    if is_daily:
+        return [("1d", Path("data/processed/crypto_graph_dataset.pt"))]
+    if resolution:
+        return [(resolution, Path(f"data/processed/v2/{resolution}/processed_dataset.pt"))]
+    if stage == "all":
+        return [(res, Path(f"data/processed/v2/{res}/processed_dataset.pt")) for res in ("1h", "2h")]
+    config_file = Path(config_path)
+    cfg = yaml.safe_load(config_file.read_text(encoding="utf-8")) if config_file.is_file() else {}
+    configured_resolution = (cfg or {}).get("resolution", "1h")
+    if configured_resolution not in {"1h", "2h"}:
+        raise ValueError(f"Unsupported configured hourly resolution: {configured_resolution}")
+    return [(configured_resolution, Path(f"data/processed/v2/{configured_resolution}/processed_dataset.pt"))]
+
+
 def main():
     parser = argparse.ArgumentParser(description="CryptoGraph data preprocessing pipeline.")
     parser.add_argument("--config", type=str, default="configs/data/hourly.yaml", help="Path to config file")
@@ -266,24 +304,29 @@ def main():
         success = run_smoke_test()
         exit(0 if success else 1)
 
-    # Determine daily vs hourly based on config or resolution
-    is_daily = (args.resolution == "1d") or ("daily" in args.config)
+    config_path = args.config
+    if args.resolution == "1d" and config_path == "configs/data/hourly.yaml":
+        config_path = "configs/data/daily.yaml"
+    targets = resolve_pipeline_targets(args.stage, args.resolution, config_path)
+    is_daily = targets[0][0] == "1d"
+
+    if args.stage == "verify":
+        for resolution, path in targets:
+            verify_processed_artifact(path, resolution)
+        return
 
     if is_daily:
-        logger.info(f"Running daily data pipeline with config: {args.config}")
+        logger.info(f"Running daily data pipeline with config: {config_path}")
         prepare_processed_dataset(
             raw_parquet_path="data/raw/crypto_top20_10y_1d.parquet",
             output_path="data/processed/crypto_graph_dataset.pt",
-            config_path=args.config
+            config_path=config_path
         )
     else:
-        logger.info(f"Running hourly data pipeline with config: {args.config}")
-        # Build 1h
-        meta_1h = process_hourly_dataset(config_path=args.config, resolution_override="1h")
-        # Build 2h
-        meta_2h = process_hourly_dataset(config_path=args.config, resolution_override="2h")
-
-        logger.info("Hourly (1h and 2h) preprocessing completed successfully.")
+        logger.info("Running hourly data pipeline for: %s", ", ".join(res for res, _ in targets))
+        for resolution, _ in targets:
+            process_hourly_dataset(config_path=config_path, resolution_override=resolution)
+        logger.info("Hourly preprocessing completed successfully.")
 
 
 if __name__ == "__main__":

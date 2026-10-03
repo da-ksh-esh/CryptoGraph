@@ -50,7 +50,7 @@ CryptoGraph/
 │   ├── training/        # loop, losses, metrics, seed, device, tracking
 │   └── pipelines/       # data.py, train.py, evaluate.py, explain.py, predict.py, package_data.py
 ├── reports/             # Research output CSVs and final_research_report.md
-├── tests/               # Automated verification suite (55 unit & integration tests)
+├── tests/               # Automated verification suite (59 unit & integration tests)
 ├── docs/                # model_plan.md, methodology specifications
 ├── colab/               # Headless cloud training runners (runner.ipynb)
 └── dashboard/           # Streamlit monitoring dashboard (preserved)

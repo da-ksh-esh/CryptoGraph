@@ -2,9 +2,10 @@
 
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
+import argparse
 import numpy as np
 import pandas as pd
-from scipy.stats import kruskal
+from scipy.stats import rankdata
 import torch
 
 from ..common.logger import get_logger
@@ -214,8 +215,10 @@ class ShockPersistenceAnalyzer:
         sectors_csv_path: str = "data/external/sectors.csv"
     ) -> Dict[str, float]:
         """
-        Performs non-parametric Kruskal-Wallis test evaluating whether shock persistence
-        durations differ statistically significantly across cryptocurrency sectors.
+        Computes the legacy independent-sample Kruskal-Wallis statistic.
+
+        This method is retained for reproducibility only. Its p-value is not valid for
+        the dependent asset-time panel and must not be used as inferential evidence.
         """
         data = torch.load(dataset_path, weights_only=False)
         features = data["features"].numpy()
@@ -250,14 +253,162 @@ class ShockPersistenceAnalyzer:
 
         # Retain sectors with >= 10 independent samples
         valid_groups = [dur for s, dur in sector_durations.items() if len(dur) >= 10]
+        # Deliberately do not emit a nominal p-value: the ordinary KW assumptions do
+        # not hold for episodes clustered by asset and shared market time.
         if len(valid_groups) >= 2:
-            stat, p_val = kruskal(*valid_groups)
+            all_values = np.concatenate([np.asarray(group, dtype=float) for group in valid_groups])
+            ranks = rankdata(all_values, method="average")
+            offset = 0
+            rank_term = 0.0
+            for group in valid_groups:
+                rank_sum = float(ranks[offset : offset + len(group)].sum())
+                rank_term += rank_sum * rank_sum / len(group)
+                offset += len(group)
+            n_total = len(all_values)
+            stat = (12.0 / (n_total * (n_total + 1)) * rank_term) - 3.0 * (n_total + 1)
+            _, tie_counts = np.unique(all_values, return_counts=True)
+            tie_correction = 1.0 - float(np.sum(tie_counts**3 - tie_counts)) / (n_total**3 - n_total)
+            stat = stat / tie_correction if tie_correction > 0 else 0.0
         else:
-            stat, p_val = 0.0, 1.0
+            stat = float("nan")
 
         return {
             "kruskal_statistic": float(stat),
-            "p_value": float(p_val),
+            "p_value": float("nan"),
             "num_sectors": len(valid_groups),
-            "total_independent_episodes": sum(len(g) for g in valid_groups)
+            "total_declustered_episodes": sum(len(g) for g in valid_groups),
+            "inference_status": "withdrawn_dependent_panel"
         }
+
+    def bootstrap_sector_persistence(
+        self,
+        dataset_path: str = "data/processed/v2/1h/processed_dataset.pt",
+        sectors_csv_path: str = "data/external/sectors.csv",
+        output_csv_path: str = "reports/persistence_sector_block_bootstrap.csv",
+        block_hours: int = 24,
+        n_bootstrap: int = 1000,
+        seed: int = 42,
+    ) -> pd.DataFrame:
+        """Estimate sector median half-lives and uncertainty by joint moving-block bootstrap.
+
+        Each sampled time block contains every asset together, preserving contemporaneous
+        cross-sectional dependence and serial dependence within each block. Outputs are
+        confidence intervals, not hypothesis-test p-values; they do not establish causality.
+        """
+        if block_hours < 1 or n_bootstrap < 100:
+            raise ValueError("block_hours must be positive and n_bootstrap must be at least 100")
+        data = torch.load(dataset_path, map_location="cpu", weights_only=False)
+        features = data["features"].detach().cpu().numpy()
+        shocks = data["shocks"].detach().cpu().numpy().astype(bool)
+        active = data["active_mask"].detach().cpu().numpy().astype(bool)
+        assets = data["asset_names"]
+        T, N, _ = features.shape
+        sectors_df = pd.read_csv(sectors_csv_path)
+        sector_map = dict(zip(sectors_df["coin"], sectors_df["sector"]))
+
+        events: list[tuple[int, str, float]] = []
+        for node, asset in enumerate(assets):
+            sector = sector_map.get(asset, "Other")
+            last_t = -block_hours
+            for t in np.flatnonzero(shocks[:, node] & active[:, node]):
+                if t - last_t < block_hours:
+                    continue
+                last_t = int(t)
+                window = features[t : min(T, t + 48), node, 1]
+                events.append((int(t), str(sector), self.estimate_half_life(window)))
+        if not events:
+            raise ValueError("No active shock episodes found; cannot estimate sector persistence")
+
+        event_df = pd.DataFrame(events, columns=["timestep", "sector", "half_life_hours"])
+        sectors = sorted(event_df["sector"].unique())
+        rng = np.random.default_rng(seed)
+        n_blocks = int(np.ceil(T / block_hours))
+        starts_max = max(1, T - block_hours + 1)
+        boot = {sector: [] for sector in sectors}
+        sector_events = {}
+        for s in sectors:
+            s_df = event_df[event_df["sector"] == s]
+            sector_events[s] = (s_df["timestep"].values.astype(int), s_df["half_life_hours"].values.astype(float))
+
+        offsets = np.arange(block_hours)
+        for _ in range(n_bootstrap):
+            starts = rng.integers(0, starts_max, size=n_blocks)
+            sampled_times = (starts[:, None] + offsets).ravel()
+            sampled_times = sampled_times[sampled_times < T]
+            time_counts = np.bincount(sampled_times, minlength=T)
+
+            for sector in sectors:
+                t_arr, d_arr = sector_events[sector]
+                counts = time_counts[t_arr]
+                valid = counts > 0
+                if np.any(valid):
+                    repeated_vals = np.repeat(d_arr[valid], counts[valid])
+                    boot[sector].append(float(np.median(repeated_vals)))
+                else:
+                    boot[sector].append(np.nan)
+
+        rows = []
+        for sector in sectors:
+            point = event_df.loc[event_df["sector"] == sector, "half_life_hours"].median()
+            draws = np.asarray(boot[sector], dtype=float)
+            draws = draws[np.isfinite(draws)]
+            low, high = np.quantile(draws, [0.025, 0.975]) if len(draws) else (np.nan, np.nan)
+            rows.append({
+                "record_type": "sector_median",
+                "sector": sector,
+                "comparison": "",
+                "episode_count": int((event_df["sector"] == sector).sum()),
+                "estimate_hours": float(point),
+                "ci_95_low": float(low),
+                "ci_95_high": float(high),
+                "block_hours": block_hours,
+                "bootstrap_replicates": n_bootstrap,
+                "inference_status": "joint_temporal_block_bootstrap_descriptive"
+            })
+        for i, first in enumerate(sectors):
+            for second in sectors[i + 1 :]:
+                point = float(event_df.loc[event_df.sector == first, "half_life_hours"].median() -
+                              event_df.loc[event_df.sector == second, "half_life_hours"].median())
+                paired = np.asarray(boot[first]) - np.asarray(boot[second])
+                paired = paired[np.isfinite(paired)]
+                low, high = np.quantile(paired, [0.025, 0.975]) if len(paired) else (np.nan, np.nan)
+                rows.append({
+                    "record_type": "sector_median_difference",
+                    "sector": first,
+                    "comparison": f"{first} - {second}",
+                    "episode_count": int((event_df.sector == first).sum() + (event_df.sector == second).sum()),
+                    "estimate_hours": point,
+                    "ci_95_low": float(low),
+                    "ci_95_high": float(high),
+                    "block_hours": block_hours,
+                    "bootstrap_replicates": n_bootstrap,
+                    "inference_status": "joint_temporal_block_bootstrap_descriptive"
+                })
+        result = pd.DataFrame(rows)
+        Path(output_csv_path).parent.mkdir(parents=True, exist_ok=True)
+        result.to_csv(output_csv_path, index=False)
+        return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run dependence-aware sector persistence analysis.")
+    parser.add_argument("--dataset", default="data/processed/v2/1h/processed_dataset.pt")
+    parser.add_argument("--sectors", default="data/external/sectors.csv")
+    parser.add_argument("--output", default="reports/persistence_sector_block_bootstrap.csv")
+    parser.add_argument("--block-hours", type=int, default=24)
+    parser.add_argument("--bootstrap-replicates", type=int, default=1000)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+    results = ShockPersistenceAnalyzer().bootstrap_sector_persistence(
+        dataset_path=args.dataset,
+        sectors_csv_path=args.sectors,
+        output_csv_path=args.output,
+        block_hours=args.block_hours,
+        n_bootstrap=args.bootstrap_replicates,
+        seed=args.seed,
+    )
+    logger.info("Wrote %d dependence-aware summary rows to %s", len(results), args.output)
+
+
+if __name__ == "__main__":
+    main()
