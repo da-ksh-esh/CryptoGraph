@@ -56,18 +56,35 @@ class TemporalSplitter:
         self.val_end = pd.Timestamp(val_end, tz="UTC")
         self.test_start = pd.Timestamp(test_start, tz="UTC")
         self.test_end = pd.Timestamp(test_end, tz="UTC")
+        if isinstance(embargo_days, bool) or not isinstance(embargo_days, int) or embargo_days < 0:
+            raise ValueError("embargo_days must be a non-negative integer")
         self.embargo_days = embargo_days
 
         # Sanity check chronological ordering
-        assert self.train_start <= self.train_end, "train_start must be <= train_end"
-        assert self.train_end < self.val_start, "train_end must precede val_start"
-        assert self.val_start <= self.val_end, "val_start must be <= val_end"
-        assert self.val_end < self.test_start, "val_end must precede test_start"
-        assert self.test_start <= self.test_end, "test_start must be <= test_end"
+        if not self.train_start <= self.train_end:
+            raise ValueError("train_start must be <= train_end")
+        if not self.train_end < self.val_start:
+            raise ValueError("train_end must precede val_start")
+        if not self.val_start <= self.val_end:
+            raise ValueError("val_start must be <= val_end")
+        if not self.val_end < self.test_start:
+            raise ValueError("val_end must precede test_start")
+        if not self.test_start <= self.test_end:
+            raise ValueError("test_start must be <= test_end")
 
-        # Check embargo duration
+        # Enforce the configured minimum gap between each adjacent split.
         embargo_1_days = (self.val_start - self.train_end).total_seconds() / 86400.0
         embargo_2_days = (self.test_start - self.val_end).total_seconds() / 86400.0
+        if embargo_1_days < self.embargo_days:
+            raise ValueError(
+                f"Train/validation gap is {embargo_1_days:.3f} days, below configured "
+                f"embargo_days={self.embargo_days}. Adjust split boundaries."
+            )
+        if embargo_2_days < self.embargo_days:
+            raise ValueError(
+                f"Validation/test gap is {embargo_2_days:.3f} days, below configured "
+                f"embargo_days={self.embargo_days}. Adjust split boundaries."
+            )
         logger.info(
             f"Initialized TemporalSplitter: "
             f"Train [{self.train_start} to {self.train_end}], "

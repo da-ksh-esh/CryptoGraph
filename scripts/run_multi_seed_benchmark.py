@@ -124,6 +124,7 @@ def main():
         logger.info(f"=== Training CryptoLSTM (Seed {seed}) ===")
         seed_everything(seed)
         tracker = ExperimentTracker(f"lstm_seed_{seed}", seed=seed)
+        tracker.log_environment(lstm_config, str(device))
         res = train_lstm_experiment(lstm_config, dataset_dict, device, tracker)
         for h in HORIZONS:
             all_seed_results.append({
@@ -164,6 +165,7 @@ def main():
         logger.info(f"=== Training CryptoDyGFormer (Seed {seed}) ===")
         seed_everything(seed)
         tracker = ExperimentTracker(f"dygformer_seed_{seed}", seed=seed)
+        tracker.log_environment(dyg_config, str(device))
         res = train_dygformer_experiment(dyg_config, dataset_dict, device, tracker)
         for h in HORIZONS:
             all_seed_results.append({

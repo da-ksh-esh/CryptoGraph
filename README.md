@@ -14,6 +14,7 @@ An empirical, cybersecurity-focused deep learning framework analyzing continuous
   - **MST & Ultrametric Space:** Mantegna metric distance and Onnela normalized tree length $L(t)$ crisis contraction tracking.
   - **Community Detection:** Seeded Louvain modularity and Normalized Mutual Information (NMI) against external sector taxonomies.
 - **🧠 Continuous-Time Dynamic Graph Learning (CryptoTGN):** Dynamic node memory modules evolving over timestamped shock and correlation event streams to forecast multi-horizon contagion ($k \in \{1, 3, 6, 12, 24\}$ hours).
+- At 2-hour resolution, horizons are recorded in wall-clock hours ($2, 4, 6, 12, 24$) and converted to bar steps internally.
 - **🔍 Post-Hoc Explainability (TempME):** Temporal motif discovery extracting attributed shock transmission subgraphs, validated quantitatively via Fidelity+, Fidelity-, and Spearman rank agreement with econometric DY NET spillovers and PageRank centralities.
 - **🚨 Unsupervised Anomaly Detection (T-GAE):** Spatio-temporal reconstruction error identifying abnormal market feeds and flash crash regimes without invented labels.
 
@@ -48,8 +49,8 @@ CryptoGraph/
 │   ├── robustness/      # anomaly scoring, adversarial perturbations (FGSM)
 │   ├── training/        # loop, losses, metrics, seed, device, tracking
 │   └── pipelines/       # data.py, train.py, evaluate.py, explain.py, predict.py, package_data.py
-├── reports/             # Verified empirical research CSVs and final_research_report.md
-├── tests/               # Pytest automated verification suite (50 unit & integration tests)
+├── reports/             # Research output CSVs and final_research_report.md
+├── tests/               # Automated verification suite (55 unit & integration tests)
 ├── docs/                # model_plan.md, methodology specifications
 ├── colab/               # Headless cloud training runners (runner.ipynb)
 └── dashboard/           # Streamlit monitoring dashboard (preserved)
@@ -63,12 +64,15 @@ CryptoGraph/
 ```bash
 # Standard Python 3.12 environment
 pip install -r requirements.txt
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### 2. Verify Test Suite
 ```bash
+# Run full suite via pytest or universal fallback runner
 pytest
+# or
+python scripts/run_all_tests.py
 ```
 
 ### 3. Build Processed Datasets
@@ -86,9 +90,9 @@ cryptograph-data --stage smoke
 cryptograph-package pack --version v2 --out data_v2.zip
 ```
 
-### 5. Real-Time Contagion Prediction CLI (`cryptograph-predict`)
+### 5. Historical Contagion Prediction CLI (`cryptograph-predict`)
 ```bash
-# Run multi-horizon shock contagion inference with TempME attribution on the latest market state
+# Run historical shock contagion inference with TempME attribution on the latest available dataset timestep
 python -m cryptograph.pipelines.predict
 
 # Query a specific historical crisis date (e.g. August 5, 2024 Yen carry-trade unwind)

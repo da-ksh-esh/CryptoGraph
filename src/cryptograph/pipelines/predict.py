@@ -1,7 +1,7 @@
 """Predict Pipeline & CLI: Standalone contagion risk prediction and spatio-temporal explainability engine.
 
 Ingests processed multi-asset data feeds, loads trained CryptoTGN / CryptoLSTM models,
-and outputs real-time shock probabilities, expected persistence half-lives, and TempME
+and outputs historical shock probabilities, expected persistence half-lives, and TempME
 explanatory transmission channels.
 """
 
@@ -47,13 +47,15 @@ def estimate_dynamic_halflife(
     min_obs: int = 12
 ) -> Tuple[float, str]:
     """
-    Estimates empirical shock persistence half-life from trailing returns/volatility.
+    Estimates empirical shock persistence half-life from trailing raw log returns.
     Uses AR(1) autocorrelation decay on absolute return shocks:
     |r_t| = phi * |r_{t-1}| + c  =>  t_{1/2} = -ln(2) / ln(phi).
     Returns:
         (half_life_hours, estimation_mode)
     """
-    if returns_slice is None or returns_slice.size < min_obs:
+    if returns_slice is None or returns_slice.ndim != 1 or returns_slice.size < min_obs:
+        return float(sector_prior), "sector_baseline"
+    if not np.isfinite(returns_slice).all():
         return float(sector_prior), "sector_baseline"
 
     abs_ret = np.abs(returns_slice)
@@ -270,7 +272,7 @@ def resolve_timestep(
 
 def predict_contagion(
     checkpoint_path: Optional[str] = None,
-    model_type: str = "tgn",
+    model_type: Optional[str] = None,
     dataset_path: str = "data/processed/v2/1h/processed_dataset.pt",
     network_features_path: str = "data/processed/v2/network_features.pt",
     timestep: Union[int, str] = -1,
@@ -290,8 +292,26 @@ def predict_contagion(
     device = resolve_device(device_name)
     logger.info(f"Executing predict pipeline with device: {device}")
 
-    # 1. Load Checkpoint
-    if checkpoint_path is None or not Path(checkpoint_path).exists():
+    # Resolve architecture only when the caller did not select one explicitly.
+    if model_type is None:
+        if checkpoint_path is None:
+            model_type = "tgn"
+        else:
+            checkpoint_name = Path(checkpoint_path).name.lower()
+            if "tgn" in checkpoint_name:
+                model_type = "tgn"
+            elif "lstm" in checkpoint_name:
+                model_type = "lstm"
+            else:
+                raise ValueError("Cannot infer model type from checkpoint filename; pass model_type explicitly.")
+    model_type = model_type.lower()
+    if model_type not in {"tgn", "lstm"}:
+        raise ValueError(f"Unsupported model_type '{model_type}'. Expected 'tgn' or 'lstm'.")
+
+    # 1. Load Checkpoint. A missing explicit path is an error, not a request for latest.
+    if checkpoint_path is not None and not Path(checkpoint_path).is_file():
+        raise FileNotFoundError(f"Checkpoint not found at: {checkpoint_path}")
+    if checkpoint_path is None:
         found = find_latest_checkpoint(model_type)
         if not found:
             raise FileNotFoundError(f"No checkpoint found for model type '{model_type}'.")
@@ -300,12 +320,6 @@ def predict_contagion(
     logger.info(f"Loading checkpoint: {checkpoint_path}")
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
     ckpt_config = ckpt.get("config", {})
-
-    # Detect model type if not explicitly set
-    if "tgn" in Path(checkpoint_path).name.lower():
-        model_type = "tgn"
-    elif "lstm" in Path(checkpoint_path).name.lower():
-        model_type = "lstm"
 
     validate_checkpoint_schema(ckpt, model_type)
 
@@ -319,6 +333,13 @@ def predict_contagion(
     features = data["features"]  # (T, N, F_tech)
     timestamps = data["timestamps"]
     horizons = data.get("horizons", [1, 3, 6, 12, 24])
+    dataset_resolution = data.get("metadata", {}).get("resolution")
+    if dataset_resolution is None:
+        dataset_resolution = Path(dataset_path).parent.name
+    # Legacy 2h datasets stored bar counts in `horizons`; translate to wall-clock
+    # hours when their explicit `horizon_steps` metadata is absent.
+    if dataset_resolution == "2h" and "horizon_steps" not in data:
+        horizons = [int(horizon_steps) * 2 for horizon_steps in horizons]
     asset_names = data.get("asset_names", TARGET_UNIVERSE_30)
     close_prices = data.get("close_prices")
 
@@ -327,11 +348,8 @@ def predict_contagion(
     logger.info(f"Target timestep: {t_idx} ({current_timestamp})")
 
     if horizon_hours not in horizons:
-        # Default to index 0 (1h)
-        h_idx = 0
-        horizon_hours = horizons[0]
-    else:
-        h_idx = horizons.index(horizon_hours)
+        raise ValueError(f"Unsupported horizon {horizon_hours}h. Available horizons: {horizons}")
+    h_idx = horizons.index(horizon_hours)
 
     # 3. Model Instantiation & Inference
     asset_risks = []
@@ -459,7 +477,12 @@ def predict_contagion(
     # 4. Assemble Per-Asset Records with Dynamic Empirical Decay & Sector Prior
     lookback_hl = 72
     hl_start = max(0, t_idx - lookback_hl)
-    returns_history = data["features"][hl_start : t_idx + 1, :, 0].numpy() if "features" in data else None
+    raw_features = data.get("raw_features")
+    returns_history = (
+        raw_features[hl_start : t_idx + 1, :, 0].numpy()
+        if isinstance(raw_features, torch.Tensor) and raw_features.ndim == 3
+        else None
+    )
 
     for i, coin in enumerate(asset_names):
         prob = float(probs[i])
@@ -471,7 +494,7 @@ def predict_contagion(
             coin_ret = returns_history[:, i]
             dyn_hl, hl_mode = estimate_dynamic_halflife(coin_ret, sector_prior=sector_hl)
         else:
-            dyn_hl, hl_mode = sector_hl, "sector_baseline"
+            dyn_hl, hl_mode = sector_hl, "sector_baseline_raw_returns_unavailable"
 
         alert_status = "ALERT" if prob >= threshold else "NORMAL"
         explanation = explanations_dict.get(i, "None (Normal baseline)") if alert_status == "ALERT" else "Normal baseline"
@@ -553,11 +576,14 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--checkpoint", type=str, default=None, help="Path to .pt checkpoint file.")
-    parser.add_argument("--model-type", type=str, default="tgn", choices=["tgn", "lstm"], help="Model architecture.")
+    parser.add_argument("--model-type", type=str, default=None, choices=["tgn", "lstm"], help="Model architecture (inferred from named checkpoint, otherwise defaults to TGN).")
     parser.add_argument("--dataset-path", type=str, default="data/processed/v2/1h/processed_dataset.pt", help="Path to processed dataset.")
     parser.add_argument("--network-features-path", type=str, default="data/processed/v2/network_features.pt", help="Path to network features.")
     parser.add_argument("--timestep", type=str, default="-1", help="Timestep index (-1 for latest) or ISO date (e.g. 2024-08-05).")
-    parser.add_argument("--horizon", type=int, default=1, choices=[1, 3, 6, 12, 24], help="Prediction horizon in hours.")
+    parser.add_argument(
+        "--horizon", type=int, default=1,
+        help="Prediction horizon in hours; must match a horizon stored in the selected dataset."
+    )
     parser.add_argument("--threshold", type=float, default=0.50, help="Probability threshold for contagion alert.")
     parser.add_argument("--top-k", type=int, default=10, help="Number of highest-risk assets to return.")
     parser.add_argument("--no-explain", action="store_true", help="Disable TempME explanation generation.")

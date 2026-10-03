@@ -83,7 +83,8 @@ def run_explanation_benchmark(
     returns_np = data["features"][:, :, 0].numpy()
     N = len(asset_names)
 
-    # Find test timesteps with shock occurrences and de-cluster into independent episodes (>= 24h refractory gap)
+    # De-cluster shock hours into candidate episodes. A refractory period reduces
+    # local duplication; it does not establish statistical independence.
     test_shock_steps = [t for t in test_indices if (shocks[t] & act_mask[t]).any()]
     episodes = []
     current_ep = []
@@ -96,46 +97,35 @@ def run_explanation_benchmark(
     if current_ep:
         episodes.append(current_ep)
 
-    # Select representative independent events across episodes, diversifying target assets
+    # Sample candidate episodes across the full test period, rather than taking the
+    # earliest events. The resulting episode-level scores remain descriptive only.
     selected_events = []
     targeted_assets_set = set()
+    if episodes and num_sample_events > 0:
+        sample_count = min(num_sample_events, len(episodes))
+        sampled_episode_indices = np.unique(
+            np.rint(np.linspace(0, len(episodes) - 1, sample_count)).astype(int)
+        ).tolist()
+        remaining_episode_indices = [i for i in range(len(episodes)) if i not in sampled_episode_indices]
 
-    for ep in episodes:
-        # Find peak shock timestep in episode (maximum simultaneous shocked assets)
-        peak_t = max(ep, key=lambda t: (shocks[t] & act_mask[t]).sum().item())
-        shocked_nodes = torch.where(shocks[peak_t] & act_mask[peak_t])[0].tolist()
-        if not shocked_nodes:
-            continue
-
-        # Prefer an asset that hasn't been targeted yet to maximize cross-sectional asset diversity
-        chosen_node = None
-        for node in shocked_nodes:
-            if node not in targeted_assets_set:
-                chosen_node = node
-                break
-        if chosen_node is not None:
-            targeted_assets_set.add(chosen_node)
-            selected_events.append((peak_t, chosen_node))
-
-        if len(selected_events) >= num_sample_events:
-            break
-
-    # If fewer than num_sample_events found with strictly unique assets, fill with remaining episodes
-    if len(selected_events) < num_sample_events:
-        for ep in episodes:
+        for episode_idx in sampled_episode_indices + remaining_episode_indices:
+            ep = episodes[episode_idx]
             peak_t = max(ep, key=lambda t: (shocks[t] & act_mask[t]).sum().item())
-            if any(ev[0] == peak_t for ev in selected_events):
-                continue
             shocked_nodes = torch.where(shocks[peak_t] & act_mask[peak_t])[0].tolist()
-            if shocked_nodes:
-                best_node = min(shocked_nodes, key=lambda n: returns_np[peak_t, n])
-                selected_events.append((peak_t, best_node))
-                if len(selected_events) >= num_sample_events:
-                    break
+            if not shocked_nodes:
+                continue
+            unused_nodes = [node for node in shocked_nodes if node not in targeted_assets_set]
+            chosen_node = unused_nodes[0] if unused_nodes else min(
+                shocked_nodes, key=lambda node: returns_np[peak_t, node]
+            )
+            selected_events.append((peak_t, chosen_node))
+            targeted_assets_set.add(chosen_node)
+            if len(selected_events) >= num_sample_events:
+                break
 
     logger.info(
-        f"Running TempME explanation benchmark across {len(selected_events)} independent shock episodes "
-        f"(>=24h refractory gap, {len(targeted_assets_set)} distinct target assets)..."
+        f"Running TempME explanation benchmark across {len(selected_events)} de-clustered candidate episodes "
+        f"(>=24h refractory gap; {len(targeted_assets_set)} target assets; descriptive inference only)..."
     )
 
     for t, target_node in selected_events:
@@ -221,6 +211,8 @@ def run_explanation_benchmark(
         explanation_records.append({
             "timestep": t,
             "target_asset": target_asset,
+            "sample_selection": "evenly_spaced_declustered_test_episodes",
+            "statistical_status": "descriptive_only",
             "fidelity_plus": f_plus,
             "fidelity_minus": f_minus,
             "sparsity": sparsity,
@@ -235,34 +227,17 @@ def run_explanation_benchmark(
     exp_csv = out_dir / "tempme_explanations.csv"
     df_exp.to_csv(exp_csv, index=False)
 
-    # Statistical significance testing on Spearman rank agreement with DY NET
-    spearman_dy_arr = np.array(spearman_dy_list) if spearman_dy_list else np.array([])
-    if len(spearman_dy_arr) >= 5:
-        from scipy import stats
-        # Fisher z-transformation
-        z_scores = np.arctanh(np.clip(spearman_dy_arr, -0.9999, 0.9999))
-        t_stat, p_val_fisher = stats.ttest_1samp(z_scores, 0.0)
-        try:
-            w_stat, p_val_wilcoxon = stats.wilcoxon(spearman_dy_arr)
-        except Exception:
-            w_stat, p_val_wilcoxon = 0.0, 1.0
-    else:
-        t_stat, p_val_fisher = 0.0, 1.0
-        w_stat, p_val_wilcoxon = 0.0, 1.0
-
-    # Save aggregate validation table
+    # The small, temporally clustered episode sample does not justify independent-
+    # sample hypothesis tests. Keep aggregate correlations descriptive only.
     summary_metrics = {
         "mean_fidelity_plus": float(np.mean(f_plus_list)) if f_plus_list else 0.0,
         "mean_fidelity_minus": float(np.mean(f_minus_list)) if f_minus_list else 0.0,
         "mean_sparsity": float(np.mean(sparsity_list)) if sparsity_list else 1.0,
         "mean_motif_entropy": float(np.mean(entropy_list)) if entropy_list else 0.0,
         "mean_spearman_dy_net": float(np.mean(spearman_dy_list)) if spearman_dy_list else 0.0,
-        "fisher_z_t_statistic": float(t_stat),
-        "fisher_z_p_value": float(p_val_fisher),
-        "wilcoxon_w_statistic": float(w_stat),
-        "wilcoxon_p_value": float(p_val_wilcoxon),
         "mean_spearman_pagerank": float(np.mean(spearman_pr_list)) if spearman_pr_list else 0.0,
-        "sample_events_evaluated": len(explanation_records)
+        "sample_events_evaluated": len(explanation_records),
+        "inference_status": "descriptive_only_no_independence_assumption"
     }
 
     df_summary = pd.DataFrame([summary_metrics])

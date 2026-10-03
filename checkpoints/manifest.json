@@ -20,6 +20,12 @@
       "git_commit": "12e04d8",
       "git_dirty": true,
       "timestamp_utc": "2026-10-01T14:45:34.156497",
+      "environment": {
+        "status": "recorded",
+        "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+        "torch_version": "2.13.0+cpu",
+        "device": "cpu"
+      },
       "metrics": {
         "test_mean_auprc": 0.698577140570573,
         "test_mean_auroc": 0.9682332134142063,
@@ -34,9 +40,15 @@
       "checkpoint_path": "runs/20261002-114312_tgn_seed_42_s42_195e9f5/best_tgn_checkpoint.pt",
       "checkpoint_sha256": "a7a97cfbce341cd789dfe3a0ab64c698dc7b9dad33aefc91f76d3a4b403e9d83",
       "config_sha256": "6e4608d5d4dd6a0eeb72d7b3eef45c98a5585868617316a5ca2877534f32ed43",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:43:12",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.6655970740739622,
         "test_mean_auroc": 0.9577847748367854,
@@ -51,9 +63,15 @@
       "checkpoint_path": "runs/20261002-114709_tgn_seed_43_s43_195e9f5/best_tgn_checkpoint.pt",
       "checkpoint_sha256": "7131873fc5703ed791ed4b8df7b5816a8c4bb0ee35b29170ac8ada19eaf8af94",
       "config_sha256": "6e4608d5d4dd6a0eeb72d7b3eef45c98a5585868617316a5ca2877534f32ed43",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:47:09",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.6285074659228569,
         "test_mean_auroc": 0.9529937754239889,
@@ -68,9 +86,15 @@
       "checkpoint_path": "runs/20261002-115105_tgn_seed_44_s44_195e9f5/best_tgn_checkpoint.pt",
       "checkpoint_sha256": "5138af3ef6cec529ace21965140640a807d437be2d3359c57dd8311d0fb6064b",
       "config_sha256": "6e4608d5d4dd6a0eeb72d7b3eef45c98a5585868617316a5ca2877534f32ed43",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:51:05",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.6640835534424145,
         "test_mean_auroc": 0.9560370428068218,
@@ -85,9 +109,15 @@
       "checkpoint_path": "runs/20261002-183957_tgn_seed_42_s42_76f3ed8/best_tgn_checkpoint.pt",
       "checkpoint_sha256": "2a4093f8252915e7010d0dd06d2994b1c1c362541c4308f85107d04caaf6b4e5",
       "config_sha256": "6e4608d5d4dd6a0eeb72d7b3eef45c98a5585868617316a5ca2877534f32ed43",
-      "git_commit": "76f3ed8",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T18:39:57",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.6964377205614177,
         "test_mean_auroc": 0.9703586872767722,
@@ -102,9 +132,15 @@
       "checkpoint_path": "runs/20261002-185437_tgn_seed_43_s43_76f3ed8/best_tgn_checkpoint.pt",
       "checkpoint_sha256": "b9e68670f613371690024406ab04de950aa7096d09936bffe9de90a886297b4b",
       "config_sha256": "6e4608d5d4dd6a0eeb72d7b3eef45c98a5585868617316a5ca2877534f32ed43",
-      "git_commit": "76f3ed8",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T18:54:37",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.6923086675933346,
         "test_mean_auroc": 0.9719032437065541,
@@ -119,9 +155,15 @@
       "checkpoint_path": "runs/20261002-190604_tgn_seed_44_s44_76f3ed8/best_tgn_checkpoint.pt",
       "checkpoint_sha256": "b42e321224755909ec68da4fe35b89f8521cd364470fa411ace28ff33d90b613",
       "config_sha256": "6e4608d5d4dd6a0eeb72d7b3eef45c98a5585868617316a5ca2877534f32ed43",
-      "git_commit": "76f3ed8",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T19:06:04",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.7030205013428363,
         "test_mean_auroc": 0.9700762855051849,
@@ -139,6 +181,12 @@
       "git_commit": "12e04d8",
       "git_dirty": true,
       "timestamp_utc": "2026-10-01T14:39:38.923795",
+      "environment": {
+        "status": "recorded",
+        "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+        "torch_version": "2.13.0+cpu",
+        "device": "cpu"
+      },
       "metrics": {
         "test_mean_auprc": 0.8114614137828131,
         "test_mean_auroc": 0.9826554510407004,
@@ -153,9 +201,15 @@
       "checkpoint_path": "runs/20261002-112516_lstm_seed_42_s42_195e9f5/best_lstm_checkpoint.pt",
       "checkpoint_sha256": "7c1e220269a3bf0a87ed4296678e8eec38cec1a76b348c3535f971b98e1e7751",
       "config_sha256": "bdd6e25b3d8365f789f92ae43192915f203f8c1057b9fe06f2d3e7dfb3222736",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:25:16",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.8090034791537019,
         "test_mean_auroc": 0.9823260748547622,
@@ -170,9 +224,15 @@
       "checkpoint_path": "runs/20261002-112842_lstm_seed_43_s43_195e9f5/best_lstm_checkpoint.pt",
       "checkpoint_sha256": "6c65b7f44c0f60c81206e2b5040711ffbe54140de55ab19c4b8604b64ee6f06f",
       "config_sha256": "bdd6e25b3d8365f789f92ae43192915f203f8c1057b9fe06f2d3e7dfb3222736",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:28:42",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.8211548874772218,
         "test_mean_auroc": 0.9833282697076908,
@@ -187,9 +247,15 @@
       "checkpoint_path": "runs/20261002-113205_lstm_seed_44_s44_195e9f5/best_lstm_checkpoint.pt",
       "checkpoint_sha256": "53b1d00211a35c0616f76456ab07a6f1ca2e3ac72caa027786d67eea7b3b11a2",
       "config_sha256": "bdd6e25b3d8365f789f92ae43192915f203f8c1057b9fe06f2d3e7dfb3222736",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:32:05",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.8116811529660106,
         "test_mean_auroc": 0.98165366186262,
@@ -204,9 +270,15 @@
       "checkpoint_path": "runs/20261002-113529_dygformer_seed_42_s42_195e9f5/best_dygformer_checkpoint.pt",
       "checkpoint_sha256": "6b48e3084fffc65c585d93f8d462e9fe5cebcc0615918c4b0e3616c66eb5e9ef",
       "config_sha256": "9950b5d66d987b9eb982c6a8d67d57c08718b416dd405dcc4ff0b2b26da83729",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:35:29",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.8010079723948851,
         "test_mean_auroc": 0.9822051910993268,
@@ -221,9 +293,15 @@
       "checkpoint_path": "runs/20261002-113803_dygformer_seed_43_s43_195e9f5/best_dygformer_checkpoint.pt",
       "checkpoint_sha256": "8c1eb1408e1e5ceed976bba1aa9e5c45d43653d2c6bb00057fb32533f3a971f1",
       "config_sha256": "9950b5d66d987b9eb982c6a8d67d57c08718b416dd405dcc4ff0b2b26da83729",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:38:03",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.8168942784644244,
         "test_mean_auroc": 0.983630380328125,
@@ -238,9 +316,15 @@
       "checkpoint_path": "runs/20261002-114038_dygformer_seed_44_s44_195e9f5/best_dygformer_checkpoint.pt",
       "checkpoint_sha256": "aa03f32a3308dbf7ea26701957ae80c4290d2325dcecbb4e39ec6053aef90d99",
       "config_sha256": "9950b5d66d987b9eb982c6a8d67d57c08718b416dd405dcc4ff0b2b26da83729",
-      "git_commit": "195e9f5",
-      "git_dirty": false,
-      "timestamp_utc": "2026-10-02T11:40:38",
+      "git_commit": null,
+      "git_dirty": null,
+      "timestamp_utc": null,
+      "environment": {
+        "status": "unknown",
+        "python_version": null,
+        "torch_version": null,
+        "device": null
+      },
       "metrics": {
         "test_mean_auprc": 0.7952495549568243,
         "test_mean_auroc": 0.9806882466401831,

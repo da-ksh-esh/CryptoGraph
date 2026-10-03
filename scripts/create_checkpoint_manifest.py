@@ -70,7 +70,8 @@ def main():
 
             cfg_hash = compute_sha256(cfg_file) if cfg_file.exists() else ""
 
-            # Read or generate env.json
+            # Preserve recorded provenance. Missing historical metadata cannot be
+            # reconstructed reliably after training, so leave it explicitly unknown.
             env_file = run_folder / "env.json"
             env_data = {}
             if env_file.exists():
@@ -79,27 +80,13 @@ def main():
                         env_data = json.load(f)
                 except Exception:
                     env_data = {}
-
-            if not env_data:
-                # Infer git commit from folder name or git HEAD
-                folder_parts = run_folder.name.split("_")
-                git_tag = folder_parts[-1] if len(folder_parts) > 1 and len(folder_parts[-1]) >= 7 else "main"
-                ts_part = folder_parts[0] if len(folder_parts) > 0 else ""
-                inferred_ts = f"{ts_part[:4]}-{ts_part[4:6]}-{ts_part[6:8]}T{ts_part[9:11]}:{ts_part[11:13]}:{ts_part[13:15]}" if len(ts_part) == 15 else ""
-
-                env_data = {
-                    "run_id": run_folder.name,
-                    "model": model_name,
-                    "seed": seed,
-                    "git_commit": git_tag,
-                    "git_dirty": False,
-                    "python_version": "3.11.9",
-                    "torch_version": torch.__version__,
-                    "device": "cpu",
-                    "timestamp_utc": inferred_ts
-                }
-                with open(env_file, "w") as f:
-                    json.dump(env_data, f, indent=2)
+            # The prior generator wrote synthetic records with a `model` field;
+            # the real ExperimentTracker format uses `experiment` and captures
+            # the full Python version. Do not treat those generated values as fact.
+            if env_data.get("metadata_status") == "unknown" or (
+                env_data.get("model") and not env_data.get("experiment")
+            ):
+                env_data = {}
 
             # Read metrics.json if present
             metrics_file = run_folder / "metrics.json"
@@ -121,9 +108,15 @@ def main():
                 "checkpoint_path": str(ckpt_file).replace("\\", "/"),
                 "checkpoint_sha256": ckpt_hash,
                 "config_sha256": cfg_hash,
-                "git_commit": env_data.get("git_commit", "main"),
-                "git_dirty": env_data.get("git_dirty", False),
-                "timestamp_utc": env_data.get("timestamp_utc", ""),
+                "git_commit": env_data.get("git_commit"),
+                "git_dirty": env_data.get("git_dirty"),
+                "timestamp_utc": env_data.get("timestamp_utc"),
+                "environment": {
+                    "status": "recorded" if env_data else "unknown",
+                    "python_version": env_data.get("python_version"),
+                    "torch_version": env_data.get("torch_version"),
+                    "device": env_data.get("device"),
+                },
                 "metrics": {
                     "test_mean_auprc": metrics_data.get("test_mean_auprc", None),
                     "test_mean_auroc": metrics_data.get("test_mean_auroc", None),

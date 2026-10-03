@@ -134,12 +134,23 @@ def process_hourly_dataset(
     park_idx = kept_features.index("parkinson_volatility")
     vola_matrix = features_3d[:, :, park_idx]
 
-    horizons = cfg.get("horizons_hours", [1, 3, 6, 12, 24])
+    bar_hours = 2 if resolution == "2h" else 1
     if resolution == "2h":
-        # Distinct 2-hour bars representing 2h, 4h, 6h, 12h, and 24h horizons (no duplicates)
-        horizons = [1, 2, 3, 6, 12]
+        horizons_hours = cfg.get("horizons_hours_2h", [2, 4, 6, 12, 24])
+    else:
+        horizons_hours = cfg.get("horizons_hours", [1, 3, 6, 12, 24])
+    if not horizons_hours or any(
+        not isinstance(horizon, int) or horizon <= 0 or horizon % bar_hours != 0
+        for horizon in horizons_hours
+    ):
+        raise ValueError(
+            f"Forecast horizons must be positive integer hours divisible by the {bar_hours}h bar size; "
+            f"got {horizons_hours}."
+        )
+    horizons_hours = sorted(set(horizons_hours))
+    horizon_steps = [horizon // bar_hours for horizon in horizons_hours]
 
-    target_builder = ContagionTargetBuilder(horizons=horizons, shock_quantile=0.95)
+    target_builder = ContagionTargetBuilder(horizons=horizon_steps, shock_quantile=0.95)
     target_builder.fit_thresholds(vola_matrix, splits.train_mask)
     shocks_matrix = target_builder.identify_shocks(vola_matrix)
 
@@ -176,7 +187,8 @@ def process_hourly_dataset(
         "feature_names": kept_features,
         "candidate_features": candidate_feature_names,
         "dropped_features": pruner.dropped_features_,
-        "horizons": horizons,
+        "horizons": horizons_hours,
+        "horizon_steps": horizon_steps,
         "split_indices": {
             "train_indices": splits.train_indices.tolist(),
             "val_indices": splits.val_indices.tolist(),
@@ -191,7 +203,8 @@ def process_hourly_dataset(
             "num_timesteps": T,
             "num_assets": num_nodes,
             "num_features": num_kept,
-            "horizons": horizons,
+            "horizons": horizons_hours,
+            "horizon_steps": horizon_steps,
             "shock_quantile": 0.95,
             "shock_thresholds": target_builder.thresholds_.tolist(),
             "event_counts": event_counts,

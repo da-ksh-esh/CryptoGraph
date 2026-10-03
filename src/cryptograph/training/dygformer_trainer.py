@@ -116,6 +116,12 @@ def train_dygformer_experiment(
 
     lookback_window = d_cfg.get("lookback_window", 24)
     in_features = m_cfg.get("in_features", features.shape[-1])
+    if in_features != features.shape[-1]:
+        logger.warning(
+            f"Configured in_features ({in_features}) does not match dataset feature dimension ({features.shape[-1]}). "
+            f"Adapting in_features to {features.shape[-1]}."
+        )
+        in_features = features.shape[-1]
     patch_size = m_cfg.get("patch_size", 4)
     hidden_dim = m_cfg.get("hidden_dim", 64)
     num_heads = m_cfg.get("num_heads", 4)

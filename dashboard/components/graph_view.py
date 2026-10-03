@@ -120,9 +120,8 @@ def render_graph_view():
             size=node_sizes,
             colorbar=dict(
                 thickness=15,
-                title="DY Net Spillover (%)",
-                xanchor="left",
-                titleside="right"
+                title=dict(text="DY Net Spillover (%)", side="right"),
+                xanchor="left"
             ),
             line=dict(width=2, color="white")
         )

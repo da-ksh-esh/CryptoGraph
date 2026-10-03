@@ -12,6 +12,8 @@ from pathlib import Path
 import importlib.util
 import unittest
 import inspect
+import tempfile
+import shutil
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
@@ -72,8 +74,6 @@ def run_with_unittest() -> int:
                             self._mod_name = mod_name
 
                         def runTest(self):
-                            import tempfile
-                            import shutil
                             sig = inspect.signature(self._fn)
                             kwargs = {}
                             temp_dirs = []

@@ -1,15 +1,19 @@
 # LSTM Model Configuration
 model:
   type: "lstm"
-  in_features: 8
+  in_features: 9
   hidden_dim: 64
   num_layers: 2
   out_horizons: 5
   dropout: 0.2
 
+data:
+  lookback_window: 24
+
 training:
   learning_rate: 0.001
   weight_decay: 0.0001
-  batch_size: 32
-  max_epochs: 100
-  patience: 15
+  batch_size: 128
+  max_epochs: 5
+  patience: 2
+  pos_weight: 10.0

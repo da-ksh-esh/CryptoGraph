@@ -13,11 +13,12 @@ from dashboard.components.live_prediction import get_dataset_metadata
 
 def test_dashboard_data_loading():
     # 0. Live prediction dataset metadata
-    timestamps, num_steps, horizons, assets = get_dataset_metadata()
+    timestamps, num_steps, horizons, assets, test_indices = get_dataset_metadata()
     if num_steps > 0:
         assert len(timestamps) == num_steps
         assert len(assets) == 30
         assert len(horizons) >= 3
+        assert len(test_indices) > 0
     # 1. Rankings data
     df_rankings = load_rankings_data()
     assert isinstance(df_rankings, pd.DataFrame)

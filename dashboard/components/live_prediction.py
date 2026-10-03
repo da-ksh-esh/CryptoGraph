@@ -16,12 +16,14 @@ from cryptograph.data.universe import TARGET_UNIVERSE_30
 def get_dataset_metadata():
     dataset_path = Path("data/processed/v2/1h/processed_dataset.pt")
     if not dataset_path.exists():
-        return [], 0, []
+        return [], 0, [], [], []
     data = torch.load(dataset_path, map_location="cpu", weights_only=False)
     timestamps = data["timestamps"]
     horizons = data.get("horizons", [1, 3, 6, 12, 24])
     assets = data.get("asset_names", TARGET_UNIVERSE_30)
-    return timestamps, len(timestamps), horizons, assets
+    split_indices = data.get("split_indices", {})
+    test_indices = split_indices.get("test_indices", [])
+    return timestamps, len(timestamps), horizons, assets, test_indices
 
 
 @st.cache_data(show_spinner=False)
@@ -60,11 +62,14 @@ def render_live_prediction():
     )
 
     meta_res = get_dataset_metadata()
-    if len(meta_res) < 4:
+    if len(meta_res) < 5 or not meta_res[0]:
         st.error("Processed dataset not found at `data/processed/v2/1h/processed_dataset.pt`.")
         return
+    if not meta_res[4]:
+        st.error("Processed dataset is missing `split_indices.test_indices`; test-only replay is unavailable.")
+        return
 
-    timestamps, num_steps, horizons, assets = meta_res
+    timestamps, _, horizons, assets, test_indices = meta_res
 
     # Control Bar
     col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
@@ -77,47 +82,24 @@ def render_live_prediction():
     with col4:
         top_k_val = st.selectbox("Display Top-K Assets", [5, 10, 15, 20, 30], index=1)
 
-    # Timestep Scrubbing
-    st.write("#### ⏱️ Chronological Timestep Scrubbing")
-    c_time1, c_time2 = st.columns([3, 1])
-
-    with c_time2:
-        preset = st.selectbox(
-            "Crisis Presets",
-            [
-                "Latest Available",
-                "Yen Carry-Trade Unwind (2024-08-05)",
-                "Oct-10 Liquidation Cascade (2025-10-10)",
-                "ETF Approval (2024-01-10)"
-            ],
-            index=0
-        )
-
-    if preset == "Latest Available":
-        default_t = num_steps - 1
-    elif "2024-08-05" in preset:
-        default_t = 5208 if 5208 < num_steps else num_steps - 1
-    elif "2025-10-10" in preset:
-        default_t = 15552 if 15552 < num_steps else num_steps - 1
-    elif "2024-01-10" in preset:
-        default_t = 216 if 216 < num_steps else num_steps - 1
-    else:
-        default_t = num_steps - 1
-
-    with c_time1:
-        selected_timestep = st.slider(
-            "Timestep Index (t)",
-            min_value=168,
-            max_value=num_steps - 1,
-            value=default_t,
-            help="Scrub backward or forward through time to inspect dynamic predictions."
-        )
+    # Scrub by position within the saved test-index list so no train, embargo,
+    # or validation timestep can be selected, even for non-contiguous splits.
+    st.write("#### ⏱️ Held-Out Test Timestep Scrubbing")
+    default_test_position = len(test_indices) - 1
+    selected_test_position = st.slider(
+        "Test Timestep Position",
+        min_value=0,
+        max_value=default_test_position,
+        value=default_test_position,
+        help="Scrub only through timestamps included in the held-out test split."
+    )
+    selected_timestep = int(test_indices[selected_test_position])
 
     current_ts_str = timestamps[selected_timestep]
     st.info(f"Target Timestamp: **{current_ts_str}** (Index `t={selected_timestep}`) | Selected Horizon: **+{horizon_choice}h**")
 
-    # Run Live Prediction
-    with st.spinner("Computing real-time contagion probabilities..."):
+    # Run Historical Replay Inference
+    with st.spinner("Computing historical replay forecast probabilities..."):
         try:
             results = run_live_inference(
                 model_type=model_choice,
@@ -156,7 +138,7 @@ def render_live_prediction():
     # Probability Distribution Plot
     df_preds = pd.DataFrame(preds)
 
-    st.write("#### 📊 Real-Time Predicted Shock Probabilities P(shock(t+h))")
+    st.write("#### 📊 Historical Replay Forecast Probabilities P(shock(t+h))")
     colors = ["#e74c3c" if s == "ALERT" else "#3498db" for s in df_preds["status"]]
 
     fig_probs = go.Figure()

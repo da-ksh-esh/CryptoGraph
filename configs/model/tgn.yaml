@@ -1,16 +1,24 @@
-# Contagion Predictor: Temporal Graph Network (TGN) Configuration
-model_name: "CryptoTGN"
-num_nodes: 20
-raw_msg_dim: 8          # Node feature dimension (returns, volatility, volume, RSI, etc.)
-memory_dim: 64          # Persistent node memory dimension
-time_dim: 16            # Continuous time embedding dimension
-embedding_dim: 64       # Spatial graph embedding dimension
-out_horizons: 5         # Forecast horizons: 1d, 3d, 7d, 14d, 30d
-dropout: 0.2
+# Contagion Predictor: Temporal Graph Network (CryptoTGN) Configuration
+model:
+  type: "tgn"
+  num_nodes: 30
+  raw_msg_dim: 9
+  memory_dim: 64
+  time_dim: 16
+  embedding_dim: 64
+  out_horizons: 5
+  dropout: 0.2
+
+data:
+  dataset_path: "data/processed/v2/1h/processed_dataset.pt"
+  network_features_path: "data/processed/v2/network_features.pt"
+  resolution: "1h"
 
 training:
-  epochs: 100
-  batch_size: 64
-  learning_rate: 0.001
-  weight_decay: 1e-4
-  patience: 15
+  learning_rate: 0.0005
+  weight_decay: 1.0e-5
+  max_epochs: 4
+  patience: 2
+  batch_size: 256
+  pos_weight: 10.0
+  grad_accum_steps: 32
