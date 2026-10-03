@@ -25,7 +25,7 @@ st.title("🛡️ CryptoGraph-Secure: Dynamic Graph & Cybersecurity Dashboard")
 st.markdown("Real-time temporal graph neural network monitoring for cryptocurrency shock spillovers and anomaly detection.")
 
 tabs = st.tabs([
-    "🔮 Live Contagion Forecast",
+    "🔮 Contagion Risk Simulator (Historical Replay)",
     "📊 Dynamic Network Graph",
     "🔗 Spillover Propagation",
     "🚨 Cybersecurity & Anomalies",

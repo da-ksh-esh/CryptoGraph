@@ -83,18 +83,62 @@ def run_explanation_benchmark(
     returns_np = data["features"][:, :, 0].numpy()
     N = len(asset_names)
 
-    # Find test timesteps with shock occurrences
+    # Find test timesteps with shock occurrences and de-cluster into independent episodes (>= 24h refractory gap)
     test_shock_steps = [t for t in test_indices if (shocks[t] & act_mask[t]).any()]
-    sample_steps = test_shock_steps[:num_sample_events] if len(test_shock_steps) > num_sample_events else test_shock_steps
+    episodes = []
+    current_ep = []
+    for t in test_shock_steps:
+        if not current_ep or (t - current_ep[-1] <= 24):
+            current_ep.append(t)
+        else:
+            episodes.append(current_ep)
+            current_ep = [t]
+    if current_ep:
+        episodes.append(current_ep)
 
-    logger.info(f"Running TempME explanation benchmark across {len(sample_steps)} test shock events...")
+    # Select representative independent events across episodes, diversifying target assets
+    selected_events = []
+    targeted_assets_set = set()
 
-    for t in sample_steps:
-        shocked_nodes = torch.where(shocks[t] & act_mask[t])[0]
-        if len(shocked_nodes) == 0:
+    for ep in episodes:
+        # Find peak shock timestep in episode (maximum simultaneous shocked assets)
+        peak_t = max(ep, key=lambda t: (shocks[t] & act_mask[t]).sum().item())
+        shocked_nodes = torch.where(shocks[peak_t] & act_mask[peak_t])[0].tolist()
+        if not shocked_nodes:
             continue
 
-        target_node = int(shocked_nodes[0])
+        # Prefer an asset that hasn't been targeted yet to maximize cross-sectional asset diversity
+        chosen_node = None
+        for node in shocked_nodes:
+            if node not in targeted_assets_set:
+                chosen_node = node
+                break
+        if chosen_node is not None:
+            targeted_assets_set.add(chosen_node)
+            selected_events.append((peak_t, chosen_node))
+
+        if len(selected_events) >= num_sample_events:
+            break
+
+    # If fewer than num_sample_events found with strictly unique assets, fill with remaining episodes
+    if len(selected_events) < num_sample_events:
+        for ep in episodes:
+            peak_t = max(ep, key=lambda t: (shocks[t] & act_mask[t]).sum().item())
+            if any(ev[0] == peak_t for ev in selected_events):
+                continue
+            shocked_nodes = torch.where(shocks[peak_t] & act_mask[peak_t])[0].tolist()
+            if shocked_nodes:
+                best_node = min(shocked_nodes, key=lambda n: returns_np[peak_t, n])
+                selected_events.append((peak_t, best_node))
+                if len(selected_events) >= num_sample_events:
+                    break
+
+    logger.info(
+        f"Running TempME explanation benchmark across {len(selected_events)} independent shock episodes "
+        f"(>=24h refractory gap, {len(targeted_assets_set)} distinct target assets)..."
+    )
+
+    for t, target_node in selected_events:
         target_asset = asset_names[target_node]
 
         # Construct trailing correlation edges

@@ -261,6 +261,7 @@ def train_tgn_experiment(
     early_stopping = EarlyStopping(patience=patience, min_delta=1e-4, mode="max")
 
     logger.info(f"Starting CryptoTGN dynamic training: {len(train_indices)} train timesteps, {max_epochs} epochs max...")
+    tracker.log_environment(config, str(device))
 
     best_val_auprc = -1.0
     best_state = None

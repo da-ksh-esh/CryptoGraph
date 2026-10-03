@@ -65,6 +65,7 @@ def main():
 
     assets = data["asset_names"]
     test_indices = data["split_indices"]["test_indices"]
+    val_indices = data["split_indices"]["val_indices"]
     shocks = data["shocks"]
     targets = data["targets_shock"]
     val_mask = data["target_validity_mask"]
@@ -131,7 +132,7 @@ def main():
             edge_indices=e_idx,
             edge_weights=e_w,
             reset_memory=True,
-            warmup_indices=train_indices[-168:] if len(train_indices) >= 168 else None
+            warmup_indices=val_indices[-168:] if len(val_indices) >= 168 else None
         )
         model_auprcs[name] = round(eval_res["mean_auprc"], 4)
         model_aurocs[name] = round(eval_res["mean_auroc"], 4)

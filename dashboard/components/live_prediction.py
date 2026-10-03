@@ -45,11 +45,18 @@ def run_live_inference(
 
 
 def render_live_prediction():
-    st.subheader("🔮 Live Time-Indexed Contagion Risk Prediction & Scenario Engine")
+    st.subheader("🔮 Time-Indexed Contagion Risk Simulator & Scenario Replay Engine")
     st.markdown(
-        "Executes real-time inference using trained **CryptoTGN** or **CryptoLSTM** models. "
-        "Allows dynamic scrubbing across chronological timestamps to observe emerging systemic shocks, "
-        "spillover cascades, and real-time TempME explanatory attribution."
+        "Executes model inference using trained **CryptoTGN** (Continuous Dynamic GNN) or **CryptoLSTM** (Sequential RNN) "
+        "across chronological hourly snapshots of the audited test split. "
+        "Allows dynamic scrubbing across timesteps to simulate emerging shock cascades, "
+        "estimate per-token dynamic persistence decay, and inspect TempME explanatory transmission subgraphs."
+    )
+    st.info(
+        "ℹ️ **Inference & Simulation Mode:** This engine performs deep neural forward inference over the "
+        "held-out test split of the historical hourly dataset (2024–2026). It operates as an offline research replay and "
+        "crisis simulator rather than a live streaming Binance websocket feed. Persistence half-lives are estimated dynamically "
+        "per token via trailing AR(1) autocorrelation decay alongside calibrated sector baseline priors."
     )
 
     meta_res = get_dataset_metadata()
@@ -177,15 +184,32 @@ def render_live_prediction():
     st.plotly_chart(fig_probs, use_container_width=True)
 
     # Detailed Predictions Table
-    st.write("#### 📋 Live Risk Rankings & Explanatory Channels")
+    st.write("#### 📋 Contagion Risk Rankings & Spatio-Temporal Channels")
+    
+    # Rename columns for clarity
+    df_table = df_preds.rename(columns={
+        "rank": "Rank",
+        "asset": "Asset",
+        "sector": "Sector",
+        "price_usdt": "Price (USDT)",
+        "shock_probability": "Shock Probability",
+        "status": "Alert Status",
+        "persistence_halflife_hours": "Dynamic Decay t_1/2",
+        "persistence_mode": "Estimation Mode",
+        "sector_prior_halflife": "Sector Baseline t_1/2",
+        "explanation": "Explanatory Attributions"
+    })
+    
     st.dataframe(
-        df_preds[[
-            "rank", "asset", "sector", "price_usdt",
-            "shock_probability", "status", "persistence_halflife_hours", "explanation"
+        df_table[[
+            "Rank", "Asset", "Sector", "Price (USDT)",
+            "Shock Probability", "Alert Status", "Dynamic Decay t_1/2",
+            "Estimation Mode", "Sector Baseline t_1/2", "Explanatory Attributions"
         ]].style.format({
-            "price_usdt": "${:,.2f}",
-            "shock_probability": "{:.2%}",
-            "persistence_halflife_hours": "{:.1f}h"
+            "Price (USDT)": "${:,.2f}",
+            "Shock Probability": "{:.2%}",
+            "Dynamic Decay t_1/2": "{:.1f}h",
+            "Sector Baseline t_1/2": "{:.1f}h"
         }),
         use_container_width=True
     )

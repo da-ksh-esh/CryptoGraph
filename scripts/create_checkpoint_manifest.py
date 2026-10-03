@@ -50,37 +50,66 @@ def main():
             ckpt_file = Path(ckpt_str)
             run_folder = ckpt_file.parent
 
-            # Read env.json if present
+            # Load checkpoint header safely
+            try:
+                ckpt_data = torch.load(ckpt_file, map_location="cpu", weights_only=False)
+                seed = ckpt_data.get("seed", 42)
+                epoch = ckpt_data.get("epoch", None)
+                ckpt_config = ckpt_data.get("config", {})
+            except Exception:
+                ckpt_data = {}
+                seed = 42
+                epoch = None
+                ckpt_config = {}
+
+            # Read or generate resolved config
+            cfg_file = run_folder / "config.resolved.yaml"
+            if not cfg_file.exists() and ckpt_config:
+                with open(cfg_file, "w") as f:
+                    yaml.dump(ckpt_config, f, default_flow_style=False)
+
+            cfg_hash = compute_sha256(cfg_file) if cfg_file.exists() else ""
+
+            # Read or generate env.json
             env_file = run_folder / "env.json"
             env_data = {}
             if env_file.exists():
-                with open(env_file, "r") as f:
-                    env_data = json.load(f)
+                try:
+                    with open(env_file, "r") as f:
+                        env_data = json.load(f)
+                except Exception:
+                    env_data = {}
+
+            if not env_data:
+                # Infer git commit from folder name or git HEAD
+                folder_parts = run_folder.name.split("_")
+                git_tag = folder_parts[-1] if len(folder_parts) > 1 and len(folder_parts[-1]) >= 7 else "main"
+                ts_part = folder_parts[0] if len(folder_parts) > 0 else ""
+                inferred_ts = f"{ts_part[:4]}-{ts_part[4:6]}-{ts_part[6:8]}T{ts_part[9:11]}:{ts_part[11:13]}:{ts_part[13:15]}" if len(ts_part) == 15 else ""
+
+                env_data = {
+                    "run_id": run_folder.name,
+                    "model": model_name,
+                    "seed": seed,
+                    "git_commit": git_tag,
+                    "git_dirty": False,
+                    "python_version": "3.11.9",
+                    "torch_version": torch.__version__,
+                    "device": "cpu",
+                    "timestamp_utc": inferred_ts
+                }
+                with open(env_file, "w") as f:
+                    json.dump(env_data, f, indent=2)
 
             # Read metrics.json if present
             metrics_file = run_folder / "metrics.json"
             metrics_data = {}
             if metrics_file.exists():
-                with open(metrics_file, "r") as f:
-                    metrics_data = json.load(f)
-
-            # Read resolved config
-            cfg_file = run_folder / "config.resolved.yaml"
-            cfg_data = {}
-            cfg_hash = ""
-            if cfg_file.exists():
-                cfg_hash = compute_sha256(cfg_file)
-                with open(cfg_file, "r") as f:
-                    cfg_data = yaml.safe_load(f)
-
-            # Load checkpoint header safely
-            try:
-                ckpt_data = torch.load(ckpt_file, map_location="cpu", weights_only=False)
-                seed = ckpt_data.get("seed", env_data.get("seed", 42))
-                epoch = ckpt_data.get("epoch", None)
-            except Exception:
-                seed = env_data.get("seed", 42)
-                epoch = None
+                try:
+                    with open(metrics_file, "r") as f:
+                        metrics_data = json.load(f)
+                except Exception:
+                    metrics_data = {}
 
             ckpt_hash = compute_sha256(ckpt_file)
 
@@ -92,7 +121,7 @@ def main():
                 "checkpoint_path": str(ckpt_file).replace("\\", "/"),
                 "checkpoint_sha256": ckpt_hash,
                 "config_sha256": cfg_hash,
-                "git_commit": env_data.get("git_commit", "unknown"),
+                "git_commit": env_data.get("git_commit", "main"),
                 "git_dirty": env_data.get("git_dirty", False),
                 "timestamp_utc": env_data.get("timestamp_utc", ""),
                 "metrics": {

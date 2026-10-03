@@ -41,6 +41,48 @@ SECTOR_PERSISTENCE_HALFLIFE: Dict[str, float] = {
 DEFAULT_PERSISTENCE_HALFLIFE: float = 12.0
 
 
+def estimate_dynamic_halflife(
+    returns_slice: np.ndarray,
+    sector_prior: float = 12.0,
+    min_obs: int = 12
+) -> Tuple[float, str]:
+    """
+    Estimates empirical shock persistence half-life from trailing returns/volatility.
+    Uses AR(1) autocorrelation decay on absolute return shocks:
+    |r_t| = phi * |r_{t-1}| + c  =>  t_{1/2} = -ln(2) / ln(phi).
+    Returns:
+        (half_life_hours, estimation_mode)
+    """
+    if returns_slice is None or returns_slice.size < min_obs:
+        return float(sector_prior), "sector_baseline"
+
+    abs_ret = np.abs(returns_slice)
+    st = float(np.std(abs_ret))
+    if st < 1e-6:
+        return float(sector_prior), "sector_baseline"
+
+    y = abs_ret[1:]
+    x = abs_ret[:-1]
+
+    x_mean = float(np.mean(x))
+    y_mean = float(np.mean(y))
+    var_x = float(np.sum((x - x_mean) ** 2))
+    if var_x < 1e-8:
+        return float(sector_prior), "sector_baseline"
+
+    phi = float(np.sum((x - x_mean) * (y - y_mean)) / var_x)
+
+    if 0.05 < phi < 0.98:
+        hl = float(-np.log(2.0) / np.log(phi))
+        hl = float(np.clip(hl, 1.0, 72.0))
+        return round(hl, 1), "dynamic_ar1"
+    elif phi <= 0.05:
+        return 1.0, "dynamic_instant_mean_reversion"
+    else:
+        # High persistence / near unit root: blend with empirical sector prior
+        return round(min(72.0, max(24.0, sector_prior)), 1), "dynamic_high_persistence"
+
+
 def validate_checkpoint_schema(ckpt: Dict[str, Any], expected_model_type: str) -> None:
     """Validates that the loaded checkpoint dictionary matches expected schema and architecture."""
     if not isinstance(ckpt, dict):
@@ -414,12 +456,23 @@ def predict_contagion(
             preds = model(x_seq)
             probs = torch.sigmoid(preds)[:, h_idx].cpu().numpy()
 
-    # 4. Assemble Per-Asset Records
+    # 4. Assemble Per-Asset Records with Dynamic Empirical Decay & Sector Prior
+    lookback_hl = 72
+    hl_start = max(0, t_idx - lookback_hl)
+    returns_history = data["features"][hl_start : t_idx + 1, :, 0].numpy() if "features" in data else None
+
     for i, coin in enumerate(asset_names):
         prob = float(probs[i])
         price = float(close_prices[t_idx, i]) if close_prices is not None else 0.0
         sector = SECTOR_TAXONOMY.get(coin, "General")
-        halflife = SECTOR_PERSISTENCE_HALFLIFE.get(sector, DEFAULT_PERSISTENCE_HALFLIFE)
+        sector_hl = SECTOR_PERSISTENCE_HALFLIFE.get(sector, DEFAULT_PERSISTENCE_HALFLIFE)
+
+        if returns_history is not None and returns_history.shape[0] >= 12:
+            coin_ret = returns_history[:, i]
+            dyn_hl, hl_mode = estimate_dynamic_halflife(coin_ret, sector_prior=sector_hl)
+        else:
+            dyn_hl, hl_mode = sector_hl, "sector_baseline"
+
         alert_status = "ALERT" if prob >= threshold else "NORMAL"
         explanation = explanations_dict.get(i, "None (Normal baseline)") if alert_status == "ALERT" else "Normal baseline"
 
@@ -429,7 +482,9 @@ def predict_contagion(
             "price_usdt": price,
             "shock_probability": prob,
             "status": alert_status,
-            "persistence_halflife_hours": halflife,
+            "persistence_halflife_hours": dyn_hl,
+            "persistence_mode": hl_mode,
+            "sector_prior_halflife": sector_hl,
             "explanation": explanation
         })
 
