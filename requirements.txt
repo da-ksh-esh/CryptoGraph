@@ -20,8 +20,7 @@ pyyaml>=6.0
 pydantic>=2.0
 tqdm>=4.66.0
 
-# Visualization & Interactive Dashboard
-streamlit>=1.28.0
+# Standalone browser interface uses the Python standard library on the server.
 plotly>=5.17.0
 pyvis>=0.3.2
 

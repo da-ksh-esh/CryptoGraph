@@ -50,15 +50,27 @@ CryptoGraph/
 │   ├── training/        # loop, losses, metrics, seed, device, tracking
 │   └── pipelines/       # data.py, train.py, evaluate.py, explain.py, predict.py, package_data.py
 ├── reports/             # Research output CSVs and final_research_report.md
-├── tests/               # Automated verification suite (59 unit & integration tests)
+├── tests/               # Automated verification suite
 ├── docs/                # model_plan.md, methodology specifications
 ├── colab/               # Headless cloud training runners (runner.ipynb)
-└── dashboard/           # Streamlit monitoring dashboard (preserved)
+├── web/                 # Standalone historical replay web interface and local data API
 ```
 
 ---
 
 ## 🚀 Quickstart & Pipeline CLI
+
+### Standalone Historical Shock Replay
+
+Launch the standalone web interface from the repository root:
+
+```bash
+python web/server.py
+```
+
+Then open [http://127.0.0.1:8765](http://127.0.0.1:8765). The server is local-only and reads the project’s processed datasets; install the requirements first if needed.
+
+The standalone interface provides historical event replay, impact summaries, network rankings, persisted spillover and explanation reports, anomaly and robustness reports, and optional model inference. Forecast inference appears only when an hourly test split and a trained checkpoint are present; it is offline historical inference, not a live feed. Hourly replays use saved hourly shock labels. Older daily replays use a trailing pre-event return threshold. Correlation edges are undirected associations and do not imply causal transmission. Research panels read saved artifacts from `reports/` and do not recompute analyses.
 
 ### 1. Installation
 ```bash

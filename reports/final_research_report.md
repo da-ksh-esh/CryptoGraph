@@ -256,4 +256,4 @@ The following artifacts are present. Items marked incomplete or exploratory have
 - [ ] **Unit & Integration Tests:** The test suite requires pytest and the project dependencies. It was not runnable in the current environment because pytest, PyTorch, and NetworkX are unavailable; no test pass is claimed.
 - [ ] **Checkpoint Provenance:** Checkpoint/config hashes are recorded, but missing historical environment metadata is unknown and must not be described as complete provenance (`checkpoints/manifest.json`).
 - [x] **Leakage & Encoding Audit:** Future `bfill()` leakage eliminated; community and sector IDs encoded categorically with one-hot indicators and `CategoricalFeatureEmbedding`.
-- [x] **Simulation & Replay UI:** Contagion Risk Simulator (Historical Replay) integrated into `dashboard/` with dynamic per-token decay estimation; 0 remote pushes (`git push` strictly prohibited).
+- [x] **Simulation & Replay UI:** Historical replay and optional held-out inference are available in the standalone `web/` interface; report-driven analysis panels read saved artifacts. No live streaming is provided.

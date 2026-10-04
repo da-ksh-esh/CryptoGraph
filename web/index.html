@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08090b">
+  <meta name="description" content="Minimal historical replay of cryptocurrency market shocks.">
+  <title>CryptoGraph — Market Replay</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#replay" aria-label="CryptoGraph home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 3.5 27 9.8v12.4L16 28.5 5 22.2V9.8L16 3.5Z"/><path d="m5.7 10.2 10.2 5.9 10.4-6.1M16 16.1v12M10.7 7.1l10.6 6.1M21.3 7.1l-10.6 6.1"/><circle cx="16" cy="16" r="2"/></svg></span>
+        <span class="brand-word">CryptoGraph</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <button class="nav-button active" data-view="replay" type="button">Replay</button>
+        <button class="nav-button" data-view="impact" type="button">Impact</button>
+        <button class="nav-button" data-view="network" type="button">Network</button>
+        <button class="nav-button" data-view="research" type="button">Research</button>
+        <button class="nav-button" data-view="security" type="button">Security</button>
+        <button class="nav-button" data-view="forecast" type="button">Forecast</button>
+        <button class="nav-button" id="method-button" type="button">Method</button>
+      </nav>
+      <div class="nav-controls">
+        <label class="sr-only" for="event-select">Select event</label>
+        <select id="event-select" class="event-select"><option>Loading events…</option></select>
+        <span class="control-separator"></span>
+        <div class="resolution-switch" role="group" aria-label="Data resolution">
+          <button id="daily-button" class="resolution-button" type="button">1D</button>
+          <button id="hourly-button" class="resolution-button" type="button">1H</button>
+        </div>
+        <details class="window-menu">
+          <summary aria-label="Replay window options" title="Replay window options"><span class="sliders-icon">☷</span><span>Window</span></summary>
+          <div class="window-popover">
+            <div class="popover-title">Replay window <span id="window-total">9 DAYS</span></div>
+            <label for="before-range"><span>Context before</span><strong id="before-value">2 days</strong></label>
+            <input id="before-range" type="range" min="0" max="14" value="2" step="1">
+            <label for="after-range"><span>Follow after</span><strong id="after-value">7 days</strong></label>
+            <input id="after-range" type="range" min="1" max="14" value="7" step="1">
+            <small>All timestamps use UTC.</small>
+          </div>
+        </details>
+        <span class="local-status"><i></i><span>LOCAL</span></span>
+      </div>
+    </header>
+
+    <main>
+      <section id="replay-view" class="view view-active">
+        <div class="event-heading">
+          <div id="event-card" class="event-card"><div class="event-date">—</div><div class="event-title">Loading event</div><p>Loading event details…</p></div>
+          <div class="coverage-wrap"><span class="coverage-label">DATA COVERAGE</span><span id="coverage-copy">Checking local datasets…</span></div>
+        </div>
+
+        <section class="graph-panel" aria-label="Animated cryptocurrency shock network">
+          <div class="graph-topline"><span class="graph-hint">ASSET NETWORK <i></i> 30 COINS</span><div class="map-legend"><span><i class="dot dot-current"></i>Shock</span><span><i class="dot dot-past"></i>Earlier</span><span><i class="dot dot-waiting"></i>Not yet</span></div></div>
+          <div id="graph-wrap" class="graph-wrap"><canvas id="network-canvas" aria-label="Animated cryptocurrency network"></canvas><div id="graph-empty" class="graph-empty">Loading market network…</div><div id="node-tooltip" class="node-tooltip"></div></div>
+          <div class="graph-foot"><span><i class="edge-swatch"></i>Prior co-movement</span><span id="asset-count">— assets</span></div>
+        </section>
+
+        <section class="playback" aria-label="Replay controls">
+          <button id="prev-button" class="step-button" type="button" aria-label="Previous timestep">‹</button>
+          <button id="play-button" class="play-button" type="button" aria-label="Play replay"><span id="play-icon">▶</span></button>
+          <button id="next-button" class="step-button" type="button" aria-label="Next timestep">›</button>
+          <div class="timeline-block"><div class="timeline-labels"><span id="scrubber-start">—</span><span id="frame-date">Choose an event</span><span id="scrubber-end">—</span></div><input id="timeline-range" type="range" min="0" max="0" value="0" step="1" aria-label="Replay timeline"><span class="event-anchor" id="scrubber-anchor">EVENT</span></div>
+          <select id="speed-select" class="speed-select" aria-label="Playback speed"><option value="1">1×</option><option value="3">3×</option><option value="8">8×</option></select>
+        </section>
+        <div class="below-note"><span id="play-state-label">READY</span><span id="play-step-label">Select an event to begin</span><span class="key-hint">SPACE TO PLAY</span></div>
+      </section>
+
+      <section id="impact-view" class="view" hidden>
+        <div class="secondary-heading"><div><span class="eyebrow">EVENT ANALYSIS</span><h1>Impact summary</h1><p id="impact-event-title">Select an event to inspect observed market response.</p></div><button class="back-button" data-view="replay" type="button">← Back to replay</button></div>
+        <section class="metrics-grid" aria-label="Event impact metrics">
+          <article class="metric-card"><span class="metric-label">OBSERVED REACH</span><strong id="metric-reach">—</strong><span class="metric-note" id="metric-reach-note">assets active at event later shocked</span><div class="metric-track"><span id="reach-track"></span></div></article>
+          <article class="metric-card"><span class="metric-label">FIRST → NEXT SHOCK</span><strong id="metric-lag">—</strong><span class="metric-note" id="metric-lag-note">Gap between distinct shock timestamps</span></article>
+          <article class="metric-card"><span class="metric-label">CONTIGUOUS DURATION</span><strong id="metric-duration">—</strong><span class="metric-note" id="metric-duration-note">Median consecutive shock-label run</span></article>
+          <article class="metric-card"><span class="metric-label">AT SELECTED TIME</span><strong id="metric-current">—</strong><span class="metric-note" id="metric-current-note">Shocked assets at current timestep</span></article>
+        </section>
+        <section class="analysis-grid">
+          <article class="analysis-card"><div class="card-heading"><div><span class="eyebrow">TIMELINE</span><h2>Shock activity</h2></div><span id="chart-window-label" class="quiet-label">EVENT WINDOW</span></div><div class="chart-wrap"><canvas id="activity-canvas" aria-label="Assets with observed shock over time"></canvas><div id="chart-empty" class="chart-empty">Load an event replay to see activity.</div></div><div class="chart-legend"><span><i></i>Assets with observed shock</span><span><b></b>Event anchor</span></div></article>
+          <article class="analysis-card"><div class="card-heading"><div><span class="eyebrow">CONTEXT</span><h2>Event notes</h2></div></div><div id="event-intelligence" class="intelligence-body">Select an event to inspect its response.</div></article>
+        </section>
+        <section class="analysis-card table-card"><div class="card-heading table-heading"><div><span class="eyebrow">OBSERVATIONS</span><h2>Asset shock sequence</h2><p id="assets-subtitle">Assets with post-event shock observations</p></div><div class="asset-filters"><input id="asset-search" type="search" placeholder="Search assets" aria-label="Search assets"><select id="sector-filter" aria-label="Filter by sector"><option value="all">All sectors</option></select></div></div><div class="table-scroll"><table><thead><tr><th>ASSET</th><th>SECTOR</th><th>FIRST DETECTED · UTC</th><th>AFTER EVENT</th><th>DURATION</th><th>PEAK |RETURN|</th></tr></thead><tbody id="asset-table"><tr><td colspan="6" class="empty-table">Load an event replay to see asset observations.</td></tr></tbody></table></div></section>
+      </section>
+
+      <section id="network-view" class="view data-view" hidden>
+        <div class="secondary-heading"><div><span class="eyebrow">SYSTEM MAP</span><h1>Network structure</h1><p>Persisted centrality and Diebold–Yilmaz spillover rankings from the research run.</p></div></div>
+        <div id="network-summary" class="research-summary"></div>
+        <section class="graph-panel network-snapshot" aria-label="Current network snapshot"><div class="graph-topline"><span class="graph-hint">LATEST HOURLY NETWORK <i></i> SNAPSHOT</span><div class="map-legend"><span><i class="dot dot-current"></i>Net transmitter</span><span><i class="dot dot-waiting"></i>Net receiver</span></div></div><div class="snapshot-wrap"><canvas id="snapshot-canvas" aria-label="Network nodes sized by PageRank and colored by net spillover"></canvas><div id="snapshot-empty" class="graph-empty">Loading network snapshot…</div></div><div class="graph-foot"><span><i class="edge-swatch"></i>Prior co-movement · undirected</span><span id="snapshot-count">—</span></div></section>
+        <section class="analysis-card table-card"><div class="card-heading table-heading"><div><span class="eyebrow">ASSET RANKINGS</span><h2>Centrality & net spillover</h2></div><input id="network-search" class="research-search" type="search" placeholder="Search assets" aria-label="Search network assets"></div><div class="table-scroll"><table><thead><tr><th>ASSET</th><th>DY NET SPILLOVER</th><th>DY RANK</th><th>PAGERANK</th><th>PAGE RANK</th><th>EIGENVECTOR</th><th>VECTOR RANK</th></tr></thead><tbody id="network-table"></tbody></table></div></section>
+        <p class="data-note">These rankings are saved analysis outputs. They do not update with the event replay selector.</p>
+      </section>
+
+      <section id="research-view" class="view data-view" hidden>
+        <div class="secondary-heading"><div><span class="eyebrow">EVENT STUDY</span><h1>Spillover & explanations</h1><p>Historical propagation summaries and sampled TempME explanation records.</p></div></div>
+        <div id="spillover-summary" class="research-summary"></div>
+        <section class="analysis-card table-card"><div class="card-heading"><div><span class="eyebrow">EVENTS</span><h2>Observed propagation</h2></div></div><div class="table-scroll"><table><thead><tr><th>EVENT</th><th>TRANSMITTERS</th><th>BLAST RADIUS</th><th>PROPAGATION DELAY</th><th>MEAN HALF-LIFE</th><th>SECTOR</th></tr></thead><tbody id="spillover-table"></tbody></table></div></section>
+        <section class="analysis-card table-card"><div class="card-heading"><div><span class="eyebrow">MODEL EXPLANATIONS</span><h2>TempME sampled records</h2></div></div><div class="table-scroll"><table><thead><tr><th>TIME STEP</th><th>TARGET</th><th>STATUS</th><th>FIDELITY +</th><th>FIDELITY −</th><th>SPARSITY</th><th>DY NET ρ</th><th>TOP EDGES</th></tr></thead><tbody id="explanation-table"></tbody></table></div></section>
+        <p class="data-note">Propagation and explanation results are descriptive report artifacts. Correlation or attribution edges do not prove causal transmission.</p>
+      </section>
+
+      <section id="security-view" class="view data-view" hidden>
+        <div class="secondary-heading"><div><span class="eyebrow">MODEL AUDIT</span><h1>Anomalies & robustness</h1><p>Offline evaluation reports for historical event anomalies and perturbation sensitivity.</p></div></div>
+        <div id="security-summary" class="research-summary"></div>
+        <section class="analysis-card table-card"><div class="card-heading"><div><span class="eyebrow">T-GAE</span><h2>Historical anomaly audit</h2></div></div><div class="table-scroll"><table><thead><tr><th>EVENT</th><th>DATE</th><th>EVENT ERROR</th><th>BASELINE</th><th>RATIO</th><th>Z SCORE</th><th>P VALUE</th><th>TOP ASSET</th><th>FLAG</th></tr></thead><tbody id="anomaly-table"></tbody></table></div></section>
+        <section class="analysis-card table-card"><div class="card-heading"><div><span class="eyebrow">PERTURBATION STUDY</span><h2>Robustness degradation</h2></div></div><div class="table-scroll"><table><thead><tr><th>PERTURBATION</th><th>ε</th><th>PREDICTION DRIFT MSE</th><th>EXPLANATION JACCARD</th></tr></thead><tbody id="robustness-table"></tbody></table></div></section>
+        <p class="data-note">This view summarizes saved evaluations; it is not a live threat detector. A statistical anomaly flag is not evidence of malicious activity.</p>
+      </section>
+
+      <section id="forecast-view" class="view data-view" hidden>
+        <div class="secondary-heading"><div><span class="eyebrow">HELD-OUT INFERENCE</span><h1>Contagion forecast</h1><p>Run a saved model at a timestamp from the hourly test split.</p></div></div>
+        <section class="analysis-card forecast-controls"><label>Model<select id="forecast-model"></select></label><label class="forecast-time-control">Held-out test timestamp <output id="forecast-time-label">—</output><input id="forecast-time" type="range" min="0" max="0" value="0" step="1"></label><label>Horizon<select id="forecast-horizon"></select></label><label>Alert threshold<input id="forecast-threshold" type="number" min="0.1" max="0.9" step="0.05" value="0.5"></label><button id="forecast-run" class="primary-button" type="button">Run forecast</button></section>
+        <div id="forecast-status" class="data-note">Checking for hourly test data and trained checkpoints…</div>
+        <div id="forecast-results" hidden><div id="forecast-summary" class="research-summary"></div><section class="analysis-card table-card"><div class="card-heading"><div><span class="eyebrow">ASSET SCORES</span><h2>Predicted shock probabilities</h2></div></div><div class="table-scroll"><table><thead><tr><th>RANK</th><th>ASSET</th><th>SECTOR</th><th>PROBABILITY</th><th>STATUS</th><th>DECAY ESTIMATE</th><th>EXPLANATION</th></tr></thead><tbody id="forecast-table"></tbody></table></div></section></div>
+        <p class="data-note">Offline model inference, not a live market feed or investment signal. Only held-out test timestamps are offered. Persisted network features and checkpoint provenance should be inspected before interpreting scores.</p>
+      </section>
+    </main>
+
+    <footer class="footer"><span>CRYPTOGRAPH <i>·</i> HISTORICAL MARKET REPLAY</span><span>LOCAL DATA · UTC · DESCRIPTIVE OBSERVATIONS</span></footer>
+  </div>
+
+  <dialog id="method-dialog" class="method-dialog"><form method="dialog"><button class="dialog-close" aria-label="Close methodology">×</button></form><span class="eyebrow">READING THE GRAPH</span><h2>Methodology & limits</h2><p id="method-copy">Shock order describes when labels were observed. Correlation edges summarize the 90 days before the event. These descriptive patterns do not establish causal transmission.</p><div class="method-rule"><span>Hourly</span><p>Uses the dataset’s saved shock labels and shows each completed candle at its close time.</p></div><div class="method-rule"><span>Daily</span><p>Uses an event-specific 95th-percentile absolute-return threshold calculated only from pre-event history. This is a visualization rule, not the calibrated hourly model label.</p></div><div class="method-rule"><span>Edges</span><p>Undirected absolute-return correlation over the prior 90 days. An edge is not evidence that one asset caused another to move.</p></div><a id="source-link" class="source-link" href="#" target="_blank" rel="noopener noreferrer">OPEN EVENT SOURCE ↗</a></dialog>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/app.js" defer></script>
+  <script src="/research.js" defer></script>
+</body>
+</html>

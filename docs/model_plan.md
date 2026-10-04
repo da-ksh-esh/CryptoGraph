@@ -96,6 +96,7 @@ An audit of the official TempME repository (Chen & Ying, NeurIPS 2023, *Towards 
 1. **Headless Prediction CLI (`cryptograph-predict`):**
    - Ingests latest Binance OHLCV stream.
    - Outputs: current contagion risk per coin, estimated propagation delay, and top-3 transmission source coins.
-2. **Interactive Security Dashboard:**
-   - Preservation of existing `dashboard/` components.
-   - Dynamic network visualization, TempME explanation subgraph viewer, and real-time anomaly alerts.
+2. **Standalone Research Interface (`web/`):**
+   - Local browser interface for historical event replay, network rankings, saved spillover and explanation reports, and offline anomaly/robustness summaries.
+   - Optional historical forecast inference when a held-out test split and compatible trained checkpoint are available.
+   - Live streaming and real-time anomaly alerting remain deferred; report summaries are not live monitoring or causal evidence.
