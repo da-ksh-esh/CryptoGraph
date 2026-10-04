@@ -1,0 +1,24 @@
+# DEV (validation only): TGN + context with stronger regularization: dropout 0.2 -> 0.4, weight decay 1e-4 -> 1e-3.
+# Why: tgn_1h_ctx_dev showed train/val lift 2.66/1.76 at k=1h vs 1.49/1.37 for the independent cascade,
+# i.e. a generalization gap beyond the regime shift (overfitting the train period).
+name: tgn_1h_ctx_reg_a_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {context_features: true, dropout: 0.4}
+training:
+  epochs: 100
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.001
+  patience: 10
+  loss: focal

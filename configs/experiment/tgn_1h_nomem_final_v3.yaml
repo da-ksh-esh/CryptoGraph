@@ -1,0 +1,28 @@
+# v3 of the no-memory ablation: identical to v2 plus min_epochs: 30. In v2, seeds 1-4 peaked noisily at epoch 1-2
+# and early-stopped before the slow climb seed 0 showed (best epoch 46). The full TGN (tgn_1h_final_v2) is
+# unaffected by this rule: all five of its seeds stopped after epoch 55 (best epochs 45-98).
+# FINAL ABLATION: TGN without memory / neighbour attention, 1h stream (same head, node features and message): settings frozen from tgn_1h_dev (validation only).
+# Scores the test period once per seed (evaluate_test: true). Run seeds 0-4:
+#   for s in 0 1 2 3 4; do cryptograph-train --config configs/experiment/tgn_1h_nomem_final_v3.yaml --seed $s; done
+name: tgn_1h_nomem_final_v3
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: true
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {use_memory: false}
+training:
+  epochs: 100            # v2: v1 (30 epochs, patience 4) stopped while validation AUPRC was still rising
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 10           # validation curves plateau for several epochs before improving again
+  min_epochs: 30
+  loss: focal

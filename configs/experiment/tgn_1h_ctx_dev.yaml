@@ -1,0 +1,24 @@
+# DEV (validation only): TGN with event context features known at t (market breadth now and over 24h; shock size,
+# shock flag, 24h shock count and time since last shock of source and receiver). use_memory: true.
+# Compare with tgn_1h_final_v2 / tgn_1h_nomem_final_v2 on validation; same training budget.
+name: tgn_1h_ctx_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {context_features: true, use_memory: true}
+training:
+  epochs: 100
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 10
+  loss: focal
