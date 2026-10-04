@@ -29,7 +29,8 @@ logger = get_logger(__name__)
 def daily_reference(coins: list[str], ids: dict[str, str], cfg: HourlyConfig) -> tuple[pd.DataFrame, dict[str, str]]:
     """Daily USD close per coin from the daily dataset, else a verified Yahoo snapshot, else Coin Metrics."""
     dcfg = load_config()
-    master = pd.read_parquet(dcfg.interim_dir / "master.parquet")["close"].unstack("coin")
+    master_p = dcfg.interim_dir / "master.parquet"
+    master = pd.read_parquet(master_p)["close"].unstack("coin") if master_p.exists() else pd.DataFrame()
     audit_v2 = pd.read_csv(cfg.reports_dir / "universe_audit_v2.csv").set_index("coin")
     audit_v1 = pd.read_csv(cfg.path(cfg.paths.daily_audit)).set_index("coin")
     ref, src = {}, {}

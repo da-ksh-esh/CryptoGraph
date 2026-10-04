@@ -1,0 +1,10 @@
+event_name,timestamp,trigger_step,shock_type,initial_transmitters,blast_radius_count,blast_radius_pct,propagation_delay_hours,mean_persistence_half_life_hours,control_shock_rate,event_shock_rate,abnormal_shock_rate,most_impacted_sector
+COVID Black Thursday,2020-03-12 00:00:00,1704,macro_systemic,None,15,1.0,10.0,2.0,0.058333333333333334,0.1824074074074074,0.12407407407407407,payments
+China bans financial institutions from crypto services,2021-05-19 00:00:00,12096,macro_systemic,None,23,1.0,12.0,2.391304347826087,0.042443064182194616,0.10386473429951691,0.061421670117322295,smart-contract platform
+Terra UST depeg / LUNA collapse,2022-05-09 00:00:00,20616,macro_systemic,None,24,1.0,16.0,3.1818181818181817,0.03422619047619048,0.20543981481481483,0.17121362433862436,smart-contract platform
+Celsius withdrawal freeze / Three Arrows,2022-06-13 00:00:00,21456,macro_systemic,BNB;DOGE;XLM;NEAR;LTC;AVAX;SHIB;AAVE;ETC,24,1.0,8.0,4.384615384615385,0.07118055555555555,0.13078703703703703,0.05960648148148148,smart-contract platform
+FTX collapse,2022-11-08 00:00:00,25008,macro_systemic,None,24,1.0,17.0,6.352941176470588,0.044642857142857144,0.15914351851851852,0.11450066137566137,smart-contract platform
+SVB failure / USDC depeg,2023-03-10 00:00:00,27936,macro_systemic,HBAR,24,1.0,31.0,2.25,0.04017857142857143,0.0798611111111111,0.03968253968253967,smart-contract platform
+US spot BTC ETF approval,2024-01-10 00:00:00,35280,macro_systemic,ETH;ETC,28,1.0,21.0,3.75,0.05293367346938776,0.05952380952380952,0.006590136054421762,smart-contract platform
+Yen carry-trade unwind,2024-08-05 00:00:00,40272,macro_systemic,BTC;ETH;BNB;XRP;SOL;TRX;DOGE;LINK;ADA;XLM;NEAR;BCH;UNI;LTC;AVAX;SUI;HBAR;QNT;SHIB;ENA;AAVE;DOT;PEPE;ICP;ETC;ARB;POL;JUP,30,1.0,7.0,2.0,0.07599206349206349,0.1300925925925926,0.05410052910052911,smart-contract platform
+Oct-10 liquidation cascade,2025-10-10 00:00:00,50616,macro_systemic,None,30,1.0,20.0,2.0,0.042261904761904764,0.10925925925925926,0.0669973544973545,smart-contract platform
