@@ -138,18 +138,20 @@ class ContagionTGN(nn.Module):
     """
 
     def __init__(self, num_nodes: int, msg_dim: int, node_feat_dim: int, memory_dim: int = 64, time_dim: int = 16,
-                 embedding_dim: int = 64, out_horizons: int = 5, dropout: float = 0.2, use_memory: bool = True):
+                 embedding_dim: int = 64, out_horizons: int = 5, dropout: float = 0.2, use_memory: bool = True,
+                 ctx_dim: int = 0):
         super().__init__()
         from torch_geometric.nn.models.tgn import TimeEncoder
 
         self.use_memory = use_memory          # False = ablation: the head sees only node features and the message
         self.embedding_dim = embedding_dim
+        self.ctx_dim = ctx_dim                # event context known at t (market breadth, shock state of i and j)
 
         self.memory = TGNMemory(num_nodes, msg_dim, memory_dim, time_dim,
                                 message_module=IdentityMessage(msg_dim, memory_dim, time_dim),
                                 aggregator_module=LastAggregator())
         self.gnn = GraphAttentionEmbedding(memory_dim, embedding_dim, msg_dim, TimeEncoder(time_dim), dropout=0.1)
-        d_in = 2 * embedding_dim + 2 * node_feat_dim + msg_dim
+        d_in = 2 * embedding_dim + 2 * node_feat_dim + msg_dim + ctx_dim
         self.head = nn.Sequential(nn.Linear(d_in, embedding_dim), nn.ReLU(), nn.Dropout(dropout),
                                   nn.Linear(embedding_dim, out_horizons))
 
@@ -159,5 +161,6 @@ class ContagionTGN(nn.Module):
         z, last_update = self.memory(n_id)
         return self.gnn(z, last_update, edge_index, t_nb, msg_nb)
 
-    def decode(self, z_src, z_dst, x_src, x_dst, msg) -> torch.Tensor:
-        return self.head(torch.cat([z_src, z_dst, x_src, x_dst, msg], dim=-1))
+    def decode(self, z_src, z_dst, x_src, x_dst, msg, ctx=None) -> torch.Tensor:
+        parts = [z_src, z_dst, x_src, x_dst, msg] + ([ctx] if self.ctx_dim else [])
+        return self.head(torch.cat(parts, dim=-1))

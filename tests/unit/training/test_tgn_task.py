@@ -59,3 +59,24 @@ def test_predictions_do_not_depend_on_later_events():
     d3 = _stream()
     d3.msg[cut - 1] += 5.0                                     # an event inside the window does change them
     assert not torch.allclose(base, _predict_first_batches(d3, 4))
+
+
+def test_context_tables_are_causal_and_correct():
+    from cryptograph.training.tgn_task import context_tables
+
+    T, N = 120, 4
+    g = torch.Generator().manual_seed(0)
+    z = torch.randn(T, N, generator=g) * 2
+    panel = {"shock_z": z, "shock_today": z.abs() > 2.5, "shock_today_mask": torch.ones(T, N, dtype=torch.bool),
+             "active": torch.ones(T, N, dtype=torch.bool)}
+    node, glob = context_tables(panel, [0, 1, 2, 3])
+    assert node.shape == (T, N, 4) and glob.shape == (T, 2)
+    sh = (z.abs() > 2.5).float().numpy()
+    assert np.allclose(glob[:, 0].numpy(), sh.mean(1))
+    assert np.allclose(node[50, :, 2].numpy(), sh[27:51].sum(0) / 24 * 10, atol=1e-6)
+    t0 = 60
+    p2 = {k: v.clone() for k, v in panel.items()}
+    p2["shock_z"][t0 + 1:] = 9.0
+    p2["shock_today"][t0 + 1:] = True
+    n2, g2 = context_tables(p2, [0, 1, 2, 3])
+    assert torch.equal(node[: t0 + 1], n2[: t0 + 1]) and torch.equal(glob[: t0 + 1], g2[: t0 + 1])

@@ -41,6 +41,35 @@ def node_feature_table(panel: dict, net: dict | None, gidx: list[int]) -> torch.
     return torch.cat([X, Xn], dim=-1).contiguous()
 
 
+CTX_NODE = ["abs_z_now", "shock_now", "shocks_last_24h", "log_hours_since_shock"]
+CTX_GLOBAL = ["breadth_now", "breadth_mean_24h"]
+
+
+def context_tables(panel: dict, gidx: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
+    """Event context known at bar t (no look-ahead): per coin (T, N, 4) and market-wide (T, 2).
+
+    abs_z_now = |shock z| at t (clipped at 10, /3); shock_now = shock at t; shocks_last_24h = shocks in the 24 bars up
+    to t (/24 * 10); log_hours_since_shock = log1p(bars since the last shock up to t) / log(169), capped at 168;
+    breadth_now = share of active graph coins shocked at t; breadth_mean_24h = its mean over the last 24 bars.
+    """
+    z = np.abs(np.nan_to_num(panel["shock_z"].numpy()[:, gidx]))
+    sh = (panel["shock_today"].numpy() & panel["shock_today_mask"].numpy())[:, gidx].astype(np.float32)
+    act = panel["active"].numpy()[:, gidx]
+    T, N = sh.shape
+    c24 = np.cumsum(np.vstack([np.zeros((1, N)), sh]), axis=0)
+    last24 = c24[1:] - c24[np.maximum(np.arange(T) + 1 - 24, 0)]
+    since = np.full((T, N), 168.0, np.float32)
+    last = np.full(N, -10**9)
+    for t in range(T):
+        last = np.where(sh[t] > 0, t, last)
+        since[t] = np.minimum(t - last, 168)
+    node = np.stack([np.minimum(z, 10) / 3, sh, last24 / 24 * 10, np.log1p(since) / np.log(169)], axis=-1)
+    breadth = sh.sum(1) / np.maximum(act.sum(1), 1)
+    cb = np.cumsum(np.r_[0.0, breadth])
+    b24 = (cb[1:] - cb[np.maximum(np.arange(T) + 1 - 24, 0)]) / np.minimum(np.arange(T) + 1, 24)
+    return torch.from_numpy(node.astype(np.float32)), torch.from_numpy(np.stack([breadth, b24], 1).astype(np.float32))
+
+
 def _batches(t: np.ndarray, start: int, end: int, size: int) -> list[tuple[int, int]]:
     """[start, end) cut into consecutive slices of about `size` events, never splitting one bar."""
     out, a = [], start
@@ -55,10 +84,11 @@ def _batches(t: np.ndarray, start: int, end: int, size: int) -> list[tuple[int, 
 
 class StreamRunner:
     def __init__(self, model, data, feats: torch.Tensor, weight_mask: dict[str, np.ndarray], device, batch_size: int,
-                 num_neighbors: int = 10):
+                 num_neighbors: int = 10, ctx: tuple[torch.Tensor, torch.Tensor] | None = None):
         from torch_geometric.nn.models.tgn import LastNeighborLoader
 
         self.model, self.d, self.feats, self.device = model, data, feats, device
+        self.ctx = ctx
         self.wmask = weight_mask
         self.bs = batch_size
         self.N = model.memory.num_nodes
@@ -86,7 +116,11 @@ class StreamRunner:
         tt = d.t[a:b]
         x_src = self.feats[tt, d.src[a:b]].to(dev)
         x_dst = self.feats[tt, d.dst[a:b]].to(dev)
-        logits = self.model.decode(z[self.assoc[src]], z[self.assoc[dst]], x_src, x_dst, msg)
+        ctx = None
+        if self.ctx is not None:
+            node, glob = self.ctx
+            ctx = torch.cat([node[tt, d.src[a:b]], node[tt, d.dst[a:b]], glob[tt]], dim=-1).to(dev)
+        logits = self.model.decode(z[self.assoc[src]], z[self.assoc[dst]], x_src, x_dst, msg, ctx)
         return logits, (a, b, src, dst, t, msg)
 
     def _commit(self, ev):
@@ -159,11 +193,13 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
     wmask = {s: panel["sample_mask"][s].numpy() for s in ("train", "val", "test")}
 
     mcfg = _read_yaml(cfg["model"]["config"]) | cfg["model"].get("overrides", {})
+    ctx = context_tables(panel, gidx) if mcfg.get("context_features", False) else None
+    ctx_dim = 2 * len(CTX_NODE) + len(CTX_GLOBAL) if ctx is not None else 0
     model = ContagionTGN(num_nodes=len(gidx), msg_dim=d.msg.shape[1], node_feat_dim=feats.shape[-1],
                          memory_dim=mcfg["memory_dim"], time_dim=mcfg["time_dim"],
                          embedding_dim=mcfg["embedding_dim"], out_horizons=len(k_hours),
-                         dropout=mcfg["dropout"], use_memory=mcfg.get("use_memory", True)).to(device)
-    runner = StreamRunner(model, d, feats, wmask, device, tr["batch_size"], tr.get("num_neighbors", 10))
+                         dropout=mcfg["dropout"], use_memory=mcfg.get("use_memory", True), ctx_dim=ctx_dim).to(device)
+    runner = StreamRunner(model, d, feats, wmask, device, tr["batch_size"], tr.get("num_neighbors", 10), ctx=ctx)
 
     a, b = bounds["train"]
     tw = wmask["train"][d.t.numpy()[a:b]]
@@ -179,10 +215,15 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
             return weighted_bce(lg, y, m, pos_weight=pw)
     tracker.log(f"TGN: {sum(p.numel() for p in model.parameters()):,} parameters; events train/val/test "
                 f"{b - a:,}/{bounds['val'][1] - bounds['val'][0]:,}/{bounds['test'][1] - bounds['test'][0]:,}; "
-                f"node features {feats.shape[-1]}; train positive rate per k {np.round(pos_rate, 3).tolist()}")
+                f"node features {feats.shape[-1]}; context features {ctx_dim}; "
+                f"train positive rate per k {np.round(pos_rate, 3).tolist()}")
 
     opt = torch.optim.Adam(model.parameters(), lr=tr["learning_rate"], weight_decay=tr.get("weight_decay", 0.0))
     stopper = EarlyStopping(patience=tr.get("patience", 5), mode="max")
+    # optional: halve the learning rate when validation AUPRC stalls (the v2 curves still crept up at epoch 98)
+    sched = (torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="max", factor=tr.get("lr_factor", 0.5),
+                                                        patience=tr.get("lr_patience", 3), min_lr=tr.get("min_lr", 1e-5))
+             if tr.get("lr_schedule") == "plateau" else None)
     sel_key = f"val_auprc_k{k_hours[0]}h"
     best, history = None, []
     mb, mbe = tr.get("max_train_batches"), tr.get("max_eval_batches")
@@ -192,21 +233,27 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
         vl, lg, y, m = runner.run(*bounds["val"], "val", loss_fn=loss_fn, max_batches=mbe)   # continues the stream
         vm = _metrics("val", lg, y, m, k_hours)
         history.append({"epoch": epoch, "train_loss": tl, "val_loss": vl, **vm})
-        tracker.log(f"epoch {epoch}: train loss {tl:.5f}, val loss {vl:.5f}, {sel_key} {vm.get(sel_key, float('nan')):.4f}")
+        tracker.log(f"epoch {epoch}: train loss {tl:.5f}, val loss {vl:.5f}, {sel_key} {vm.get(sel_key, float('nan')):.4f}, "
+                    f"lr {opt.param_groups[0]['lr']:.2e}")
+        if sched is not None and np.isfinite(vm.get(sel_key, float("nan"))):
+            sched.step(vm[sel_key])
         score = vm.get(sel_key, float("nan"))
         if best is None or stopper.improved(score):
             best = copy.deepcopy(model.state_dict())
-        if stopper.step(score if np.isfinite(score) else -np.inf):
+        # min_epochs: no early stop before this many epochs (slow, U-shaped validation curves, e.g. the
+        # no-memory ablation, peak noisily at epoch 1-2 and would otherwise stop before their real climb)
+        if stopper.step(score if np.isfinite(score) else -np.inf) and epoch + 1 >= tr.get("min_epochs", 0):
             tracker.log(f"early stop at epoch {epoch} (best {stopper.best_epoch})")
             break
 
     model.load_state_dict(best)
     tracker.save_checkpoint({"model_state": best, "model_config": mcfg, "k_hours": k_hours,
-                             "node_feat_dim": feats.shape[-1], "msg_names": ev["msg_names"]})
+                             "node_feat_dim": feats.shape[-1], "msg_names": ev["msg_names"], "ctx_dim": ctx_dim})
     runner.reset()                                 # final pass: replay train (no gradient), then val and test
-    runner.run(*bounds["train"], "train", max_batches=mb)
+    _, lg_tr, y_tr, m_tr = runner.run(*bounds["train"], "train", max_batches=mb)
     metrics: dict[str, Any] = {"best_epoch": stopper.best_epoch, "epochs_run": len(history),
-                               "evaluated_test": "test" in eval_splits(cfg)}
+                               "evaluated_test": "test" in eval_splits(cfg),
+                               **_metrics("train", lg_tr, y_tr, m_tr, k_hours)}   # train vs val = fit diagnostic
     for s in eval_splits(cfg):
         loss, lg, y, m = runner.run(*bounds[s], s, loss_fn=loss_fn, max_batches=mbe)
         metrics |= {f"{s}_loss": loss, **_metrics(s, lg, y, m, k_hours)}
