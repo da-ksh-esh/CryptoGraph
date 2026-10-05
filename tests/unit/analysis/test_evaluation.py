@@ -1,6 +1,17 @@
 import numpy as np
 
-from cryptograph.analysis.evaluation import block_bootstrap_auprc_diff
+from sklearn.metrics import average_precision_score
+
+from cryptograph.analysis.evaluation import block_bootstrap_auprc_diff, weighted_auprc
+
+
+def test_weighted_auprc_matches_sklearn_with_ties_and_weights():
+    rng = np.random.default_rng(1)
+    y = rng.uniform(size=3000) < 0.1
+    s = np.round(rng.normal(size=3000) + y, 1)                  # many tied scores
+    w = rng.integers(0, 4, size=3000).astype(float)
+    assert np.isclose(weighted_auprc(y, s), average_precision_score(y, s))
+    assert np.isclose(weighted_auprc(y, s, w), average_precision_score(y, s, sample_weight=w))
 
 
 def test_block_bootstrap_detects_a_better_score_and_not_an_equal_one():
