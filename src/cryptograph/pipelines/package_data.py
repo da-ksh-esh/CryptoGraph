@@ -51,7 +51,7 @@ def pack(version: str, out: Path | None = None, root: Path = PROJECT_ROOT) -> Pa
     return out
 
 
-CODE_PATHS = ("src", "configs", "pyproject.toml", "requirements.txt", "README.md")
+CODE_PATHS = ("src", "configs", "tests", "pyproject.toml", "requirements.txt", "README.md")
 
 
 def pack_code(out: Path | None = None, root: Path = PROJECT_ROOT) -> Path:

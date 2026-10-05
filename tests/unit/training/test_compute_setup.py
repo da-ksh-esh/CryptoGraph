@@ -121,3 +121,13 @@ def test_unpack_detects_tampering_and_unsafe_paths(tmp_path):
     with pytest.raises(SystemExit) as e:
         package_data.unpack(evil, tmp_path / "d2")
     assert "unsafe" in str(e.value) and not (tmp_path / "outside.txt").exists()
+
+
+def test_git_info_falls_back_to_code_package_commit(tmp_path, monkeypatch):
+    from cryptograph.training.tracking import git_info
+
+    monkeypatch.setenv("CRYPTOGRAPH_GIT_COMMIT", "abc1234")
+    monkeypatch.setenv("CRYPTOGRAPH_GIT_DIRTY", "false")
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "nonexistent"))      # make git fail
+    info = git_info(tmp_path)
+    assert info["commit"] == "abc1234" and info["dirty"] is False

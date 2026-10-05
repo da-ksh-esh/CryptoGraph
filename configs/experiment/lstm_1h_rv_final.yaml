@@ -1,0 +1,22 @@
+# FINAL LSTM (no graph) baseline, 1h: settings frozen from lstm_1h_rv_dev (validation only); scores test once.
+# Dev run: best epoch 2 of 6 (val MSE 2.9e-5 pooled). Epoch cap raised to 30 with patience 5 so no seed is cut off while still improving.
+name: lstm_1h_rv_final
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: true
+data:
+  version: v2
+  resolution: "1h"
+model:
+  name: lstm
+  config: configs/model/lstm.yaml
+target: y_rv
+loss: huber
+training:
+  epochs: 30
+  batch_size: 512
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 5
+  num_workers: 2           # Colab: 2 CPU cores feed the GPU

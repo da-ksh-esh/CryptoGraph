@@ -32,7 +32,10 @@ CORE_COLUMNS = ["run_id", "experiment", "seed", "commit", "dirty", "device", "st
 
 
 def git_info(root: Path = PROJECT_ROOT) -> dict:
-    """{"commit": short hash or "nogit", "dirty": bool} — dirty = uncommitted changes to tracked files."""
+    """{"commit": short hash or "nogit", "dirty": bool} — dirty = uncommitted changes to tracked files.
+
+    Without a git checkout (e.g. code unpacked from `cryptograph-package pack-code` on Colab), the commit and dirty
+    flag recorded in the code package are used when CRYPTOGRAPH_GIT_COMMIT / CRYPTOGRAPH_GIT_DIRTY are set."""
     try:
         commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True,
                                 check=True, timeout=10).stdout.strip()
@@ -40,6 +43,9 @@ def git_info(root: Path = PROJECT_ROOT) -> dict:
                                 capture_output=True, text=True, check=True, timeout=10).stdout.strip()
         return {"commit": commit or "nogit", "dirty": bool(status)}
     except (OSError, subprocess.SubprocessError):
+        if os.environ.get("CRYPTOGRAPH_GIT_COMMIT"):
+            return {"commit": os.environ["CRYPTOGRAPH_GIT_COMMIT"],
+                    "dirty": os.environ.get("CRYPTOGRAPH_GIT_DIRTY", "true").lower() == "true", "source": "code package"}
         return {"commit": "nogit", "dirty": True}
 
 
