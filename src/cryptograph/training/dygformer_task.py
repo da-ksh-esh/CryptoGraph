@@ -78,6 +78,7 @@ class HistoryRunner:
 
 def dygformer_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, Any]:
     from ..models.dygformer import DyGFormer
+    from .refit import is_refit, refit_and_score
     from .runner import _read_yaml, eval_splits
 
     data_cfg, tr = cfg["data"], cfg["training"]
@@ -106,6 +107,10 @@ def dygformer_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[
                 f"patch {model.P}; events train/val/test {bounds['train'][1] - bounds['train'][0]:,}/"
                 f"{bounds['val'][1] - bounds['val'][0]:,}/{bounds['test'][1] - bounds['test'][0]:,}")
     opt = torch.optim.Adam(model.parameters(), lr=tr["learning_rate"], weight_decay=tr.get("weight_decay", 0.0))
+    if is_refit(tr):                                  # final refit on train + val, fixed epochs, test once
+        return refit_and_score(runner, d, bounds, wmask, tr["epochs"], opt, loss_fn, k_hours, tracker,
+                               {"model_config": mcfg, "k_hours": k_hours, "node_feat_dim": feats.shape[-1],
+                                "msg_names": ev["msg_names"]})
     stopper = EarlyStopping(patience=tr.get("patience", 10), mode="max")
     sel_key = f"val_auprc_k{k_hours[0]}h"
     best, history = None, []

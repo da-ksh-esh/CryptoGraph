@@ -1,0 +1,24 @@
+# FINAL (refit): gbm_1h_final with the number of trees chosen on validation, refitted on train + validation
+# (2020-07 to 2023-12) before scoring the test once. Validation metrics in this run come from the train-only fit.
+name: gbm_1h_refit
+seed: 0
+device: cpu
+deterministic: true
+evaluate_test: true
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: gbm
+  context_features: true    # + shock state of both coins and market breadth at t (leakage-free)
+training:
+  refit_train_val: true
+  learning_rate: 0.05
+  max_leaf_nodes: 31
+  min_samples_leaf: 200
+  l2: 1.0
+  tree_step: 50
+  max_trees: 1000
+  patience: 4
+  batch_size: 200        # only to score the same events as the stream models

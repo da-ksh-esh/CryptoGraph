@@ -177,6 +177,7 @@ def _metrics(prefix: str, logits, y, m, k_hours) -> dict:
 
 def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, Any]:
     from ..models.tgn import ContagionTGN
+    from .refit import is_refit, refit_and_score
     from .runner import _read_yaml, eval_splits
 
     data_cfg, tr = cfg["data"], cfg["training"]
@@ -219,6 +220,10 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
                 f"train positive rate per k {np.round(pos_rate, 3).tolist()}")
 
     opt = torch.optim.Adam(model.parameters(), lr=tr["learning_rate"], weight_decay=tr.get("weight_decay", 0.0))
+    if is_refit(tr):                                  # final refit on train + val, fixed epochs, test once
+        return refit_and_score(runner, d, bounds, wmask, tr["epochs"], opt, loss_fn, k_hours, tracker,
+                               {"model_config": mcfg, "k_hours": k_hours, "node_feat_dim": feats.shape[-1],
+                                "msg_names": ev["msg_names"], "ctx_dim": ctx_dim})
     stopper = EarlyStopping(patience=tr.get("patience", 5), mode="max")
     # optional: halve the learning rate when validation AUPRC stalls (the v2 curves still crept up at epoch 98)
     sched = (torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="max", factor=tr.get("lr_factor", 0.5),

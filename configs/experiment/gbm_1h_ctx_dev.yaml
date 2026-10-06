@@ -1,0 +1,24 @@
+# DEV (validation only): gradient-boosting baseline + event context for T1 contagion on the 1h shock-event
+# stream. Same events, splits and sample masks as the TGN; inputs = node features of both coins at t + event message + coin ids
+# (what the TGN head sees, without graph memory or history). Number of trees chosen on validation per horizon.
+name: gbm_1h_ctx_dev
+seed: 0
+device: cpu
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: gbm
+  context_features: true    # + shock state of both coins and market breadth at t (leakage-free)
+training:
+  learning_rate: 0.05
+  max_leaf_nodes: 31
+  min_samples_leaf: 200
+  l2: 1.0
+  tree_step: 50
+  max_trees: 1000
+  patience: 4
+  batch_size: 200        # only to score the same events as the stream models

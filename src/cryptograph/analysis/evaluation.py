@@ -58,3 +58,18 @@ def block_bootstrap_auprc_diff(y: np.ndarray, score_a: np.ndarray, score_b: np.n
     lo, hi = np.quantile(diffs, [0.025, 0.975])
     return {"diff": float(obs), "ci_low": float(lo), "ci_high": float(hi), "p_one_sided": float(np.mean(diffs <= 0)),
             "n_blocks": int(len(blocks)), "n_events": int(len(y))}
+
+
+def precision_at_top(y: np.ndarray, score: np.ndarray, fracs=(0.01, 0.05, 0.10)) -> dict[str, float]:
+    """Share of real positives among the highest-scored `frac` of cases ("of the riskiest 1% of alerts, how many
+    came true"), and its lift over the positive rate. Ties at the cut-off are broken by order (stable sort)."""
+    y = np.asarray(y, bool)
+    order = np.argsort(-np.asarray(score, float), kind="stable")
+    base = float(y.mean()) if y.size else float("nan")
+    out = {"positive_rate": base}
+    for f in fracs:
+        n = max(1, int(round(f * y.size)))
+        p = float(y[order[:n]].mean())
+        out[f"precision_top{f:.0%}"] = p
+        out[f"lift_top{f:.0%}"] = p / base if base > 0 else float("nan")
+    return out

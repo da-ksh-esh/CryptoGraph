@@ -1,7 +1,8 @@
 """Run one experiment (config + seed + device) with local run tracking.
 
-Tasks wired up: the LSTM baseline, the TGN contagion model (training/tgn_task.py) and DyGFormer
-(training/dygformer_task.py). Other models (snapshot GNN) raise NotReadyError until they are built.
+Tasks wired up: the LSTM baseline, the TGN contagion model (training/tgn_task.py), DyGFormer
+(training/dygformer_task.py) and the gradient-boosting baseline (training/gbm_task.py). Other models (snapshot GNN)
+raise NotReadyError until they are built.
 """
 
 from __future__ import annotations
@@ -149,7 +150,13 @@ def _dygformer_task(cfg, seed, device, tracker):
     return dygformer_task(cfg, seed, device, tracker)
 
 
-TASKS = {"lstm": _lstm_task, "tgn": _tgn_task, "dygformer": _dygformer_task}
+def _gbm_task(cfg, seed, device, tracker):
+    from .gbm_task import gbm_task
+
+    return gbm_task(cfg, seed, device, tracker)
+
+
+TASKS = {"lstm": _lstm_task, "tgn": _tgn_task, "dygformer": _dygformer_task, "gbm": _gbm_task}
 
 
 def run_experiment(cfg: dict, seed: int | None = None, device: str | None = None,
