@@ -1,0 +1,31 @@
+# Explanations of the final TGN (tgn_1h_final_v2, seed 0): TempME ported to our TGN (explain/tempme.py) against
+# random / recency / attention / per-alert optimised-mask baselines, plus integrated gradients on the prediction head.
+# Explainer trained on validation-period events; everything reported is on the test period and three case windows.
+name: tempme_tgn_1h
+seed: 0
+device: cpu
+deterministic: true
+model:
+  name: tempme
+explain:
+  target_experiment: tgn_1h_final_v2
+  target_seed: 0
+  horizon_hours: 6          # explained horizon (its alerts: 76% precision in the top 1%)
+  top_frac: 0.01            # riskiest 1% of test events at that horizon
+  max_alerts: 4000
+  n_random_test: 4000
+  n_train: 10000            # validation events used to train the explainer
+  case_events: 1500
+  case_top: 5
+  mask_steps: 150
+  R2: 3                     # motif width: earlier events of the step-1 neighbour, then of the next node
+  R3: 2
+  tempme:                   # official defaults (lr 1e-3, beta 0.5, prior 0.3, temp 0.07, hid 64)
+    epochs: 30
+    batch: 256
+    lr: 0.001
+    beta: 0.5
+    prior_p: 0.3
+    temp: 0.07
+    hid: 64
+    patience: 5
