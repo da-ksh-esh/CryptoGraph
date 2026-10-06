@@ -41,6 +41,17 @@ def node_feature_table(panel: dict, net: dict | None, gidx: list[int]) -> torch.
     return torch.cat([X, Xn], dim=-1).contiguous()
 
 
+def with_futures(feats: torch.Tensor, base, data_cfg: dict, gidx_coins: list[str] | None = None) -> torch.Tensor:
+    """Append the Binance futures features (futures_features.pt: premium, funding, market premium, availability;
+    known at the end of bar t, standardised on train) when the experiment sets `data.futures_features: true`."""
+    if not data_cfg.get("futures_features", False):
+        return feats
+    fut = torch.load(base / "futures_features.pt", weights_only=False)
+    if gidx_coins is not None:
+        assert list(fut["graph_coins"]) == list(gidx_coins), "futures features must follow the graph coin order"
+    return torch.cat([feats, fut["X"].float()], dim=-1).contiguous()
+
+
 CTX_NODE = ["abs_z_now", "shock_now", "shocks_last_24h", "log_hours_since_shock"]
 CTX_GLOBAL = ["breadth_now", "breadth_mean_24h"]
 
@@ -187,6 +198,7 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
     net = torch.load(base / "network_features.pt", weights_only=False) if data_cfg.get("network_features", True) else None
     d, gidx, k_hours = ev["full"], ev["graph_index"], ev["label_k_hours"]
     feats = node_feature_table(panel, net, gidx)
+    feats = with_futures(feats, base, data_cfg, panel["graph_coins"])
     sid = panel["split_id"].numpy()[d.t.numpy()]
     bounds = {s: (int(np.searchsorted(sid, i, "left")), int(np.searchsorted(sid, i, "right")))
               for i, s in enumerate(("train", "val", "test"))}

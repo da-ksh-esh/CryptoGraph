@@ -21,7 +21,7 @@ import torch
 
 from ..data.config import PROJECT_ROOT
 from .metrics import auprc
-from .tgn_task import _batches, _metrics, context_tables, node_feature_table
+from .tgn_task import _batches, _metrics, context_tables, node_feature_table, with_futures
 
 
 def _scored_positions(t: np.ndarray, ym: np.ndarray, a: int, b: int, bs: int) -> np.ndarray:
@@ -42,6 +42,7 @@ def gbm_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
     net = torch.load(base / "network_features.pt", weights_only=False) if data_cfg.get("network_features", True) else None
     d, gidx, k_hours = ev["full"], ev["graph_index"], ev["label_k_hours"]
     feats = node_feature_table(panel, net, gidx)
+    feats = with_futures(feats, base, data_cfg, panel["graph_coins"])
     t_np, src, dst = d.t.numpy(), d.src.numpy(), d.dst.numpy()
     sid = panel["split_id"].numpy()[t_np]
     bounds = {s: (int(np.searchsorted(sid, i, "left")), int(np.searchsorted(sid, i, "right")))

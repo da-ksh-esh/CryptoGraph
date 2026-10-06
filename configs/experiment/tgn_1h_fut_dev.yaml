@@ -1,0 +1,24 @@
+# DEV (validation only): tgn_1h_final_v2 settings + Binance futures node features (premium, 24h mean premium, last
+# funding rate, market-wide premium, availability flag; known at the end of bar t, standardised on train).
+# Question: does leverage pressure raise validation AUPRC beyond seed noise (TGN v2: 0.153 +- 0.0045 at k = 1h)?
+name: tgn_1h_fut_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+  futures_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+training:
+  epochs: 100
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 10
+  loss: focal

@@ -16,7 +16,7 @@ import torch
 from ..data.config import PROJECT_ROOT
 from .early_stopping import EarlyStopping
 from .losses import focal_loss
-from .tgn_task import _batches, _metrics, node_feature_table
+from .tgn_task import _batches, _metrics, node_feature_table, with_futures
 
 
 class HistoryRunner:
@@ -88,6 +88,7 @@ def dygformer_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[
     net = torch.load(base / "network_features.pt", weights_only=False) if data_cfg.get("network_features", True) else None
     d, gidx, k_hours = ev["full"], ev["graph_index"], ev["label_k_hours"]
     feats = node_feature_table(panel, net, gidx)
+    feats = with_futures(feats, base, data_cfg, panel["graph_coins"])
     sid = panel["split_id"].numpy()[d.t.numpy()]
     bounds = {s: (int(np.searchsorted(sid, i, "left")), int(np.searchsorted(sid, i, "right")))
               for i, s in enumerate(("train", "val", "test"))}

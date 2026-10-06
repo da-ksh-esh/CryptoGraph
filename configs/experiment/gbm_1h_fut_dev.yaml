@@ -1,0 +1,24 @@
+# DEV (validation only): gbm_1h_final (with event context) + Binance futures node features, same as tgn_1h_fut_dev.
+# Compare with gbm_1h_ctx_dev (validation AUPRC 0.155 / 0.270 / 0.341 / 0.480 / 0.648).
+name: gbm_1h_fut_dev
+seed: 0
+device: cpu
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+  futures_features: true
+model:
+  name: gbm
+  context_features: true
+training:
+  learning_rate: 0.05
+  max_leaf_nodes: 31
+  min_samples_leaf: 200
+  l2: 1.0
+  tree_step: 50
+  max_trees: 1000
+  patience: 4
+  batch_size: 200

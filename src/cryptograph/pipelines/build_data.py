@@ -15,6 +15,7 @@ Hourly (Binance), configs/data/hourly.yaml (selected because it declares `resolu
     cryptograph-data --config configs/data/hourly.yaml --stage build    # features, labels, graphs, datasets (1h, 2h)
     cryptograph-data --config configs/data/hourly.yaml --stage network  # network features, rankings, cascade baseline
     cryptograph-data --config configs/data/hourly.yaml --stage baselines  # naive T2/T3 baselines on the LSTM samples
+    cryptograph-data --config configs/data/hourly.yaml --stage futures    # Binance futures premium + funding features
 
 Add --refresh to re-download raw snapshots. Each stage reads only artifacts written by
 earlier stages, so stages can be re-run independently.
@@ -71,6 +72,7 @@ HOURLY_STAGES: dict[str, Callable] = {
     "build": _stage("hourly_build"),
     "network": _stage("network_build"),
     "baselines": _stage("hourly_baselines"),
+    "futures": _stage("futures_build"),
 }
 HOURLY_ALL_ORDER = ["fetch", "clean", "build", "network", "baselines"]
 
