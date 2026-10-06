@@ -1,8 +1,13 @@
-# DyGFormer (Yu et al., NeurIPS 2023) via a DyGLib adapter (official code, MIT, vendored as a pinned submodule).
-# Feasibility: docs/model_plan.md section 4 — exporter to ml_<name>.csv/.npy, our fixed-date splits (no new-node
-# masking), DyGLib backbone embeddings + our 5-horizon edge head. Not implemented yet.
+# DyGFormer (Yu et al., NeurIPS 2023), compact re-implementation in cryptograph.models.dygformer (no external library):
+# each coin's last `max_input_sequence_length` interactions, neighbour co-occurrence encoding, patches of `patch_size`,
+# a Transformer over both coins' patches, and the same 5-horizon head as the TGN.
+# Sized for 30 coins: history 16 in patches of 2 (8 tokens per coin), width 32, no dropout inside the encoder
+# (profiling: its random masks cost ~40% of CPU time); dropout 0.2 in the head.
 model_name: "DyGFormer"
-backend: "dyglib"
-status: "feasible with adapter (3-5 days); not implemented"
+max_input_sequence_length: 16
 patch_size: 2
-max_input_sequence_length: 64
+d_model: 32
+num_layers: 2
+num_heads: 2
+dropout: 0.2
+encoder_dropout: 0.0
