@@ -1,0 +1,21 @@
+# DEV (validation only): DyGFormer on the 1h shock-event stream, same events, splits, loss and training budget as
+# the final TGN (tgn_1h_final_v2: 100 epochs, patience 10). Compare with TGN validation AUPRC 0.153 (k=1h).
+name: dygformer_1h_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: dygformer
+  config: configs/model/dygformer.yaml
+training:
+  epochs: 100
+  batch_size: 200
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 10
+  loss: focal

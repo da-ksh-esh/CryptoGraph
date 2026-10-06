@@ -1,0 +1,22 @@
+# FINAL: DyGFormer on the 1h shock-event stream, settings of dygformer_1h_min30_dev (validation AUPRC 0.142 at k=1h).
+# Same events, splits, loss and training budget as the final TGN (tgn_1h_final_v2). Test is scored once per seed.
+name: dygformer_1h_final
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: true
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: dygformer
+  config: configs/model/dygformer.yaml
+training:
+  epochs: 100
+  batch_size: 200
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  patience: 10
+  min_epochs: 30         # same rule as the no-memory ablation (v3): its curve dips after an early peak
+  loss: focal
