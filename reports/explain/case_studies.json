@@ -1,0 +1,737 @@
+[
+ {
+  "case": "LUNA collapse (May 2022, train period)",
+  "time": "2022-05-12 05:00:00",
+  "event": "QNT -> ADA",
+  "p": 0.5749337077140808,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "receiver",
+    "time": "2022-05-12 03:00:00",
+    "event": "ADA -> TRX",
+    "importance": 0.8546801805496216
+   },
+   {
+    "side": "source",
+    "time": "2022-05-12 03:00:00",
+    "event": "QNT -> DOGE",
+    "importance": 0.8429489135742188
+   },
+   {
+    "side": "source",
+    "time": "2022-05-12 03:00:00",
+    "event": "QNT -> ZEC",
+    "importance": 0.840699315071106
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.3801076114177704
+   },
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.27363359928131104
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.18808405101299286
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.16825664043426514
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.10627548396587372
+   }
+  ]
+ },
+ {
+  "case": "LUNA collapse (May 2022, train period)",
+  "time": "2022-05-12 05:00:00",
+  "event": "POL -> BNB",
+  "p": 0.5699124336242676,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "receiver",
+    "time": "2022-05-12 04:00:00",
+    "event": "BNB -> TRX",
+    "importance": 0.8534334897994995
+   },
+   {
+    "side": "receiver",
+    "time": "2022-05-12 03:00:00",
+    "event": "QNT -> BNB",
+    "importance": 0.8251401782035828
+   },
+   {
+    "side": "source",
+    "time": "2022-05-12 04:00:00",
+    "event": "ETC -> POL",
+    "importance": 0.791243314743042
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.3376372754573822
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.2604476809501648
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.17047137022018433
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.12827074527740479
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.09948384016752243
+   }
+  ]
+ },
+ {
+  "case": "LUNA collapse (May 2022, train period)",
+  "time": "2022-05-12 04:00:00",
+  "event": "XRP -> LTC",
+  "p": 0.569794237613678,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "receiver",
+    "time": "2022-05-12 02:00:00",
+    "event": "LTC -> TRX",
+    "importance": 0.8577573895454407
+   },
+   {
+    "side": "receiver",
+    "time": "2022-05-12 02:00:00",
+    "event": "LTC -> SOL",
+    "importance": 0.8208430409431458
+   },
+   {
+    "side": "source",
+    "time": "2022-05-12 02:00:00",
+    "event": "ADA -> XRP",
+    "importance": 0.8208096623420715
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.306328684091568
+   },
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.2802051305770874
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.15836887061595917
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.1391276717185974
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.13133376836776733
+   }
+  ]
+ },
+ {
+  "case": "LUNA collapse (May 2022, train period)",
+  "time": "2022-05-12 04:00:00",
+  "event": "LTC -> XRP",
+  "p": 0.5675085783004761,
+  "label": 0,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2022-05-12 02:00:00",
+    "event": "LTC -> TRX",
+    "importance": 0.8577573895454407
+   },
+   {
+    "side": "source",
+    "time": "2022-05-12 02:00:00",
+    "event": "LTC -> SOL",
+    "importance": 0.8208430409431458
+   },
+   {
+    "side": "receiver",
+    "time": "2022-05-12 02:00:00",
+    "event": "ADA -> XRP",
+    "importance": 0.8208096623420715
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.3943348228931427
+   },
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.2790077328681946
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.17358911037445068
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.16611380875110626
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.1080130934715271
+   }
+  ]
+ },
+ {
+  "case": "LUNA collapse (May 2022, train period)",
+  "time": "2022-05-12 04:00:00",
+  "event": "DOGE -> LTC",
+  "p": 0.5656067132949829,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "receiver",
+    "time": "2022-05-12 02:00:00",
+    "event": "LTC -> TRX",
+    "importance": 0.8577573895454407
+   },
+   {
+    "side": "source",
+    "time": "2022-05-11 22:00:00",
+    "event": "QNT -> DOGE",
+    "importance": 0.8558905124664307
+   },
+   {
+    "side": "receiver",
+    "time": "2022-05-12 02:00:00",
+    "event": "LTC -> XRP",
+    "importance": 0.8237612843513489
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.30460163950920105
+   },
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.27301743626594543
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.1580376923084259
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.12810641527175903
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.09855790436267853
+   }
+  ]
+ },
+ {
+  "case": "FTX collapse (Nov 2022, validation period)",
+  "time": "2022-11-09 15:00:00",
+  "event": "DOGE -> ETH",
+  "p": 0.5988575220108032,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2022-11-09 09:00:00",
+    "event": "SHIB -> DOGE",
+    "importance": 0.8611953854560852
+   },
+   {
+    "side": "source",
+    "time": "2022-11-09 09:00:00",
+    "event": "QNT -> DOGE",
+    "importance": 0.8592999577522278
+   },
+   {
+    "side": "source",
+    "time": "2022-11-09 09:00:00",
+    "event": "DOGE -> TRX",
+    "importance": 0.8539223670959473
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.38109731674194336
+   },
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.22348427772521973
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.17375051975250244
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.14101223647594452
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.12754401564598083
+   }
+  ]
+ },
+ {
+  "case": "FTX collapse (Nov 2022, validation period)",
+  "time": "2022-11-08 18:00:00",
+  "event": "DOGE -> ETH",
+  "p": 0.5959981083869934,
+  "label": 0,
+  "top_recent_events": [
+   {
+    "side": "receiver",
+    "time": "2022-11-08 17:00:00",
+    "event": "QNT -> ETH",
+    "importance": 0.8320724964141846
+   },
+   {
+    "side": "source",
+    "time": "2022-11-08 17:00:00",
+    "event": "XRP -> DOGE",
+    "importance": 0.8315298557281494
+   },
+   {
+    "side": "source",
+    "time": "2022-11-08 17:00:00",
+    "event": "AAVE -> DOGE",
+    "importance": 0.825394332408905
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.3543112277984619
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.30845898389816284
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.1683267056941986
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.11020191758871078
+   },
+   {
+    "input": "receiver coin: log_volume_ds",
+    "mean_attribution": -0.1084379032254219
+   }
+  ]
+ },
+ {
+  "case": "FTX collapse (Nov 2022, validation period)",
+  "time": "2022-11-09 15:00:00",
+  "event": "DOGE -> SOL",
+  "p": 0.5939233303070068,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2022-11-09 09:00:00",
+    "event": "SHIB -> DOGE",
+    "importance": 0.8611953854560852
+   },
+   {
+    "side": "source",
+    "time": "2022-11-09 09:00:00",
+    "event": "QNT -> DOGE",
+    "importance": 0.8592999577522278
+   },
+   {
+    "side": "receiver",
+    "time": "2022-11-09 09:00:00",
+    "event": "XRP -> SOL",
+    "importance": 0.8568500280380249
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.41070324182510376
+   },
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.21891918778419495
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.17838886380195618
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.17722277343273163
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.1271098256111145
+   }
+  ]
+ },
+ {
+  "case": "FTX collapse (Nov 2022, validation period)",
+  "time": "2022-11-08 18:00:00",
+  "event": "LINK -> BNB",
+  "p": 0.5889890193939209,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "receiver",
+    "time": "2022-11-08 17:00:00",
+    "event": "QNT -> BNB",
+    "importance": 0.8652471899986267
+   },
+   {
+    "side": "receiver",
+    "time": "2022-11-08 17:00:00",
+    "event": "DOGE -> BNB",
+    "importance": 0.8517991900444031
+   },
+   {
+    "side": "receiver",
+    "time": "2022-11-08 17:00:00",
+    "event": "SHIB -> BNB",
+    "importance": 0.8389686346054077
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.3910258710384369
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.37123504281044006
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.16661299765110016
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.1286972165107727
+   },
+   {
+    "input": "source coin: log_volume_ds",
+    "mean_attribution": -0.10907222330570221
+   }
+  ]
+ },
+ {
+  "case": "FTX collapse (Nov 2022, validation period)",
+  "time": "2022-11-08 18:00:00",
+  "event": "ETH -> BNB",
+  "p": 0.5881297588348389,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "receiver",
+    "time": "2022-11-08 17:00:00",
+    "event": "QNT -> BNB",
+    "importance": 0.8652471899986267
+   },
+   {
+    "side": "receiver",
+    "time": "2022-11-08 17:00:00",
+    "event": "DOGE -> BNB",
+    "importance": 0.8517991900444031
+   },
+   {
+    "side": "receiver",
+    "time": "2022-11-08 17:00:00",
+    "event": "SHIB -> BNB",
+    "importance": 0.8389686346054077
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.3929436504840851
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.3655746579170227
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.16465753316879272
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.12849366664886475
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.11538860946893692
+   }
+  ]
+ },
+ {
+  "case": "10-Oct-2025 liquidation cascade (test period)",
+  "time": "2025-10-10 21:00:00",
+  "event": "WLD -> JUP",
+  "p": 0.6652083992958069,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "AVAX -> WLD",
+    "importance": 0.8381913304328918
+   },
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "WLD -> ENA",
+    "importance": 0.8235462307929993
+   },
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "ENA -> WLD",
+    "importance": 0.823512852191925
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.448991984128952
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.27452540397644043
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.16488195955753326
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.13922086358070374
+   },
+   {
+    "input": "event: src_vol_z",
+    "mean_attribution": 0.12703555822372437
+   }
+  ]
+ },
+ {
+  "case": "10-Oct-2025 liquidation cascade (test period)",
+  "time": "2025-10-10 21:00:00",
+  "event": "WLD -> UNI",
+  "p": 0.6629804372787476,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "AVAX -> WLD",
+    "importance": 0.8381913304328918
+   },
+   {
+    "side": "receiver",
+    "time": "2025-10-10 20:00:00",
+    "event": "UNI -> QNT",
+    "importance": 0.8268191814422607
+   },
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "WLD -> ENA",
+    "importance": 0.8235462307929993
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.44804874062538147
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.3636208474636078
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.16668929159641266
+   },
+   {
+    "input": "receiver coin: log_volume_ds",
+    "mean_attribution": -0.14387057721614838
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.14212293922901154
+   }
+  ]
+ },
+ {
+  "case": "10-Oct-2025 liquidation cascade (test period)",
+  "time": "2025-10-10 21:00:00",
+  "event": "WLD -> ICP",
+  "p": 0.6551521420478821,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "AVAX -> WLD",
+    "importance": 0.8381913304328918
+   },
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "WLD -> ENA",
+    "importance": 0.8235462307929993
+   },
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "ENA -> WLD",
+    "importance": 0.823512852191925
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.4558206796646118
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.35817989706993103
+   },
+   {
+    "input": "receiver coin: log_volume_ds",
+    "mean_attribution": -0.19894647598266602
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.16488316655158997
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.13975636661052704
+   }
+  ]
+ },
+ {
+  "case": "10-Oct-2025 liquidation cascade (test period)",
+  "time": "2025-10-10 21:00:00",
+  "event": "WLD -> ETC",
+  "p": 0.6501926779747009,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "AVAX -> WLD",
+    "importance": 0.8381913304328918
+   },
+   {
+    "side": "receiver",
+    "time": "2025-10-10 20:00:00",
+    "event": "ETC -> ZEC",
+    "importance": 0.8346025943756104
+   },
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "WLD -> ENA",
+    "importance": 0.8235462307929993
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.4616624414920807
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.3705725371837616
+   },
+   {
+    "input": "receiver coin: rv_72h",
+    "mean_attribution": -0.18151475489139557
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.16622179746627808
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.14111091196537018
+   }
+  ]
+ },
+ {
+  "case": "10-Oct-2025 liquidation cascade (test period)",
+  "time": "2025-10-10 21:00:00",
+  "event": "LTC -> SUI",
+  "p": 0.6455081105232239,
+  "label": 1,
+  "top_recent_events": [
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "LTC -> QNT",
+    "importance": 0.8486940860748291
+   },
+   {
+    "side": "receiver",
+    "time": "2025-10-10 20:00:00",
+    "event": "SUI -> ZEC",
+    "importance": 0.8305978178977966
+   },
+   {
+    "side": "source",
+    "time": "2025-10-10 20:00:00",
+    "event": "LTC -> BCH",
+    "importance": 0.8124892711639404
+   }
+  ],
+  "top_features": [
+   {
+    "input": "receiver coin: volume_rel_168h",
+    "mean_attribution": 0.44831061363220215
+   },
+   {
+    "input": "receiver coin: rv_24h",
+    "mean_attribution": 0.29348212480545044
+   },
+   {
+    "input": "receiver coin: log_return",
+    "mean_attribution": 0.1646791696548462
+   },
+   {
+    "input": "source coin: rv_24h",
+    "mean_attribution": 0.13895513117313385
+   },
+   {
+    "input": "source coin: log_volume_ds",
+    "mean_attribution": -0.13665756583213806
+   }
+  ]
+ }
+]

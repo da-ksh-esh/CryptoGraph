@@ -168,8 +168,8 @@ notebook 04 in the meantime.
 |---|---|---|
 | `01_market_dynamics_and_spillover_baseline` | data audit, EDA (daily Part I, hourly Part II) | done |
 | `02_network_analysis` | networks, centrality, communities, MST, cascade baseline | done |
-| `03_models_vs_baselines` | T1–T3 results table, per-k AUPRC, seeds, bootstrap tests | skeleton |
-| `04_tempme_explanations` | fidelity / sparsity curves, ranking agreement, case studies | skeleton |
+| `03_models_vs_baselines` | T1–T3 results table, per-k AUPRC, seeds, bootstrap tests | done |
+| `04_tempme_explanations` | fidelity / sparsity curves, ranking agreement, case studies | done (TempME ported, route B) |
 | `05_persistence_by_shock_type` | event study in hours, persistence by shock type (crash / squeeze / idiosyncratic) | skeleton (event-study cells moved in) |
 | `06_robustness_tgae` | T-GAE anomaly scores, perturbation and attack results | skeleton |
 

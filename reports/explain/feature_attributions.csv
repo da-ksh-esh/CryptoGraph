@@ -1,0 +1,176 @@
+events,input,group,mean_attribution,mean_abs_attribution,share_of_abs
+top alerts,receiver coin: volume_rel_168h,receiver coin,0.376613050699234,0.376613050699234,0.25266125866509825
+top alerts,receiver coin: rv_24h,receiver coin,0.1818288415670395,0.18262606859207153,0.12251973814996957
+top alerts,receiver coin: log_return,receiver coin,0.1350029557943344,0.13538509607315063,0.09082682799979523
+top alerts,receiver coin: log_volume_ds,receiver coin,-0.07423971593379974,0.07460740953683853,0.05005243967069572
+top alerts,source coin: log_volume_ds,source coin,-0.06933178752660751,0.06983589380979538,0.0468513366629887
+top alerts,receiver coin: rv_72h,receiver coin,-0.06257830560207367,0.06692476570606232,0.04489832603454944
+top alerts,source coin: rv_24h,source coin,0.06238409876823425,0.06336834281682968,0.04251240159069238
+top alerts,event: src_vol_z,event,0.05729825422167778,0.05821570008993149,0.03905560901695508
+top alerts,source coin: memory + recent events,source coin,0.05064834654331207,0.056511927396059036,0.037912586085291404
+top alerts,source coin: log_return,source coin,0.05318193882703781,0.05413172021508217,0.036315758410008336
+top alerts,event: src_return_scaled,event,0.05049455165863037,0.0515199638903141,0.034563589601420176
+top alerts,receiver coin: memory + recent events,receiver coin,0.038745563477277756,0.04240131378173828,0.02844609152353403
+top alerts,event: src_shock,event,-0.030207805335521698,0.030207805335521698,0.02026573987123571
+top alerts,source coin: network: dy_net,source coin,0.013514099642634392,0.025884611532092094,0.01736540599857871
+top alerts,receiver coin: network: dy_pagerank,receiver coin,-0.022544750943779945,0.02254483476281166,0.015124824583197168
+top alerts,receiver coin: log_hours_listed,receiver coin,0.019289100542664528,0.02221015840768814,0.01490029771410976
+top alerts,source coin: network: eigenvector,source coin,-0.01788267493247986,0.01788267493247986,0.011997085996755533
+top alerts,event: contemp_corr,event,0.01636582985520363,0.01690780185163021,0.011343065486343373
+top alerts,source coin: log_hours_listed,source coin,0.013389892876148224,0.01672242023050785,0.011218697109731916
+top alerts,source coin: network: mst_degree,source coin,-0.013956037349998951,0.013956037349998951,0.009362792808908438
+top alerts,source coin: network: dy_pagerank,source coin,-0.01359637826681137,0.01359637826681137,0.00912150558723677
+top alerts,receiver coin: network: dy_net,receiver coin,0.0034979768097400665,0.011769644916057587,0.007895991105489412
+top alerts,receiver coin: network: strength,receiver coin,0.009535232558846474,0.011675044894218445,0.007832526070108278
+top alerts,source coin: volume_rel_168h,source coin,0.0045508635230362415,0.011405695229768753,0.007651825414317065
+top alerts,receiver coin: network: mst_degree,receiver coin,-0.010417012497782707,0.010545297525823116,0.007074603869742728
+top alerts,source coin: rv_72h,source coin,-0.008512776345014572,0.009088984690606594,0.00609759621354816
+top alerts,source coin: network: strength,source coin,0.0030133058317005634,0.007046696729958057,0.004727470972970337
+top alerts,receiver coin: network: eigenvector,receiver coin,-0.0010775038972496986,0.004908388014882803,0.0032929275593462444
+top alerts,source coin: network: community_size_frac,source coin,-0.003503651125356555,0.003503651125356555,0.002350521049688562
+top alerts,receiver coin: network: community_size_frac,receiver coin,-0.0027486642356961966,0.0027486642356961966,0.001844017258959406
+top alerts,receiver coin: network: shock_pagerank,receiver coin,0.00016264258010778576,0.002171154133975506,0.001456578669346942
+top alerts,source coin: network: shock_pagerank,source coin,-0.0010785474441945553,0.0017802162328734994,0.0011943071894581396
+top alerts,event: lag1_corr,event,0.0009112082188948989,0.0010638699168339372,0.000713726493928275
+top alerts,receiver coin: network: shock_out_lift,receiver coin,-0.0004146797291468829,0.0004146797291468829,0.00027819934044937374
+top alerts,source coin: network: shock_out_lift,source coin,-0.0004089124849997461,0.0004089124849997461,0.00027433022555136614
+random test events,receiver coin: volume_rel_168h,receiver coin,0.16815365850925446,0.19670318067073822,0.1902053692797093
+random test events,receiver coin: rv_72h,receiver coin,0.03504078835248947,0.09189935773611069,0.08886359241960823
+random test events,receiver coin: rv_24h,receiver coin,-0.0037673949263989925,0.08868827670812607,0.08575858491219408
+random test events,event: src_shock,event,-0.052811190485954285,0.052811190485954285,0.05106664749512261
+random test events,source coin: network: strength,source coin,-0.05185430496931076,0.052039239555597305,0.05032019687203817
+random test events,receiver coin: network: eigenvector,receiver coin,0.04462943226099014,0.044724296778440475,0.04324689288455448
+random test events,source coin: memory + recent events,source coin,-0.02168205939233303,0.0421760231256485,0.04078279784805182
+random test events,receiver coin: memory + recent events,receiver coin,-0.02189965918660164,0.041884101927280426,0.04050051985362977
+random test events,receiver coin: log_volume_ds,receiver coin,-0.01472978200763464,0.03711217641830444,0.03588622815526953
+random test events,receiver coin: network: dy_pagerank,receiver coin,-0.03375525772571564,0.033756475895643234,0.032641378453661024
+random test events,receiver coin: network: strength,receiver coin,-0.03159967437386513,0.032278407365083694,0.031212135826688005
+random test events,source coin: log_return,source coin,-0.00880890991538763,0.029429983347654343,0.028457805468363812
+random test events,event: src_return_scaled,event,-0.008038205094635487,0.028304003179073334,0.027369020462263298
+random test events,source coin: network: dy_pagerank,source coin,-0.02404589205980301,0.02404589205980301,0.023251570021893618
+random test events,source coin: log_volume_ds,source coin,-0.016194460913538933,0.023580696433782578,0.022801741475487785
+random test events,receiver coin: log_return,receiver coin,0.010586254298686981,0.022015098482370377,0.021287860838293732
+random test events,source coin: rv_24h,source coin,0.004283898044377565,0.019713347777724266,0.0190621452129837
+random test events,source coin: network: eigenvector,source coin,-0.019704192876815796,0.019708389416337013,0.01905735064405264
+random test events,event: src_vol_z,event,0.004068249370902777,0.019578400999307632,0.01893165621054704
+random test events,source coin: network: dy_net,source coin,0.0010753483511507511,0.018940605223178864,0.018314929115896363
+random test events,source coin: volume_rel_168h,source coin,0.010988002642989159,0.017382729798555374,0.01680851590273994
+random test events,event: contemp_corr,event,-0.01099252700805664,0.01411614939570427,0.01364984236381946
+random test events,receiver coin: network: shock_pagerank,receiver coin,0.012327184900641441,0.012496152892708778,0.012083360154261914
+random test events,source coin: rv_72h,source coin,0.0011510291369631886,0.012005789205431938,0.011609194937909994
+random test events,receiver coin: log_hours_listed,receiver coin,0.0052563794888556,0.01191980391740799,0.011526050052273428
+random test events,receiver coin: network: mst_degree,receiver coin,0.004367266781628132,0.009937559254467487,0.009609286038434485
+random test events,source coin: log_hours_listed,source coin,0.00481342663988471,0.008434825576841831,0.008156193042646627
+random test events,receiver coin: network: dy_net,receiver coin,-0.002259823027998209,0.008012818172574043,0.0077481260561656756
+random test events,source coin: network: mst_degree,source coin,0.0006383489235304296,0.006813076790422201,0.0065880164338697365
+random test events,source coin: network: shock_pagerank,source coin,0.0046990783885121346,0.005207492504268885,0.005035470353953093
+random test events,source coin: network: community_size_frac,source coin,-0.004008949734270573,0.004008949734270573,0.0038765197493532983
+random test events,event: lag1_corr,event,-0.00023237669665832072,0.0017395478207617998,0.0016820843186138293
+random test events,receiver coin: network: community_size_frac,receiver coin,-0.0011839570943266153,0.0013074041344225407,0.0012642158878046613
+random test events,source coin: network: shock_out_lift,source coin,-0.0007233822252601385,0.0007233822252601385,0.0006994863164734312
+random test events,receiver coin: network: shock_out_lift,receiver coin,-0.0006672568270005286,0.0006672568270005286,0.0006452149413714222
+"case: LUNA collapse (May 2022, train period)",receiver coin: rv_24h,receiver coin,0.2981983721256256,0.29846957325935364,0.17744913120640363
+"case: LUNA collapse (May 2022, train period)",receiver coin: volume_rel_168h,receiver coin,0.2802530825138092,0.28368037939071655,0.16865651099197285
+"case: LUNA collapse (May 2022, train period)",receiver coin: rv_72h,receiver coin,-0.2147098183631897,0.217851921916008,0.12951951468114822
+"case: LUNA collapse (May 2022, train period)",receiver coin: log_return,receiver coin,0.04949687048792839,0.07213795185089111,0.04288818033664959
+"case: LUNA collapse (May 2022, train period)",source coin: rv_24h,source coin,0.06286600977182388,0.062956303358078,0.03742941437166286
+"case: LUNA collapse (May 2022, train period)",source coin: log_return,source coin,0.0047434475272893906,0.06163735315203667,0.03664525883577121
+"case: LUNA collapse (May 2022, train period)",event: src_vol_z,event,0.06125021353363991,0.06133970990777016,0.03646830098198471
+"case: LUNA collapse (May 2022, train period)",event: src_return_scaled,event,0.000350732181686908,0.05631424859166145,0.033480513199409014
+"case: LUNA collapse (May 2022, train period)",receiver coin: log_volume_ds,receiver coin,-0.055001433938741684,0.05557696521282196,0.033042176073117394
+"case: LUNA collapse (May 2022, train period)",event: src_shock,event,-0.051562242209911346,0.051562242209911346,0.030655302593448473
+"case: LUNA collapse (May 2022, train period)",source coin: memory + recent events,source coin,0.0020019144285470247,0.04905068874359131,0.029162108578024804
+"case: LUNA collapse (May 2022, train period)",source coin: network: strength,source coin,-0.04385862126946449,0.04419245570898056,0.02627374303450986
+"case: LUNA collapse (May 2022, train period)",source coin: log_volume_ds,source coin,-0.03903178870677948,0.03921129181981087,0.023312291403519623
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: dy_pagerank,receiver coin,-0.03669663518667221,0.03669663518667221,0.02181725246216284
+"case: LUNA collapse (May 2022, train period)",source coin: rv_72h,source coin,-0.035357631742954254,0.03571752831339836,0.02123514400091044
+"case: LUNA collapse (May 2022, train period)",receiver coin: memory + recent events,receiver coin,-0.0035656439140439034,0.03316428139805794,0.019717161977031262
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: eigenvector,receiver coin,0.03132550045847893,0.03140915930271149,0.018673689144677385
+"case: LUNA collapse (May 2022, train period)",source coin: volume_rel_168h,source coin,0.022693557664752007,0.025367243215441704,0.01508158845313925
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: strength,receiver coin,-0.02165377512574196,0.024178586900234222,0.014374896551069589
+"case: LUNA collapse (May 2022, train period)",source coin: network: dy_pagerank,source coin,-0.02373814955353737,0.02373814955353737,0.014113043311998223
+"case: LUNA collapse (May 2022, train period)",source coin: network: eigenvector,source coin,-0.022678298875689507,0.022678298875689507,0.013482930232333653
+"case: LUNA collapse (May 2022, train period)",source coin: network: dy_net,source coin,0.0005784857785329223,0.015603934414684772,0.009277007954447301
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: shock_pagerank,receiver coin,0.01160348765552044,0.011654708534479141,0.006929074482610998
+"case: LUNA collapse (May 2022, train period)",receiver coin: log_hours_listed,receiver coin,0.010978144593536854,0.011449489742517471,0.006807065743351059
+"case: LUNA collapse (May 2022, train period)",event: contemp_corr,event,-0.00029533865745179355,0.009871987625956535,0.005869193326396985
+"case: LUNA collapse (May 2022, train period)",source coin: log_hours_listed,source coin,0.00953349657356739,0.009645962156355381,0.0057348143919774535
+"case: LUNA collapse (May 2022, train period)",source coin: network: mst_degree,source coin,-0.008446902967989445,0.009173084981739521,0.005453674700294346
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: mst_degree,receiver coin,-0.0026824213564395905,0.008696014061570168,0.005170041700845086
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: dy_net,receiver coin,0.0002447718579787761,0.007443069480359554,0.004425128492581814
+"case: LUNA collapse (May 2022, train period)",source coin: network: community_size_frac,source coin,-0.004623585380613804,0.004623585380613804,0.0027488604613496786
+"case: LUNA collapse (May 2022, train period)",source coin: network: shock_pagerank,source coin,0.002041503554210067,0.0028290455229580402,0.0016819525846812182
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: community_size_frac,receiver coin,-0.002075993223115802,0.00208124122582376,0.001237360456278278
+"case: LUNA collapse (May 2022, train period)",event: lag1_corr,event,-0.0002519893751014024,0.0011738931061699986,0.0006979147306182733
+"case: LUNA collapse (May 2022, train period)",source coin: network: shock_out_lift,source coin,-0.0004391671682242304,0.0004391671682242304,0.00026109807979672844
+"case: LUNA collapse (May 2022, train period)",receiver coin: network: shock_out_lift,receiver coin,-0.00038460709038190544,0.00038460709038190544,0.00022866047382587957
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: volume_rel_168h,receiver coin,0.24974098801612854,0.25260186195373535,0.18396777801388944
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: rv_24h,receiver coin,0.18168790638446808,0.19307169318199158,0.14061246467999425
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: rv_72h,receiver coin,-0.10651667416095734,0.13205651938915253,0.09617563487604074
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: log_return,receiver coin,0.045104824006557465,0.061388950794935226,0.044709048401300674
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: log_volume_ds,receiver coin,-0.056036803871393204,0.058264557272195816,0.042433579291240704
+"case: FTX collapse (Nov 2022, validation period)",source coin: memory + recent events,source coin,0.008715160191059113,0.051070500165224075,0.037194208961036965
+"case: FTX collapse (Nov 2022, validation period)",event: src_shock,event,-0.047908633947372437,0.047908633947372437,0.03489144880726627
+"case: FTX collapse (Nov 2022, validation period)",source coin: log_volume_ds,source coin,-0.04688828065991402,0.047636717557907104,0.034693414423874996
+"case: FTX collapse (Nov 2022, validation period)",source coin: log_return,source coin,0.005644982680678368,0.047472260892391205,0.03457364203937819
+"case: FTX collapse (Nov 2022, validation period)",source coin: rv_24h,source coin,0.043997470289468765,0.0463053435087204,0.03372378607814613
+"case: FTX collapse (Nov 2022, validation period)",event: src_return_scaled,event,0.003930039703845978,0.04479151591658592,0.03262127837583907
+"case: FTX collapse (Nov 2022, validation period)",event: src_vol_z,event,0.04235098138451576,0.04464128240942955,0.032511864596063166
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: memory + recent events,receiver coin,0.0018857138929888606,0.03871306777000427,0.02819439652053399
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: strength,source coin,-0.03155914694070816,0.03268888220191002,0.023807033637561183
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: dy_pagerank,receiver coin,-0.03189495950937271,0.03189495950937271,0.023228826523285662
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: eigenvector,receiver coin,0.02838183380663395,0.028963694348931313,0.021094011149538742
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: dy_net,source coin,0.004509856458753347,0.022584330290555954,0.0164479748064815
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: dy_pagerank,source coin,-0.02174224518239498,0.02174224518239498,0.015834691416371994
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: eigenvector,source coin,-0.021317580714821815,0.021317580714821815,0.015525411912663526
+"case: FTX collapse (Nov 2022, validation period)",source coin: volume_rel_168h,source coin,0.014632540754973888,0.020026011392474174,0.014584773009428842
+"case: FTX collapse (Nov 2022, validation period)",source coin: rv_72h,source coin,-0.017261449247598648,0.019682100042700768,0.014334305311517893
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: strength,receiver coin,-0.014851546846330166,0.01902211457490921,0.013853643533762242
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: log_hours_listed,receiver coin,0.01554830651730299,0.016540365293622017,0.012046206734465836
+"case: FTX collapse (Nov 2022, validation period)",source coin: log_hours_listed,source coin,0.012593944557011127,0.013012274168431759,0.009476728109440297
+"case: FTX collapse (Nov 2022, validation period)",event: contemp_corr,event,0.0012164810905233026,0.010985411703586578,0.008000581492335724
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: shock_pagerank,receiver coin,0.009464871138334274,0.009650513529777527,0.007028386556751962
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: dy_net,receiver coin,-0.0008210226660594344,0.009296399541199207,0.006770488364163339
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: mst_degree,receiver coin,-0.0009581877384334803,0.008295301347970963,0.006041397102691757
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: mst_degree,source coin,-0.006493561901152134,0.008023610338568687,0.00584352686167492
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: community_size_frac,source coin,-0.004754701629281044,0.004754701629281044,0.0034628085758847617
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: shock_pagerank,source coin,0.0021964230109006166,0.0031275060027837753,0.002277735902685511
+"case: FTX collapse (Nov 2022, validation period)",event: lag1_corr,event,0.0008409523870795965,0.0022700452245771885,0.0016532545434403538
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: community_size_frac,receiver coin,-0.00220218556933105,0.002216936554759741,0.001614575952934245
+"case: FTX collapse (Nov 2022, validation period)",source coin: network: shock_out_lift,source coin,-0.00054849375737831,0.00054849375737831,0.00039946331756595717
+"case: FTX collapse (Nov 2022, validation period)",receiver coin: network: shock_out_lift,receiver coin,-0.0005102766444906592,0.0005102766444906592,0.00037163012074916264
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: volume_rel_168h,receiver coin,0.355600506067276,0.3557302951812744,0.25324837832883657
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: rv_24h,receiver coin,0.19070138037204742,0.2102542519569397,0.1496823550485179
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: rv_72h,receiver coin,-0.09359054267406464,0.12446795403957367,0.08861012947566764
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: log_volume_ds,receiver coin,-0.060173969715833664,0.06212431937456131,0.04422699823295385
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: log_return,receiver coin,0.0438544936478138,0.056108709424734116,0.03994441818540342
+case: 10-Oct-2025 liquidation cascade (test period),source coin: rv_24h,source coin,0.05117955058813095,0.05518306419253349,0.03928544098515352
+case: 10-Oct-2025 liquidation cascade (test period),event: src_vol_z,event,0.048636697232723236,0.0524890273809433,0.037367526028414345
+case: 10-Oct-2025 liquidation cascade (test period),source coin: log_volume_ds,source coin,-0.051293112337589264,0.05207687243819237,0.037074108311998887
+case: 10-Oct-2025 liquidation cascade (test period),event: src_return_scaled,event,0.0047797164879739285,0.04056902602314949,0.028881543657976877
+case: 10-Oct-2025 liquidation cascade (test period),source coin: log_return,source coin,0.005792700219899416,0.038945138454437256,0.027725479923919123
+case: 10-Oct-2025 liquidation cascade (test period),source coin: memory + recent events,source coin,0.015410437248647213,0.03851301968097687,0.027417849732994496
+case: 10-Oct-2025 liquidation cascade (test period),event: src_shock,event,-0.03418261557817459,0.03418261557817459,0.024334986588081937
+case: 10-Oct-2025 liquidation cascade (test period),source coin: volume_rel_168h,source coin,0.014290325343608856,0.029133394360542297,0.020740389494412072
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: memory + recent events,receiver coin,0.00946999341249466,0.028269637376070023,0.020125471230348167
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: dy_net,source coin,0.004768725018948317,0.024884577840566635,0.01771560946280894
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: dy_pagerank,receiver coin,-0.022798240184783936,0.022798240184783936,0.01623032233621178
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: log_hours_listed,receiver coin,0.01808229833841324,0.018084142357110977,0.012874303334419121
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: strength,source coin,-0.01430414617061615,0.017902275547385216,0.012744830317195727
+case: 10-Oct-2025 liquidation cascade (test period),source coin: rv_72h,source coin,-0.01508206408470869,0.017856715247035027,0.01271239542948401
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: eigenvector,source coin,-0.016362620517611504,0.016362620517611504,0.011648732670304744
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: eigenvector,receiver coin,0.0139470174908638,0.015827856957912445,0.011268028507297963
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: dy_pagerank,source coin,-0.014910079538822174,0.014910079538822174,0.010614652491254697
+case: 10-Oct-2025 liquidation cascade (test period),source coin: log_hours_listed,source coin,0.013411267660558224,0.013432970270514488,0.009563081871938191
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: dy_net,receiver coin,-0.000845256494358182,0.011543607339262962,0.008218023256196057
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: strength,receiver coin,-0.0020157184917479753,0.010662808082997799,0.0075909724081125955
+case: 10-Oct-2025 liquidation cascade (test period),event: contemp_corr,event,0.00851735845208168,0.010412338189780712,0.0074126600879738215
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: mst_degree,source coin,-0.007631117478013039,0.008044363930821419,0.005726872711612527
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: shock_pagerank,receiver coin,0.006151135079562664,0.006725676357746124,0.004788084270123367
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: mst_degree,receiver coin,-0.0031386178452521563,0.006614158861339092,0.004708693716372578
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: community_size_frac,source coin,-0.0031965647358447313,0.0031965647358447313,0.0022756702101048303
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: shock_pagerank,source coin,0.0007966458215378225,0.0031914806459099054,0.0022720507895811538
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: community_size_frac,receiver coin,-0.0018716006306931376,0.001875857706181705,0.0013354440948699243
+case: 10-Oct-2025 liquidation cascade (test period),event: lag1_corr,event,0.0010565980337560177,0.0015317961806431413,0.001090502844241874
+case: 10-Oct-2025 liquidation cascade (test period),source coin: network: shock_out_lift,source coin,-0.00040441847522743046,0.00040441847522743046,0.000287910038602073
+case: 10-Oct-2025 liquidation cascade (test period),receiver coin: network: shock_out_lift,receiver coin,-0.000359713303623721,0.000359713303623721,0.0002560839266152305
