@@ -46,15 +46,15 @@ At 2h the "1h" horizon is one 2-hour bar.
 
 | Model | Kind | Tasks | Input | Status | Code |
 |---|---|---|---|---|---|
-| Naive rules (persistence, train mean, base rates) | baseline | T1–T3 | panel / events | daily *done*; hourly to add | `analysis/baselines.py` |
+| Naive rules (persistence, train mean, base rates) | baseline | T1–T3 | panel / events | ***done*** (daily + hourly) | `analysis/baselines.py` |
 | Independent cascade | network baseline | T1 | panel shocks | ***done*** | `network/cascade.py` |
 | Diebold–Yilmaz (VAR, GFEVD) | statistical reference | rankings only | returns | ***done*** | `analysis/connectedness.py`, `network/spillover.py` |
-| LSTM (no graph) | deep baseline | T2, T3; T1 via receiver risk | 168-bar windows per coin | runner wired up (smoke run) | `models/lstm.py`, `training/runner.py` |
-| Snapshot GNN (GCN/GAT + GRU) | graph ablation | T1–T3 | daily graph snapshots + panel | stub | `models/snapshot_gnn.py` |
-| **TGN** | main model | T1 (edge head), T2 (node head) | event stream + node features | `ContagionTGN` + stream trainer wired up (T1); first dev run | `models/tgn.py`, `training/tgn_task.py` |
-| DyGFormer | comparison TGNN | T1 | event stream via DyGLib adapter | feasibility below | `models/dygformer.py` |
-| T-GAE | anomaly / robustness | reconstruction error | snapshots | model class exists | `models/tgae.py` |
-| TempME | explainer | explains T1 | trained TGNN + events | feasibility below | `explain/` |
+| LSTM (no graph) | deep baseline | T2, T3; T1 via receiver risk | 168-bar windows per coin | ***done*** (T2, T3; 5 seeds) | `models/lstm.py`, `training/runner.py` |
+| Snapshot GNN (GCN/GAT + GRU) | graph ablation | T1–T3 | daily graph snapshots + panel | not built (dropped: the TGN, DyGFormer and boosting answer the same question) | `models/snapshot_gnn.py` |
+| **TGN** | main model | T1 (edge head), T2 (node head) | event stream + node features | ***done*** (T1; 5 seeds, ablation, 2h, refit) | `models/tgn.py`, `training/tgn_task.py` |
+| DyGFormer | comparison TGNN | T1 | event stream (compact re-implementation, not DyGLib) | ***done*** (5 seeds) | `models/dygformer.py`, `training/dygformer_task.py` |
+| T-GAE | anomaly / robustness | prediction / reconstruction error | daily snapshots | ***done*** (`SnapshotTGAE`, 5 seeds; negative result) | `models/tgae.py`, `training/tgae_task.py` |
+| TempME | explainer | explains T1 | trained TGNN + events | ***done*** (ported to our TGN, route B) | `explain/` |
 
 - **LSTM:** answers "does the graph add anything?". It sees only the receiving coin's own 168-hour history, and
   scores T1 events by the receiver's next-hours shock risk. Any graph model that does not beat it on T1 has learned
@@ -170,8 +170,8 @@ notebook 04 in the meantime.
 | `02_network_analysis` | networks, centrality, communities, MST, cascade baseline | done |
 | `03_models_vs_baselines` | T1–T3 results table, per-k AUPRC, seeds, bootstrap tests | done |
 | `04_tempme_explanations` | fidelity / sparsity curves, ranking agreement, case studies | done (TempME ported, route B) |
-| `05_persistence_by_shock_type` | event study in hours, persistence by shock type (crash / squeeze / idiosyncratic) | skeleton (event-study cells moved in) |
-| `06_robustness_tgae` | T-GAE anomaly scores, perturbation and attack results | skeleton |
+| `05_persistence_by_shock_type` | event study in hours, persistence by shock type (crash / squeeze / idiosyncratic) | done |
+| `06_robustness_tgae` | T-GAE anomaly scores, perturbation and attack results | done |
 
 ## 7. Future work (deferred, not cancelled): a user-facing view
 
@@ -185,9 +185,11 @@ existing `dashboard/` (Streamlit, untouched so far) or a `cryptograph-predict` c
 It reads a trained checkpoint from `runs/` and the latest processed data. No serving contract is designed until the
 models exist, and nothing in the data or training code depends on it.
 
-## 8. Open decisions for the team
+## 8. Decisions taken (formerly open)
 
-1. GitHub access for Colab (organisation repo or an owner token; `colab/README.md`), and confirmation that the repo is private.
-2. TempME route A first (recommended) or straight to B.
-3. Whether the snapshot GNN stays in the main results or becomes an appendix ablation.
-4. The final loss for T1 (focal vs weighted BCE), chosen on validation AUPRC.
+1. Repository private (checked before every push); Colab runs use self-contained notebooks with Drive zips.
+2. TempME: route B (ported to our TGN), because route A would explain a different model.
+3. Snapshot GNN: not built; the TGN-vs-boosting comparison answers whether the graph matters.
+4. T1 loss: focal loss (chosen on validation AUPRC).
+5. Added during training: gradient-boosting baseline, validation-weighted ensemble, train+val refit, futures
+   features (rejected on validation), top-alert precision (notebook 03).

@@ -17,8 +17,11 @@ shock next, with motif-based explanations (TempME) and robustness tests.
 | EDA (notebook 01) and network analysis (notebook 02) | done |
 | Independent cascade baseline, Diebold–Yilmaz rankings, network node features | done |
 | Run tracking, data packaging, Colab runner | done (smoke-tested) |
-| LSTM / snapshot GNN / TGN / DyGFormer training, TempME explanations, robustness | planned — `docs/model_plan.md` |
-| User-facing view (`dashboard/` or `cryptograph-predict`) | deferred until models are trained |
+| Models: TGN (main), DyGFormer, LSTM, gradient boosting, ensemble; 5 seeds, test scored once (notebook 03) | done |
+| Explanations: TempME ported to the TGN, integrated gradients, case studies (notebook 04) | done |
+| Shock persistence by type (notebook 05) | done |
+| Robustness: T-GAE anomaly scores, noise / missing-data / FGSM stress tests (notebook 06) | done |
+| User-facing view (`dashboard/` or `cryptograph-predict`), model compression | to do — Dakshesh (`docs/merge_notes.md`) |
 
 ---
 
@@ -29,23 +32,23 @@ CryptoGraph/
 ├── configs/
 │   ├── data/daily.yaml, hourly.yaml   # windows, universe, quality, features, labels, splits, graphs, network
 │   ├── model/                # lstm, tgn, dygformer, cascade, tgae
-│   ├── experiment/           # one YAML per training run (smoke_lstm_daily.yaml = pipeline smoke test)
+│   ├── experiment/           # one YAML per run: *_dev (validation only), *_final (test once), tempme, robustness
 │   └── robustness/           # perturbation settings
-├── colab/                    # runner.ipynb + README (Colab / Kaggle)
+├── colab/                    # self-contained Colab notebooks + runner.ipynb + README (Colab / Kaggle)
 ├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv, sectors.csv
 ├── dashboard/                # Streamlit UI (deferred until models are trained)
 ├── docs/                     # model_plan.md, hourly_data_notes.md, merge_notes.md
-├── notebooks/                # 01 data & EDA, 02 network analysis, 03-06 skeletons; archive/ = superseded notebooks
-├── reports/                  # audit, quality, baseline and network tables, figures
+├── notebooks/                # 01 data & EDA, 02 networks, 03 models, 04 explanations, 05 persistence, 06 robustness
+├── reports/                  # audit, quality, baseline, network, explain/ and robustness/ tables, figures
 ├── runs/                     # local experiment runs + results.csv (gitignored)
 ├── src/cryptograph/
 │   ├── data/                 # sources, quality, features, graphs, datasets, universe (daily + hourly)
 │   ├── network/              # centrality, communities, MST, topology, spillover, independent cascade, node features
-│   ├── models/               # LSTM, TGN, T-GAE; DyGFormer and snapshot-GNN placeholders
-│   ├── explain/              # edge-mask explainer, explanation validation (TempME adapter later)
-│   ├── robustness/           # perturbation tests, FGSM (TODO), anomaly scoring
-│   ├── training/             # seed, device, losses, metrics, early stopping, loop, run tracking, runner
-│   ├── analysis/             # statistics, lead-lag, Diebold-Yilmaz (generalized FEVD), event studies, baselines
+│   ├── models/               # LSTM, TGN, DyGFormer, T-GAE (SnapshotTGAE); snapshot GNN not built
+│   ├── explain/              # TempME port, TGN capture, fidelity baselines, integrated gradients
+│   ├── robustness/           # stress tests (noise, missing events, FGSM), anomaly scoring
+│   ├── training/             # runner + tasks (TGN, DyGFormer, LSTM, boosting, T-GAE), refit, tracking, metrics
+│   ├── analysis/             # statistics, lead-lag, Diebold-Yilmaz, event studies, persistence, evaluation, baselines
 │   ├── pipelines/            # build_data (cryptograph-data), train (cryptograph-train), package_data, evaluate, explain
 │   └── common/               # logging, shared types
 └── tests/unit/{data,models,explain,robustness,training,analysis,network}, tests/integration/

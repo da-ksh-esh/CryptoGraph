@@ -1,8 +1,9 @@
 """Shock persistence at hourly resolution, by shock type.
 
-A shock of coin c at hour t is |z| > z* with z = r_t / sigma30_{t-1} (the project's leakage-free definition,
-data/features/targets.py). Only *fresh* shocks are studied: no shock of the same coin in the previous `fresh_hours`
-hours, so one turbulent episode counts once. Each fresh shock is typed by
+A shock of coin c at hour t is |z| > z* with z = r_t / sigma_{t-1}, sigma = trailing volatility (168 hours on the
+hourly data, `targets.shock_vol_window_hours`; the project's leakage-free definition, data/features/targets.py).
+Only *fresh* shocks are studied: no shock of the same coin in the previous `fresh_hours` hours, so one turbulent
+episode counts once. Each fresh shock is typed by
 
   * breadth: share of the other active coins that shocked in the same hour
       market-wide  >= 30%   |   partial  10-30%   |   idiosyncratic  < 10%
@@ -12,7 +13,7 @@ and described by
   * hours_to_normal  first h >= 1 at which the mean |z| over hours t+h-5..t+h is back at or below its mean over the
                      24 hours before the shock (capped at `horizon`; NaN if never within it)
   * reshock_24h      another shock of the same coin within t+1..t+24
-  * continuation_h   sign(r_t) * (cumulative return over t+1..t+h) / sigma30_{t-1}; > 0 = the move continues,
+  * continuation_h   sign(r_t) * (cumulative return over t+1..t+h) / sigma_{t-1}; > 0 = the move continues,
                      < 0 = it reverses (h = 1, 6, 24, 72)
   * followers_6h     number of other coins with a shock in t+1..t+6
 
@@ -47,7 +48,7 @@ def fresh_shocks(shock: np.ndarray, fresh_hours: int = 24) -> np.ndarray:
 def persistence_table(r: np.ndarray, z: np.ndarray, sigma: np.ndarray, shock: np.ndarray, valid: np.ndarray,
                       active: np.ndarray, times: pd.DatetimeIndex, coins: list[str], horizon: int = 168,
                       fresh_hours: int = 24, wide: float = 0.30, partial: float = 0.10) -> pd.DataFrame:
-    """One row per fresh shock. r, z, sigma (= sigma30 at t-1, the scale of z): (T, N); shock/valid/active: (T, N)."""
+    """One row per fresh shock. r, z, sigma (= trailing volatility at t-1, the scale of z): (T, N); shock/valid/active: (T, N)."""
     sh = shock & valid
     fresh = fresh_shocks(sh, fresh_hours)
     br = shock_breadth(sh, active & valid)
