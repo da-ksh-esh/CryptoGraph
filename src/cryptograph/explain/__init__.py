@@ -5,11 +5,14 @@
 - fidelity: Fidelity+/-, characterization score, baseline explainers (random, recency, attention, optimised mask)
 - attribution: integrated gradients on the TGN prediction head (feature-level explanations)
 - run: the full explanation run behind notebook 04 (`model: tempme` experiments)
-- edge_mask.EdgeMaskExplainer: older GNNExplainer-style edge mask for the snapshot model (was misnamed TempME)
-- validation.ExplanationValidator: older snapshot-model validator
+- edge_mask.EdgeMaskExplainer, validation.ExplanationValidator: LEGACY explainer / validator for the old snapshot
+  model (not used in any result; the real TempME is `tempme.TempMEExplainer`)
 """
 
-from .edge_mask import EdgeMaskExplainer, TempME
-from .validation import ExplanationValidator
+from .attribution import integrated_gradients
+from .fidelity import fidelity_curve
+from .tempme import TempMEExplainer, train_tempme
+from .tgn_capture import Captured, ExplainableTGN, capture, load_trained
 
-__all__ = ["EdgeMaskExplainer", "TempME", "ExplanationValidator"]
+__all__ = ["TempMEExplainer", "train_tempme", "ExplainableTGN", "Captured", "capture", "load_trained",
+           "fidelity_curve", "integrated_gradients"]

@@ -8,6 +8,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from ..storage import load_pt
+
 
 class GraphSnapshotDataset(Dataset):
     """Loads data/processed/<v>/graph_snapshots.pt and yields one PyG Data per sample day of `split`.
@@ -18,7 +20,7 @@ class GraphSnapshotDataset(Dataset):
     """
 
     def __init__(self, path: str | Path, split: str, edge_type: str = "undirected"):
-        d = torch.load(path, weights_only=False)
+        d = load_pt(path)
         self.meta = {k: d[k] for k in ("coins", "feature_names", "horizons", "dates")}
         self.d = d
         self.edge_key = {"undirected": "undirected", "directed": "directed"}[edge_type]

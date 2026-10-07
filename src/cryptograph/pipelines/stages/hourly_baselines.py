@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import torch
 
 from ...analysis.baselines import har_design, har_fit, har_predict, trailing_rv
 from ...common.logger import get_logger
 from ...data.config import HourlyConfig
 from ...data.features.intraday import bars
-from ...data.storage import write_csv
+from ...data.storage import load_pt, write_csv
 
 logger = get_logger(__name__)
 SPLITS = ("train", "val", "test")
@@ -42,9 +41,9 @@ def build_resolution(cfg: HourlyConfig, res: str) -> pd.DataFrame:
     from sklearn.linear_model import LogisticRegression
 
     d = cfg.processed_dir(res)
-    p = torch.load(d / "panel.pt", weights_only=False)
+    p = load_pt(d / "panel.pt")
     bh = p["bar_hours"]
-    idx = {s: torch.load(d / f"lstm_index_{s}.pt", weights_only=False)["index"].numpy() for s in SPLITS}
+    idx = {s: load_pt(d / f"lstm_index_{s}.pt")["index"].numpy() for s in SPLITS}
     r = p["X_raw"][:, :, p["feature_names"].index("log_return")].numpy().astype(np.float64)
     y_rv, z = p["y_rv"].numpy(), p["shock_z"].numpy()
     y_sh, y_sh_m = p["y_shock"].numpy(), p["y_shock_mask"].numpy()

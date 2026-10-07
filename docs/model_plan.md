@@ -1,6 +1,7 @@
 # Model plan
 
-Status: **plan + feasibility only.** Nothing below is trained yet except the baselines marked *done*.
+Status (2026-10-07): **complete.** Every model below marked *done* is trained and evaluated (notebooks 03-06);
+this file keeps the original plan and feasibility notes for reference.
 Data, splits and labels are fixed by the data phase (`docs/hourly_data_notes.md`, notebooks 01–02).
 
 ## 1. Prediction tasks

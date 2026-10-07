@@ -16,6 +16,7 @@ import pandas as pd
 import torch
 
 from ..data.config import PROJECT_ROOT
+from ..data.storage import load_pt
 from . import fidelity as fd
 from .attribution import completeness_gap, feature_table, integrated_gradients
 from .tempme import N_CAT, build_walks, null_distribution, tempme_importance, train_tempme
@@ -48,7 +49,7 @@ def tempme_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
     n_ev = len(t_np)
 
     # --- which events to capture -------------------------------------------------------------------------------
-    pt = torch.load(target / "predictions_test.pt", weights_only=False)
+    pt = load_pt(target / "predictions_test.pt")
     pos_t, prob_t, m_t = pt["position"].numpy(), pt["prob"].float().numpy()[:, kidx], pt["mask"].numpy()[:, kidx]
     cand = np.flatnonzero(m_t)
     n_top = max(1, int(round(ec.get("top_frac", 0.01) * len(cand))))
@@ -152,11 +153,10 @@ def tempme_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
     pd.DataFrame(credit_rows).to_csv(out_dir / "plausibility.csv", index=False)
 
     # --- feature level: integrated gradients ----------------------------------------------------------------------
-    net = torch.load(PROJECT_ROOT / "data" / "processed" / D["cfg"]["data"]["version"] / D["cfg"]["data"]["resolution"]
-                     / "network_features.pt", weights_only=False)
+    net = load_pt(PROJECT_ROOT / "data" / "processed" / D["cfg"]["data"]["version"] / D["cfg"]["data"]["resolution"]
+                     / "network_features.pt")
     node_names = list(panel["feature_names"]) + [f"network: {n}" for n in net["feature_names"]]
-    msg_names = list(torch.load(PROJECT_ROOT / "data" / "processed" / "v2" / "1h" / "tgn_events.pt",
-                                weights_only=False)["msg_names"])
+    msg_names = list(load_pt(PROJECT_ROOT / "data" / "processed" / "v2" / "1h" / "tgn_events.pt")["msg_names"])
     assert len(node_names) == feats.shape[-1]
     ig_tabs = []
     for set_name, cap in {**sets, **{f"case: {k}": pick(v) for k, v in case_pos.items()}}.items():

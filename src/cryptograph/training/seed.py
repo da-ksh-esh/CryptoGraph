@@ -17,6 +17,8 @@ def seed_everything(seed: int, deterministic: bool = False) -> None:
     """
     random.seed(seed)
     np.random.seed(seed)
+    # PYTHONHASHSEED cannot change the running interpreter (fixed at start-up); setting it here makes child
+    # processes started from now on (e.g. DataLoader workers on Windows) hash reproducibly. No result depends on it.
     os.environ["PYTHONHASHSEED"] = str(seed)
     try:
         import torch

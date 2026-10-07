@@ -29,7 +29,11 @@ logger = get_logger(__name__)
 def daily_reference(coins: list[str], ids: dict[str, str], cfg: HourlyConfig) -> tuple[pd.DataFrame, dict[str, str]]:
     """Daily USD close per coin from the daily dataset, else a verified Yahoo snapshot, else Coin Metrics."""
     dcfg = load_config()
-    master = pd.read_parquet(dcfg.interim_dir / "master.parquet")["close"].unstack("coin")
+    master_path = dcfg.interim_dir / "master.parquet"
+    if not master_path.exists():
+        raise FileNotFoundError(f"{master_path} is missing: the hourly clean stage cross-checks against the daily data; "
+                                "run `cryptograph-data --stage all` (daily config) first")
+    master = pd.read_parquet(master_path)["close"].unstack("coin")
     audit_v2 = pd.read_csv(cfg.reports_dir / "universe_audit_v2.csv").set_index("coin")
     audit_v1 = pd.read_csv(cfg.path(cfg.paths.daily_audit)).set_index("coin")
     ref, src = {}, {}

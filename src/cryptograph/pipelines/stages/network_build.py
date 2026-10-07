@@ -19,7 +19,7 @@ from ...data.config import HourlyConfig
 from ...data.features.intraday import bars
 from ...data.features.targets import future_any
 from ...data.graphs.correlation import pairwise_corr
-from ...data.storage import utc_now, write_csv, write_json
+from ...data.storage import load_pt, utc_now, write_csv, write_json
 from ...network.cascade import IndependentCascade, rolling_transmission
 from ...network.centrality import eigenvector_centrality, transmitter_pagerank
 from ...network.communities import louvain, remove_market_mode
@@ -117,8 +117,8 @@ def rankings(cfg: HourlyConfig, p: dict, gidx: list[int], gcoins: list[str], sec
 
 def build_resolution(cfg: HourlyConfig, res: str) -> dict:
     out_dir = cfg.processed_dir(res)
-    p = torch.load(out_dir / "panel.pt", weights_only=False)
-    g = torch.load(out_dir / "graph_snapshots.pt", weights_only=False)
+    p = load_pt(out_dir / "panel.pt")
+    g = load_pt(out_dir / "graph_snapshots.pt")
     bh = p["bar_hours"]
     gidx, gcoins = g["graph_index"], g["graph_coins"]
     r = p["r_ds"].numpy()[:, gidx].astype(np.float64)
@@ -149,7 +149,7 @@ def build_resolution(cfg: HourlyConfig, res: str) -> dict:
                out_dir / "network_features.pt")
     write_csv(glob, cfg.reports_dir / f"network_timeseries_{res}.csv")
 
-    ev = torch.load(out_dir / "tgn_events.pt", weights_only=False)
+    ev = load_pt(out_dir / "tgn_events.pt")
     cas = cascade_baseline(cfg, res, p, ev, shock, valid, active)
     del ev
     out = {"res": res, "cascade": cas, "glob": glob}

@@ -20,6 +20,7 @@ import numpy as np
 import torch
 
 from ..data.config import PROJECT_ROOT
+from ..data.storage import load_pt
 from .metrics import auprc
 from .tgn_task import _batches, _metrics, context_tables, node_feature_table, with_futures
 
@@ -35,9 +36,9 @@ def gbm_design(cfg: dict) -> dict:
     labels, masks and split bounds. `n_perturbable` = 2F + M (the inputs shared with the TGN head)."""
     data_cfg = cfg["data"]
     base = PROJECT_ROOT / "data" / "processed" / data_cfg["version"] / data_cfg["resolution"]
-    panel = torch.load(base / "panel.pt", weights_only=False)
-    ev = torch.load(base / "tgn_events.pt", weights_only=False)
-    net = torch.load(base / "network_features.pt", weights_only=False) if data_cfg.get("network_features", True) else None
+    panel = load_pt(base / "panel.pt")
+    ev = load_pt(base / "tgn_events.pt")
+    net = load_pt(base / "network_features.pt") if data_cfg.get("network_features", True) else None
     d, gidx, k_hours = ev["full"], ev["graph_index"], ev["label_k_hours"]
     feats = node_feature_table(panel, net, gidx)
     feats = with_futures(feats, base, data_cfg, panel["graph_coins"])

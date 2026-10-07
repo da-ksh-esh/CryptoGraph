@@ -74,7 +74,9 @@ HOURLY_STAGES: dict[str, Callable] = {
     "baselines": _stage("hourly_baselines"),
     "futures": _stage("futures_build"),
 }
-HOURLY_ALL_ORDER = ["fetch", "clean", "build", "network", "baselines"]
+# audit writes data/interim/universe_v2.json, which fetch reads; clean cross-checks against the daily pipeline's
+# data/interim/master.parquet, so run the daily pipeline first on a fresh clone.
+HOURLY_ALL_ORDER = ["audit", "fetch", "clean", "build", "network", "baselines"]
 
 
 def main(argv: list[str] | None = None) -> None:

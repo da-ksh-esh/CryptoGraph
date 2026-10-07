@@ -31,9 +31,8 @@ shock next, with motif-based explanations (TempME) and robustness tests.
 CryptoGraph/
 ├── configs/
 │   ├── data/daily.yaml, hourly.yaml   # windows, universe, quality, features, labels, splits, graphs, network
-│   ├── model/                # lstm, tgn, dygformer, cascade, tgae
-│   ├── experiment/           # one YAML per run: *_dev (validation only), *_final (test once), tempme, robustness
-│   └── robustness/           # perturbation settings
+│   ├── model/                # architecture of lstm, tgn, dygformer (training settings in experiment/)
+│   └── experiment/           # one YAML per run: *_dev (validation only), *_final (test), tempme, tgae, robustness
 ├── colab/                    # self-contained Colab notebooks + runner.ipynb + README (Colab / Kaggle)
 ├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv, sectors.csv
 ├── dashboard/                # Streamlit UI (deferred until models are trained)
@@ -59,11 +58,12 @@ CryptoGraph/
 ## 🚀 Quickstart
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-lock.txt   # exact versions used for the results (requirements.txt = minimum versions)
 pip install -e .
 pytest
-cryptograph-data --config configs/data/hourly.yaml --stage all     # fetch -> clean -> build -> network
-cryptograph-train --config configs/experiment/smoke_lstm_daily.yaml # pipeline smoke test -> runs/<run_id>/
+cryptograph-data --stage all                                        # daily data (needed by the hourly clean stage)
+cryptograph-data --config configs/data/hourly.yaml --stage all      # audit -> fetch -> clean -> build -> network -> baselines
+cryptograph-train --config configs/experiment/tgn_1h_final_v2.yaml --seed 0   # one final TGN run -> runs/<run_id>/
 ```
 
 ---
@@ -126,11 +126,13 @@ Raw downloads are write-once snapshots under `data/raw/` and are reused on later
 ## ⏱️ Hourly data (`data/processed/v2/`) — the modelling dataset
 
 ```bash
+cryptograph-data --stage all                                        # daily data first (hourly clean cross-checks it)
 cryptograph-data --config configs/data/hourly.yaml --stage audit    # 30-coin universe (checkpoint)
 cryptograph-data --config configs/data/hourly.yaml --stage fetch    # Binance archive, SHA-256 verified
 cryptograph-data --config configs/data/hourly.yaml --stage clean    # quality, 2h bars, USDT peg, cross-check
 cryptograph-data --config configs/data/hourly.yaml --stage build    # features, labels, splits, graphs, datasets
 cryptograph-data --config configs/data/hourly.yaml --stage network  # network features, rankings, cascade baseline
+cryptograph-data --config configs/data/hourly.yaml --stage all      # = audit, fetch, clean, build, network, baselines
 ```
 
 - **Source:** Binance public archive (data.binance.vision), 1h klines, 2020-01-01 → 2026-09-27, prices in USDT;
@@ -150,4 +152,6 @@ cryptograph-data --config configs/data/hourly.yaml --stage network  # network fe
 - `cryptograph-package pack --version v2` → `dist/cryptograph_data_v2.zip` with a SHA-256 manifest;
   `cryptograph-package unpack <zip>` verifies every file. Data never goes into git.
 - `colab/runner.ipynb` runs the same commands on a Colab GPU (`colab/README.md`, incl. Kaggle).
+- **CI:** `.github/workflows/tests.yml` runs `pytest` on every push with the pinned versions of `requirements-lock.txt`
+  (integration tests skip on CI because data is never in git; they run locally where the artifacts exist).
 

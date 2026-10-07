@@ -20,6 +20,7 @@ import numpy as np
 import torch
 
 from ..data.config import PROJECT_ROOT
+from ..data.storage import load_pt
 from .early_stopping import EarlyStopping
 from .losses import focal_loss, weighted_bce
 from .metrics import auprc, auroc
@@ -46,7 +47,7 @@ def with_futures(feats: torch.Tensor, base, data_cfg: dict, gidx_coins: list[str
     known at the end of bar t, standardised on train) when the experiment sets `data.futures_features: true`."""
     if not data_cfg.get("futures_features", False):
         return feats
-    fut = torch.load(base / "futures_features.pt", weights_only=False)
+    fut = load_pt(base / "futures_features.pt")
     if gidx_coins is not None:
         assert list(fut["graph_coins"]) == list(gidx_coins), "futures features must follow the graph coin order"
     return torch.cat([feats, fut["X"].float()], dim=-1).contiguous()
@@ -193,9 +194,9 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
 
     data_cfg, tr = cfg["data"], cfg["training"]
     base = PROJECT_ROOT / "data" / "processed" / data_cfg["version"] / data_cfg["resolution"]
-    panel = torch.load(base / "panel.pt", weights_only=False)
-    ev = torch.load(base / "tgn_events.pt", weights_only=False)
-    net = torch.load(base / "network_features.pt", weights_only=False) if data_cfg.get("network_features", True) else None
+    panel = load_pt(base / "panel.pt")
+    ev = load_pt(base / "tgn_events.pt")
+    net = load_pt(base / "network_features.pt") if data_cfg.get("network_features", True) else None
     d, gidx, k_hours = ev["full"], ev["graph_index"], ev["label_k_hours"]
     feats = node_feature_table(panel, net, gidx)
     feats = with_futures(feats, base, data_cfg, panel["graph_coins"])

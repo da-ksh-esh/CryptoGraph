@@ -131,3 +131,24 @@ def test_git_info_falls_back_to_code_package_commit(tmp_path, monkeypatch):
     monkeypatch.setenv("GIT_DIR", str(tmp_path / "nonexistent"))      # make git fail
     info = git_info(tmp_path)
     assert info["commit"] == "abc1234" and info["dirty"] is False
+
+
+def test_git_info_dirty_covers_untracked_code_but_not_docs(tmp_path):
+    import subprocess
+
+    from cryptograph.training.tracking import git_info
+
+    run = lambda *a: subprocess.run(["git", *a], cwd=tmp_path, check=True, capture_output=True)
+    run("init", "-q")
+    run("config", "user.email", "t@example.com")
+    run("config", "user.name", "t")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("x = 1\n")
+    run("add", ".")
+    run("commit", "-q", "-m", "init")
+    assert git_info(tmp_path)["dirty"] is False
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "notes.md").write_text("local notes\n")          # documents do not affect a run
+    assert git_info(tmp_path)["dirty"] is False
+    (tmp_path / "src" / "new_module.py").write_text("y = 2\n")            # untracked code does
+    assert git_info(tmp_path)["dirty"] is True

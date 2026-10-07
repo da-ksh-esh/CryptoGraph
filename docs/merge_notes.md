@@ -34,7 +34,8 @@ work is the user-facing and deployment side:
    (`explain/attribution.py`; TempME is too weakly faithful for per-alert explanations, notebook 04).
 3. **Web UI** in `dashboard/` (Streamlit, untouched so far): reads the predict output; shows risk per coin, the
    riskiest alerts with their drivers, typical persistence (8-10 h, notebook 05) and the network view
-   (`data/processed/v2/rankings.csv`).
+   (`data/processed/v2/rankings.csv`). The current `dashboard/app.py` text ("real-time monitoring", hard-coded values) does not
+   describe the project yet; replace it with real outputs.
 4. **Model compression.** E.g. dynamic quantisation or pruning of the TGN for CPU serving; report the test AUPRC
    change against the uncompressed model on the same events (day-block bootstrap, `analysis/evaluation.py`) and
    the CPU latency.

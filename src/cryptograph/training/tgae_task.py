@@ -22,8 +22,8 @@ import pandas as pd
 import torch
 
 from ..data.config import PROJECT_ROOT
+from ..data.storage import load_pt
 from .early_stopping import EarlyStopping
-
 
 DAILY_FEATURES = ["mean |z|", "max |z|", "shocks / 24 h", "day return (z units)", "volume surge (mean)",
                   "24h volatility at day end"]
@@ -48,8 +48,8 @@ def daily_node_features(panel, gi, st: np.ndarray, train: np.ndarray) -> torch.T
 
 
 def _snapshot_data(base, panel, stress_breadth: float, node_features: str = "daily"):
-    snaps = torch.load(base / "graph_snapshots.pt", weights_only=False)
-    net = torch.load(base / "network_features.pt", weights_only=False)
+    snaps = load_pt(base / "graph_snapshots.pt")
+    net = load_pt(base / "network_features.pt")
     gi = snaps["graph_index"]
     st = snaps["snapshot_t"].numpy()
     assert np.array_equal(net["snapshot_t"].numpy(), st), "network features must follow the graph snapshots"
@@ -88,7 +88,7 @@ def tgae_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, 
 
     data_cfg, tr = cfg["data"], cfg["training"]
     base = PROJECT_ROOT / "data" / "processed" / data_cfg["version"] / data_cfg["resolution"]
-    panel = torch.load(base / "panel.pt", weights_only=False)
+    panel = load_pt(base / "panel.pt")
     snaps, st, X, A, active, stress, turb, density, split = _snapshot_data(base, panel, tr.get("stress_breadth", 0.7),
                                                                            cfg["model"].get("node_features", "daily"))
     mc = cfg["model"]

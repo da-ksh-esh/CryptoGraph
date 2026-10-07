@@ -15,7 +15,7 @@ from ...common.logger import get_logger
 from ...data.config import HourlyConfig
 from ...data.sources.binance import BinanceArchive
 from ...data.sources.binance_futures import download_futures, futures_feature_table
-from ...data.storage import write_json
+from ...data.storage import load_pt, write_json
 
 logger = get_logger(__name__)
 
@@ -25,14 +25,14 @@ def run(cfg: HourlyConfig, refresh: bool = False) -> None:
     arch = BinanceArchive(b.archive_url, b.list_url, "futures/um", "1h", b.retries, b.backoff_base_seconds)
     raw = cfg.raw_dir / "binance_futures"
     first = cfg.processed_dir(cfg.datasets.build_resolutions[0])
-    coins = torch.load(first / "panel.pt", weights_only=False)["graph_coins"]
+    coins = load_pt(first / "panel.pt")["graph_coins"]
     rep = download_futures(arch, list(coins), raw)
     logger.info(f"futures files: {rep['files']}, failures: {len(rep['failures'])}")
     if rep["failures"]:
         raise RuntimeError(f"futures download failures: {rep['failures'][:5]}")
     for res in cfg.datasets.build_resolutions:
         d = cfg.processed_dir(res)
-        p = torch.load(d / "panel.pt", weights_only=False)
+        p = load_pt(d / "panel.pt")
         times = pd.DatetimeIndex(p["times"])
         if p["bar_hours"] != 1:                         # 2h bars: hourly features at the last hour of each bar
             times_1h = times + pd.Timedelta(hours=p["bar_hours"] - 1)

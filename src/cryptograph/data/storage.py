@@ -93,3 +93,21 @@ class FetchLog:
 def hash_tree(paths: list[Path], root: Path) -> dict[str, str]:
     """SHA-256 for each file, keyed by POSIX path relative to root."""
     return {p.relative_to(root).as_posix(): sha256_file(p) for p in sorted(paths) if p.is_file()}
+
+
+def load_pt(path: str | Path, map_location=None) -> Any:
+    """torch.load in safe mode (weights_only=True): tensors, containers and plain types only, so a tampered file
+    cannot run code when it is opened. The PyG event stream (tgn_events.pt) also needs PyG's TemporalData and its
+    storage class, which are allow-listed explicitly; any other object type is refused."""
+    import torch
+
+    allowed = []
+    try:
+        from torch_geometric.data.storage import GlobalStorage
+        from torch_geometric.data.temporal import TemporalData
+
+        allowed = [TemporalData, GlobalStorage]
+    except ImportError:
+        pass
+    with torch.serialization.safe_globals(allowed):
+        return torch.load(path, weights_only=True, map_location=map_location)

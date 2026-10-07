@@ -1,3 +1,4 @@
+# Minimum versions. The exact versions behind the results are pinned in requirements-lock.txt.
 # Core Deep Learning & Graph Networks
 torch>=2.0.0
 torch-geometric>=2.3.0

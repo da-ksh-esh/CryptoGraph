@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cryptograph-secure"
 version = "0.1.0"
-description = "A cybersecurity-focused deep learning framework analyzing cryptocurrency shock propagation and anomaly resilience using Temporal Graph Neural Networks."
+description = "Predicting cryptocurrency shock contagion with temporal graph neural networks: hourly market data, network analysis, explanations and robustness tests."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary, all rights reserved (pending IP review)" }
@@ -16,7 +16,8 @@ keywords = [
     "cryptocurrency",
     "graph-neural-networks",
     "spatio-temporal",
-    "cybersecurity",
+    "contagion",
+    "network-analysis",
     "anomaly-detection",
     "adversarial-robustness",
     "spillover-effects"

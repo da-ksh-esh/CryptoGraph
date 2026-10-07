@@ -9,10 +9,15 @@ the logit difference), checked by `completeness_gap`.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import torch
 
 from .tgn_capture import Captured, ExplainableTGN
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def head_inputs(ex: ExplainableTGN, cap: Captured) -> list[torch.Tensor]:

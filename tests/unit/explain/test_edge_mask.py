@@ -1,6 +1,5 @@
 import torch
 
-from cryptograph.explain import TempME
 from cryptograph.explain.edge_mask import EdgeMaskExplainer
 from cryptograph.explain.validation import ExplanationValidator
 from cryptograph.models.tgn import CryptoTGN
@@ -21,7 +20,3 @@ def test_edge_mask_and_validation():
     validator = ExplanationValidator(model)
     fidelity = validator.compute_fidelity_plus(x, edge_index, exp["edge_mask"], target_idx=0)
     assert isinstance(fidelity, float)
-
-
-def test_tempme_name_is_deprecated_alias():
-    assert TempME is EdgeMaskExplainer

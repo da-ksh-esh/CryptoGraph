@@ -13,6 +13,8 @@ from typing import Any
 
 import torch
 
+from .storage import load_pt
+
 
 def write_legacy_graph_dataset(
     path: str | Path,
@@ -49,4 +51,4 @@ def load_processed_dataset(file_path: str | Path) -> dict[str, Any]:
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"Processed dataset not found: {path}")
-    return torch.load(path, weights_only=False)
+    return load_pt(path)

@@ -28,19 +28,24 @@ from ..data.config import PROJECT_ROOT
 from ..data.storage import library_versions, utc_now, write_json
 
 RUN_ID_RE = re.compile(r"^\d{8}-\d{6}_[A-Za-z0-9_.-]+_\d+_[0-9a-z]+$")
+CODE_PATHS = ("src", "configs", "pyproject.toml", "requirements.txt", "requirements-lock.txt")
 CORE_COLUMNS = ["run_id", "experiment", "seed", "commit", "dirty", "device", "started_utc", "finished_utc", "status"]
 
 
 def git_info(root: Path = PROJECT_ROOT) -> dict:
-    """{"commit": short hash or "nogit", "dirty": bool} — dirty = uncommitted changes to tracked files.
+    """{"commit": short hash or "nogit", "dirty": bool}.
+
+    dirty = the code that runs may differ from the commit: any modified, staged or *untracked* file under the paths
+    that affect a run (`CODE_PATHS`: src/, configs/, pyproject.toml, requirements files). Documents and notebooks do
+    not affect a run and are ignored.
 
     Without a git checkout (e.g. code unpacked from `cryptograph-package pack-code` on Colab), the commit and dirty
     flag recorded in the code package are used when CRYPTOGRAPH_GIT_COMMIT / CRYPTOGRAPH_GIT_DIRTY are set."""
     try:
         commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True,
                                 check=True, timeout=10).stdout.strip()
-        status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=root,
-                                capture_output=True, text=True, check=True, timeout=10).stdout.strip()
+        status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", *CODE_PATHS],
+                                cwd=root, capture_output=True, text=True, check=True, timeout=10).stdout.strip()
         return {"commit": commit or "nogit", "dirty": bool(status)}
     except (OSError, subprocess.SubprocessError):
         if os.environ.get("CRYPTOGRAPH_GIT_COMMIT"):

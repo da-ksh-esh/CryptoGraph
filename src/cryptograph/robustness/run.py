@@ -14,6 +14,7 @@ import torch
 import yaml
 
 from ..data.config import PROJECT_ROOT
+from ..data.storage import load_pt
 from ..explain.run import _find_run
 from ..explain.tgn_capture import load_trained
 from .stress import auprc_by_k, tgn_test_pass
@@ -56,7 +57,7 @@ def robustness_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict
     bounds, K = D["bounds"], D["k_hours"]
     tracker.log(f"TGN {target.name}")
     clean = tgn_test_pass(runner, bounds, seed=seed)
-    saved = torch.load(target / "predictions_test.pt", weights_only=False)
+    saved = load_pt(target / "predictions_test.pt")
     assert np.array_equal(saved["position"].numpy(), clean["pos"]), "clean pass must score the saved events"
     rebuild = float(np.abs(saved["prob"].float().numpy() - clean["prob"]).max())
     tracker.log(f"clean pass vs saved test predictions: max |dp| {rebuild:.1e}")

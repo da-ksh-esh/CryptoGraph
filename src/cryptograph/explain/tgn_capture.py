@@ -21,6 +21,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from ..data.storage import load_pt
 from ..training.tgn_task import _batches
 
 
@@ -169,12 +170,12 @@ def load_trained(run_dir, device: str = "cpu"):
 
     run_dir = Path(run_dir)
     cfg = yaml.safe_load((run_dir / "config.resolved.yaml").read_text(encoding="utf-8"))
-    ck = torch.load(run_dir / "checkpoint.pt", weights_only=False, map_location=device)
+    ck = load_pt(run_dir / "checkpoint.pt", map_location=device)
     data_cfg, tr, mcfg = cfg["data"], cfg["training"], ck["model_config"]
     base = PROJECT_ROOT / "data" / "processed" / data_cfg["version"] / data_cfg["resolution"]
-    panel = torch.load(base / "panel.pt", weights_only=False)
-    ev = torch.load(base / "tgn_events.pt", weights_only=False)
-    net = torch.load(base / "network_features.pt", weights_only=False) if data_cfg.get("network_features", True) else None
+    panel = load_pt(base / "panel.pt")
+    ev = load_pt(base / "tgn_events.pt")
+    net = load_pt(base / "network_features.pt") if data_cfg.get("network_features", True) else None
     d, gidx = ev["full"], ev["graph_index"]
     feats = with_futures(node_feature_table(panel, net, gidx), base, data_cfg, panel["graph_coins"])
     sid = panel["split_id"].numpy()[d.t.numpy()]

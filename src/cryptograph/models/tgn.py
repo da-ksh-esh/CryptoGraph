@@ -1,17 +1,20 @@
-"""Contagion Predictor: Temporal Graph Network (TGN) with dynamic memory and spatial aggregation."""
+"""Temporal Graph Network models.
 
-from typing import Tuple, Optional
+`ContagionTGN` is the model behind every result (notebooks 03-06). `CryptoTGN` is a legacy snapshot-style model from
+the first project phase (GCN over a whole graph); it is not used in any result and is kept only for older tests.
+"""
+
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
-from torch_geometric.nn.models.tgn import (
-    TGNMemory,
-    IdentityMessage,
-    LastAggregator
-)
 from torch_geometric.nn import GCNConv
+from torch_geometric.nn.models.tgn import IdentityMessage, LastAggregator, TGNMemory
+
 
 class CryptoTGN(nn.Module):
-    """
+    """LEGACY (not used in any result; see ContagionTGN).
+
     Temporal Graph Network (TGN) for continuous-time cryptocurrency shock contagion prediction.
     Maintains persistent memory states s_i(t) for each crypto node and aggregates
     dynamic neighborhood signals across inter-asset edges.

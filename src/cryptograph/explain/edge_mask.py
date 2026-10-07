@@ -7,10 +7,12 @@ a deprecated alias. The real TempME (official code) is evaluated in the model-pl
 feasibility check and will get its own adapter in `cryptograph.explain`.
 """
 
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
+
 
 class EdgeMaskExplainer:
     """
@@ -94,6 +96,3 @@ class EdgeMaskExplainer:
             "sparsity": float(np.mean(final_mask < 0.5))
         }
 
-
-# Deprecated alias: this class was previously (mis)named TempME.
-TempME = EdgeMaskExplainer

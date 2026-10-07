@@ -8,6 +8,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from ..storage import load_pt
+
 
 def build_windows(X: np.ndarray, X_mask: np.ndarray, active: np.ndarray, y_ret: np.ndarray, y_rv: np.ndarray,
                   y_shock: np.ndarray, y_shock_mask: np.ndarray, sample_days: np.ndarray, node_idx: list[int],
@@ -40,7 +42,7 @@ class LSTMWindowDataset(Dataset):
     """Loads data/processed/<v>/lstm_<split>.pt. Items: x (L,F), x_mask, y_ret (H,), y_rv (H,), y_shock, coin_id, day."""
 
     def __init__(self, path: str | Path):
-        d = torch.load(path, weights_only=False)
+        d = load_pt(path)
         self.meta = {k: d[k] for k in ("coins", "feature_names", "horizons", "dates", "split", "lookback")}
         self.X, self.X_mask = d["X"], d["X_mask"]
         self.y_ret, self.y_rv, self.y_shock = d["y_ret"], d["y_rv"], d["y_shock"]

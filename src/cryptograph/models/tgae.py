@@ -1,12 +1,15 @@
 """T-GAE: Temporal Graph Autoencoder for market-data anomaly and manipulation detection."""
 
 from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class TemporalGAE(nn.Module):
-    """
+    """LEGACY feature autoencoder (no graph convolution, no time); not used in any result -- see SnapshotTGAE.
+
     Temporal Graph Autoencoder (T-GAE) that reconstructs both node features
     and dynamic graph connectivity. Unusually high reconstruction errors
     flag manipulated market feeds (oracle exploitation, wash trading, flash loan anomalies).

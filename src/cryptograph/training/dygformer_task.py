@@ -14,6 +14,7 @@ import numpy as np
 import torch
 
 from ..data.config import PROJECT_ROOT
+from ..data.storage import load_pt
 from .early_stopping import EarlyStopping
 from .losses import focal_loss
 from .tgn_task import _batches, _metrics, node_feature_table, with_futures
@@ -83,9 +84,9 @@ def dygformer_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[
 
     data_cfg, tr = cfg["data"], cfg["training"]
     base = PROJECT_ROOT / "data" / "processed" / data_cfg["version"] / data_cfg["resolution"]
-    panel = torch.load(base / "panel.pt", weights_only=False)
-    ev = torch.load(base / "tgn_events.pt", weights_only=False)
-    net = torch.load(base / "network_features.pt", weights_only=False) if data_cfg.get("network_features", True) else None
+    panel = load_pt(base / "panel.pt")
+    ev = load_pt(base / "tgn_events.pt")
+    net = load_pt(base / "network_features.pt") if data_cfg.get("network_features", True) else None
     d, gidx, k_hours = ev["full"], ev["graph_index"], ev["label_k_hours"]
     feats = node_feature_table(panel, net, gidx)
     feats = with_futures(feats, base, data_cfg, panel["graph_coins"])

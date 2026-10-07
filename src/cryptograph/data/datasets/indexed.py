@@ -13,6 +13,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+from ..storage import load_pt
+
 
 def sample_mask_times(times: pd.DatetimeIndex, start, end, *, bar: pd.Timedelta, embargo: pd.Timedelta,
                       lookback_bars: int, horizon: pd.Timedelta) -> np.ndarray:
@@ -46,8 +48,8 @@ class PanelWindowDataset(Dataset):
     """Items: x (L, F), x_mask (L, F), y_ret (H,), y_rv (H,), y_shock, coin_id, t — sliced from the shared panel."""
 
     def __init__(self, panel_path: str | Path, index_path: str | Path):
-        p = torch.load(panel_path, weights_only=False)
-        idx = torch.load(index_path, weights_only=False)
+        p = load_pt(panel_path)
+        idx = load_pt(index_path)
         self.X, self.X_mask = p["X"], p["X_mask"]
         self.y_ret, self.y_rv, self.y_shock = p["y_ret"], p["y_rv"], p["y_shock"]
         self.index = idx["index"]
@@ -74,8 +76,8 @@ class HourlySnapshotDataset(Dataset):
     """
 
     def __init__(self, panel_path: str | Path, snapshots_path: str | Path, split: str):
-        p = torch.load(panel_path, weights_only=False)
-        g = torch.load(snapshots_path, weights_only=False)
+        p = load_pt(panel_path)
+        g = load_pt(snapshots_path)
         gi = torch.as_tensor(g["graph_index"])
         self.X, self.X_mask, self.active = p["X"][:, gi], p["X_mask"][:, gi], p["active"][:, gi]
         self.y_ret, self.y_rv, self.y_mask = p["y_ret"][:, gi], p["y_rv"][:, gi], p["y_mask"][:, gi]
