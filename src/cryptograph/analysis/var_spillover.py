@@ -81,6 +81,8 @@ class VARSpilloverBaseline:
 
         return {
             "spillover_matrix": spillover_df,
+            # alias kept for notebooks/archive/02_statistical_spillover_baseline.ipynb (same table as spillover_matrix)
+            "directional_table": spillover_df,
             "to_others": pd.Series(to_others, index=self.asset_names),
             "from_others": pd.Series(from_others, index=self.asset_names),
             "net_spillover": pd.Series(net_spillover, index=self.asset_names),
