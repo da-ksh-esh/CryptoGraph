@@ -1,0 +1,27 @@
+# FINAL: snapshot T-GAE (models/tgae.SnapshotTGAE) on the daily correlation graphs of the 1h data. Anomaly score =
+# one-day-ahead prediction loss ("surprise"); evaluated against independent stress days (>= 70% of active coins
+# shocked in some hour), same day and next day, vs naive scores (day turbulence, graph density). 5 seeds, test once.
+name: tgae_1h_final
+seed: 0
+device: cpu
+deterministic: true
+evaluate_test: true
+data:
+  version: v2
+  resolution: "1h"
+model:
+  name: tgae
+  hidden_dim: 32
+  latent_dim: 16
+  dropout: 0.1
+  node_features: daily     # each coin's activity during the day + network features
+  mode: predict            # score = one-day-ahead surprise (chosen on validation over plain reconstruction)
+training:
+  epochs: 200
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  feature_weight: 1.0
+  chunk_days: 30
+  patience: 15
+  min_epochs: 20
+  stress_breadth: 0.7      # stress day: >= 70% of active coins shocked in some hour (21% of days)

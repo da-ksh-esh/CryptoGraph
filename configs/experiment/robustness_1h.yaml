@@ -1,0 +1,16 @@
+# Stress tests on the test period (robustness/run.py): the final TGN (tgn_1h_final_v2, seed 0) vs the final
+# gradient-boosting model (gbm_1h_final) under input noise, missing events and FGSM attacks (transferred to boosting).
+name: robustness_1h
+seed: 0
+device: cpu
+deterministic: true
+evaluate_test: true
+model:
+  name: robustness
+robustness:
+  tgn_experiment: tgn_1h_final_v2
+  tgn_seed: 0
+  gbm_experiment: gbm_1h_final
+  noise_levels: [0.1, 0.25, 0.5, 1.0]     # std of Gaussian noise, in units of a standardised input
+  drop_levels: [0.1, 0.25, 0.5]           # share of test events missing from memory / neighbour lists
+  fgsm_levels: [0.05, 0.1, 0.25]          # FGSM step, in units of a standardised input

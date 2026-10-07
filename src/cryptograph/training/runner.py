@@ -1,8 +1,9 @@
 """Run one experiment (config + seed + device) with local run tracking.
 
 Tasks wired up: the LSTM baseline, the TGN contagion model (training/tgn_task.py), DyGFormer
-(training/dygformer_task.py), the gradient-boosting baseline (training/gbm_task.py) and TempME explanations of a
-trained TGN (explain/run.py). Other models (snapshot GNN) raise NotReadyError until they are built.
+(training/dygformer_task.py), the gradient-boosting baseline (training/gbm_task.py), TempME explanations of a trained
+TGN (explain/run.py), the snapshot T-GAE (training/tgae_task.py) and stress tests (robustness/run.py). Other models (snapshot GNN) raise
+NotReadyError until they are built.
 """
 
 from __future__ import annotations
@@ -162,7 +163,20 @@ def _tempme_task(cfg, seed, device, tracker):
     return tempme_task(cfg, seed, device, tracker)
 
 
-TASKS = {"lstm": _lstm_task, "tgn": _tgn_task, "dygformer": _dygformer_task, "gbm": _gbm_task, "tempme": _tempme_task}
+def _tgae_task(cfg, seed, device, tracker):
+    from .tgae_task import tgae_task
+
+    return tgae_task(cfg, seed, device, tracker)
+
+
+def _robustness_task(cfg, seed, device, tracker):
+    from ..robustness.run import robustness_task
+
+    return robustness_task(cfg, seed, device, tracker)
+
+
+TASKS = {"lstm": _lstm_task, "tgn": _tgn_task, "dygformer": _dygformer_task, "gbm": _gbm_task, "tempme": _tempme_task,
+         "tgae": _tgae_task, "robustness": _robustness_task}
 
 
 def run_experiment(cfg: dict, seed: int | None = None, device: str | None = None,

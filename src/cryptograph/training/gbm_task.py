@@ -30,12 +30,10 @@ def _scored_positions(t: np.ndarray, ym: np.ndarray, a: int, b: int, bs: int) ->
     return np.concatenate(keep) if keep else np.zeros(0, dtype=int)
 
 
-def gbm_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, Any]:
-    from sklearn.ensemble import HistGradientBoostingClassifier
-
-    from .runner import eval_splits
-
-    data_cfg, tr = cfg["data"], cfg["training"]
+def gbm_design(cfg: dict) -> dict:
+    """The boosting design matrix for every event: [x_src (F), x_dst (F), msg (M), context?, src id, dst id], with
+    labels, masks and split bounds. `n_perturbable` = 2F + M (the inputs shared with the TGN head)."""
+    data_cfg = cfg["data"]
     base = PROJECT_ROOT / "data" / "processed" / data_cfg["version"] / data_cfg["resolution"]
     panel = torch.load(base / "panel.pt", weights_only=False)
     ev = torch.load(base / "tgn_events.pt", weights_only=False)
@@ -58,6 +56,19 @@ def gbm_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
     cat = np.zeros(X.shape[1], dtype=bool)
     cat[-2:] = True                                   # coin ids as categorical features
     Y, YM = d.y.numpy().astype(np.int8), d.y_mask.numpy().astype(bool)
+    return {"X": X, "cat": cat, "Y": Y, "YM": YM, "bounds": bounds, "wmask": wmask, "t_np": t_np, "d": d,
+            "k_hours": k_hours, "n_perturbable": 2 * feats.shape[-1] + d.msg.shape[1]}
+
+
+def gbm_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, Any]:
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    from .runner import eval_splits
+
+    tr = cfg["training"]
+    g = gbm_design(cfg)
+    X, cat, Y, YM, bounds, wmask, t_np, d, k_hours = (g[k] for k in ("X", "cat", "Y", "YM", "bounds", "wmask", "t_np",
+                                                                     "d", "k_hours"))
 
     def split_rows(s, k):
         a, b = bounds[s]

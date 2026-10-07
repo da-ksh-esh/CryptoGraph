@@ -58,3 +58,45 @@ class TemporalGAE(nn.Module):
         x_recon, adj_recon, _ = self.forward(x)
         feat_mse = torch.mean((x - x_recon) ** 2, dim=-1)
         return feat_mse
+
+
+class SnapshotTGAE(nn.Module):
+    """Temporal graph autoencoder over a sequence of graph snapshots (one per day of hourly data).
+
+    For snapshot s: node embeddings u_s = GCN(x_s, A_s) (two layers), temporal state h_s = GRU(u_s, h_{s-1}) per node,
+    then decode the adjacency (inner product h h^T -> edge logits) and the node features (MLP), either from h_s
+    (reconstruction) or from h_{s-1} (prediction: how surprising snapshot s is given the past). The anomaly score of a
+    snapshot is that loss.
+    """
+
+    def __init__(self, in_features: int, hidden_dim: int = 32, latent_dim: int = 16, dropout: float = 0.1):
+        super().__init__()
+        from torch_geometric.nn import GCNConv
+
+        self.conv1 = GCNConv(in_features, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, latent_dim)
+        self.gru = nn.GRUCell(latent_dim, latent_dim)
+        self.dropout = nn.Dropout(dropout)
+        self.feat_dec = nn.Sequential(nn.Linear(latent_dim, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, in_features))
+        self.latent_dim = latent_dim
+
+    def step(self, x, edge_index, edge_weight, h, predict: bool = False):
+        """predict=False: reconstruct snapshot s from the state after seeing it.
+        predict=True: forecast snapshot s from the state before seeing it (anomaly score = surprise), then update."""
+        if predict:
+            adj, xr = h @ h.t(), self.feat_dec(h)
+        u = F.relu(self.conv1(x, edge_index, edge_weight))
+        u = self.conv2(self.dropout(u), edge_index, edge_weight)
+        h = self.gru(u, h)
+        if not predict:
+            adj, xr = h @ h.t(), self.feat_dec(h)
+        return h, adj, xr
+
+    @staticmethod
+    def losses(adj_logits, adj_true, x_rec, x, node_mask):
+        """Per-snapshot adjacency BCE (off-diagonal, active pairs) and feature MSE (active nodes)."""
+        pair = node_mask[:, None] & node_mask[None, :]
+        pair = pair & ~torch.eye(len(node_mask), dtype=torch.bool, device=pair.device)
+        adj = F.binary_cross_entropy_with_logits(adj_logits[pair], adj_true[pair]) if pair.any() else adj_logits.sum() * 0
+        feat = ((x_rec - x) ** 2)[node_mask].mean() if node_mask.any() else x.sum() * 0
+        return adj, feat

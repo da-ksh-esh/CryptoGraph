@@ -26,8 +26,10 @@ CASES = {"LUNA collapse (May 2022, train period)": ("2022-05-09", "2022-05-13"),
          "10-Oct-2025 liquidation cascade (test period)": ("2025-10-10 12:00", "2025-10-11 12:00")}
 
 
-def _find_run(experiment: str, seed: int) -> Path:
-    runs = sorted(p for p in (PROJECT_ROOT / "runs").glob(f"*_{experiment}_{seed}_*") if (p / "checkpoint.pt").exists())
+def _find_run(experiment: str, seed: int, required: str = "checkpoint.pt") -> Path:
+    """Latest finished run of `experiment` with this seed (exact experiment name; must contain `required`)."""
+    runs = sorted(p for p in (PROJECT_ROOT / "runs").glob(f"*_{experiment}_{seed}_*")
+                  if (p / required).exists() and p.name[16:].rsplit("_", 2)[0] == experiment)
     if not runs:
         raise FileNotFoundError(f"no finished run of {experiment} seed {seed}")
     return runs[-1]
