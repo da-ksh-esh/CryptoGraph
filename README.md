@@ -21,7 +21,7 @@ shock next, with motif-based explanations (TempME) and robustness tests.
 | Explanations: TempME ported to the TGN, integrated gradients, case studies (notebook 04) | done |
 | Shock persistence by type (notebook 05) | done |
 | Robustness: T-GAE anomaly scores, noise / missing-data / FGSM stress tests (notebook 06) | done |
-| Serving: `cryptograph-predict` (calibrated risk per coin + integrated-gradient drivers), Streamlit dashboard, TGN compression for CPU | code + tests done; final runs pending the final TGN run and data package (`docs/merge_notes.md`) |
+| Serving: `cryptograph-predict` (calibrated risk per coin + integrated-gradient drivers), Streamlit dashboard, TGN compression for CPU | done: final runs on `tgn_1h_final_v2` seed 0; serve fp32 (int8 is 3x smaller but slower and costs ~0.005 AUPRC; `reports/compression/`, `docs/merge_notes.md`) |
 
 ---
 
