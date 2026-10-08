@@ -192,5 +192,8 @@ def load_trained(run_dir, device: str = "cpu"):
     model.eval()
     assert ctx is None, "explanations support the TGN without event-context features (the final model)"
     runner = StreamRunner(model, d, feats, wmask, torch.device(device), tr["batch_size"], tr.get("num_neighbors", 10))
+    node_names = list(panel["feature_names"]) + ([f"network: {n}" for n in net["feature_names"]] if net else [])
+    node_names += [f"futures: {k}" for k in range(feats.shape[-1] - len(node_names))]   # futures columns, if any
     return runner, {"d": d, "panel": panel, "bounds": bounds, "wmask": wmask, "k_hours": ev["label_k_hours"],
-                    "coins": list(panel["graph_coins"]), "feats": feats, "cfg": cfg}
+                    "coins": list(panel["graph_coins"]), "feats": feats, "cfg": cfg,
+                    "node_names": node_names, "msg_names": list(ev["msg_names"])}

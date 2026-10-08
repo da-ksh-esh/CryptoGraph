@@ -51,6 +51,34 @@ def integrated_gradients(ex: ExplainableTGN, cap: Captured, horizon: int, steps:
     return out, gap
 
 
+def flat_attributions(attr: list[torch.Tensor]) -> torch.Tensor:
+    """(N, n_inputs) in the rows of `feature_table`: each embedding summed to one input, then node features of i, of j,
+    and the message."""
+    zi, zj, xi, xj, msg = attr
+    return torch.cat([zi.sum(1, keepdim=True), zj.sum(1, keepdim=True), xi, xj, msg], dim=1)
+
+
+def driver_stability(ex: ExplainableTGN, cap: Captured, horizon: int, noise: float, top: int = 5, steps: int = 32,
+                     seed: int = 0) -> dict[str, float]:
+    """How stable the per-alert drivers are when the observed inputs (node features of both coins and the message,
+    standardised) get Gaussian noise of std `noise`: mean Jaccard overlap of the `top` inputs by |attribution|, the
+    share of alerts whose top driver is unchanged, and the mean change in probability."""
+    g = torch.Generator().manual_seed(seed)
+    noisy = cap.subset(torch.arange(len(cap)))
+    for k in ("x_src", "x_dst", "msg"):
+        x = getattr(cap, k)
+        setattr(noisy, k, x + noise * torch.randn(x.shape, generator=g))
+    a0 = flat_attributions(integrated_gradients(ex, cap, horizon, steps)[0]).abs()
+    a1 = flat_attributions(integrated_gradients(ex, noisy, horizon, steps)[0]).abs()
+    t0, t1 = a0.topk(top, dim=1).indices, a1.topk(top, dim=1).indices
+    sets = [(set(r0.tolist()), set(r1.tolist())) for r0, r1 in zip(t0, t1)]
+    jac = [len(a & b) / len(a | b) for a, b in sets]
+    with torch.no_grad():
+        dp = (torch.sigmoid(ex(noisy)[:, horizon]) - torch.sigmoid(ex(cap)[:, horizon])).abs()
+    return {"noise": noise, "events": len(cap), "top_k": top, "mean_jaccard_topk": float(np.mean(jac)),
+            "top1_unchanged": float((t0[:, 0] == t1[:, 0]).float().mean()), "mean_abs_dp": float(dp.mean())}
+
+
 def completeness_gap(attr: list[torch.Tensor], gap: torch.Tensor) -> float:
     total = sum(a.sum(1) for a in attr)
     return float((total - gap).abs().max())

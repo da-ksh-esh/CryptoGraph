@@ -7,6 +7,8 @@ The TGN replays the clean history (train + validation) and is then scored on the
                   every event is still scored
   * FGSM attack   white-box fast-gradient-sign perturbation of the same inputs, eps * sign(grad of the loss against the
                   true labels): the worst case for a small, bounded manipulation of the observed data
+  * PGD attack    FGSM iterated (attack_steps > 1): random start in the eps ball, steps of 2.5 * eps / steps, projected
+                  back into the L-inf ball of radius eps after each step (Madry et al., 2018); a stronger worst case
 Gradient boosting gets the same noise, and the TGN's FGSM perturbations are transferred to it (a black-box transfer
 attack); it has no event memory, so missing events cannot affect it.
 """
@@ -20,10 +22,28 @@ import torch.nn.functional as F
 from ..training.tgn_task import _batches
 
 
+def gradient_attack(decode, inputs: list[torch.Tensor], y: torch.Tensor, ym: torch.Tensor, eps: float, steps: int = 1,
+                    generator: torch.Generator | None = None) -> list[torch.Tensor]:
+    """L-inf bounded attack on the head inputs that raises the loss against the true labels.
+    steps = 1: FGSM (one step of eps); steps > 1: PGD from a random start, step 2.5 * eps / steps, projected to eps."""
+    orig = [x.detach() for x in inputs]
+    if steps <= 1:
+        adv, alpha = [x.clone() for x in orig], eps
+    else:
+        adv = [x + eps * (2 * torch.rand(x.shape, generator=generator) - 1) for x in orig]
+        alpha = 2.5 * eps / steps
+    for _ in range(max(1, steps)):
+        inp = [x.clone().requires_grad_(True) for x in adv]
+        loss = F.binary_cross_entropy_with_logits(decode(*inp)[ym], y[ym].float())
+        grads = torch.autograd.grad(loss, inp)
+        adv = [o + (x.detach() + alpha * g.sign() - o).clamp(-eps, eps) for o, x, g in zip(orig, inp, grads)]
+    return adv
+
+
 def tgn_test_pass(runner, bounds: dict, *, noise: float = 0.0, drop: float = 0.0, fgsm: float = 0.0,
-                  seed: int = 0, keep_inputs: bool = False) -> dict:
+                  attack_steps: int = 1, seed: int = 0, keep_inputs: bool = False) -> dict:
     """Score the test period once under one perturbation. Returns probabilities, labels, masks, positions and (with
-    keep_inputs) the perturbed head inputs of the scored events."""
+    keep_inputs) the perturbed head inputs of the scored events. fgsm = attack radius eps; attack_steps > 1 = PGD."""
     model, d, dev = runner.model, runner.d, runner.device
     g = torch.Generator().manual_seed(seed)
     model.eval()
@@ -51,11 +71,8 @@ def tgn_test_pass(runner, bounds: dict, *, noise: float = 0.0, drop: float = 0.0
             xd = xd + noise * torch.randn(xd.shape, generator=g)
             mg = mg + noise * torch.randn(mg.shape, generator=g)
         if fgsm > 0 and ym.any():
-            inp = [x.clone().requires_grad_(True) for x in (xs, xd, mg)]
-            lg = model.decode(zs, zd, *inp)
-            loss = F.binary_cross_entropy_with_logits(lg[ym], y[ym].float())
-            grads = torch.autograd.grad(loss, inp)
-            xs, xd, mg = (x.detach() + fgsm * gr.sign() for x, gr in zip(inp, grads))
+            xs, xd, mg = gradient_attack(lambda a, b, c: model.decode(zs, zd, a, b, c), [xs, xd, mg], y, ym, fgsm,
+                                         attack_steps, g)
         with torch.no_grad():
             logits = model.decode(zs, zd, xs, xd, mg)
         if drop > 0:                                   # data-feed gaps: some events never reach memory / neighbours

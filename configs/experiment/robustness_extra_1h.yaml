@@ -1,0 +1,31 @@
+# Robustness additions ported from the earlier main-branch work, run on the final hourly models (robustness/run.py):
+#  * PGD attacks (10-step iterated FGSM, random start, L-inf radius eps) on the final TGN, transferred to boosting;
+#    a stronger worst case than the single-step FGSM of robustness_1h (same eps grid)
+#  * stability of the per-alert integrated-gradient drivers (shown by cryptograph-predict and the dashboard) under
+#    input noise, on the riskiest 1% of test alerts at 6 h
+# Leaves robustness_1h (notebook 06, reports/robustness/stress_tests.csv) unchanged.
+#   cryptograph-train --config configs/experiment/robustness_extra_1h.yaml
+name: robustness_extra_1h
+seed: 0
+device: cpu
+deterministic: true
+evaluate_test: true
+model:
+  name: robustness
+robustness:
+  tgn_experiment: tgn_1h_final_v2
+  tgn_seed: 0
+  gbm_experiment: gbm_1h_final
+  report: stress_tests_pgd.csv
+  noise_levels: []
+  drop_levels: []
+  fgsm_levels: []
+  pgd_levels: [0.05, 0.1, 0.25]           # same radii as the FGSM levels of robustness_1h
+  pgd_steps: 10
+  driver_stability:
+    horizon_hours: 6
+    top_frac: 0.01
+    max_alerts: 2000
+    top_k: 5
+    ig_steps: 32
+    noise_levels: [0.05, 0.1, 0.25]

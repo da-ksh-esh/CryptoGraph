@@ -2,8 +2,9 @@
 
 Tasks wired up: the LSTM baseline, the TGN contagion model (training/tgn_task.py), DyGFormer
 (training/dygformer_task.py), the gradient-boosting baseline (training/gbm_task.py), TempME explanations of a trained
-TGN (explain/run.py), the snapshot T-GAE (training/tgae_task.py) and stress tests (robustness/run.py). Other models (snapshot GNN) raise
-NotReadyError until they are built.
+TGN (explain/run.py), the snapshot T-GAE (training/tgae_task.py), stress tests (robustness/run.py), and serving the
+final TGN: per-coin risk (serving/predict.py) and CPU compression (serving/compress.py). Other models (snapshot GNN)
+raise NotReadyError until they are built.
 """
 
 from __future__ import annotations
@@ -175,8 +176,20 @@ def _robustness_task(cfg, seed, device, tracker):
     return robustness_task(cfg, seed, device, tracker)
 
 
+def _predict_task(cfg, seed, device, tracker):
+    from ..serving.predict import predict_task
+
+    return predict_task(cfg, seed, device, tracker)
+
+
+def _compress_task(cfg, seed, device, tracker):
+    from ..serving.compress import compress_task
+
+    return compress_task(cfg, seed, device, tracker)
+
+
 TASKS = {"lstm": _lstm_task, "tgn": _tgn_task, "dygformer": _dygformer_task, "gbm": _gbm_task, "tempme": _tempme_task,
-         "tgae": _tgae_task, "robustness": _robustness_task}
+         "tgae": _tgae_task, "robustness": _robustness_task, "predict": _predict_task, "compress": _compress_task}
 
 
 def run_experiment(cfg: dict, seed: int | None = None, device: str | None = None,

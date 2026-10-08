@@ -1,0 +1,21 @@
+# Compression of the final TGN (tgn_1h_final_v2, seed 0) for CPU serving (serving/compress.py):
+# dynamic int8 quantisation (all layers / attention time encoder kept fp32) and 50% magnitude pruning vs the fp32 model.
+# Every variant replays the full stream; test AUPRC cost per horizon with the paired day-block bootstrap, top-1% alert
+# overlap, CPU latency per 200-event batch and model size. Scores the test period (the final model's test events,
+# already scored once in notebook 03; no choice is tuned on them).
+#   cryptograph-train --config configs/experiment/compress_tgn_1h.yaml
+# Writes runs/<run_id>/compression_{accuracy,latency}.csv and reports/compression/{accuracy,latency}.csv.
+name: compress_tgn_1h
+seed: 0
+device: cpu
+deterministic: true
+model:
+  name: compress
+compress:
+  target_experiment: tgn_1h_final_v2
+  target_seed: 0
+  variants: [fp32, int8, int8_keep_time, prune50]   # fp32 first (the reference)
+  n_boot: 1000              # day-block bootstrap resamples
+  latency_batches: 200      # test batches timed per variant and thread count
+  threads: [1, 0]           # 0 = torch default (all cores)
+  write_reports: true

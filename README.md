@@ -21,7 +21,7 @@ shock next, with motif-based explanations (TempME) and robustness tests.
 | Explanations: TempME ported to the TGN, integrated gradients, case studies (notebook 04) | done |
 | Shock persistence by type (notebook 05) | done |
 | Robustness: T-GAE anomaly scores, noise / missing-data / FGSM stress tests (notebook 06) | done |
-| User-facing view (`dashboard/` or `cryptograph-predict`), model compression | to do — Dakshesh (`docs/merge_notes.md`) |
+| Serving: `cryptograph-predict` (calibrated risk per coin + integrated-gradient drivers), Streamlit dashboard, TGN compression for CPU | done: final runs on `tgn_1h_final_v2` seed 0; serve fp32 (int8 is 3x smaller but slower and costs ~0.005 AUPRC; `reports/compression/`, `docs/merge_notes.md`) |
 
 ---
 
@@ -32,10 +32,11 @@ CryptoGraph/
 ├── configs/
 │   ├── data/daily.yaml, hourly.yaml   # windows, universe, quality, features, labels, splits, graphs, network
 │   ├── model/                # architecture of lstm, tgn, dygformer (training settings in experiment/)
-│   └── experiment/           # one YAML per run: *_dev (validation only), *_final (test), tempme, tgae, robustness
+│   └── experiment/           # one YAML per run: *_dev (validation only), *_final (test), tempme, tgae, robustness,
+│                             #   predict_tgn_1h, compress_tgn_1h
 ├── colab/                    # self-contained Colab notebooks + runner.ipynb + README (Colab / Kaggle)
 ├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv, sectors.csv
-├── dashboard/                # Streamlit UI (deferred until models are trained)
+├── dashboard/                # Streamlit UI over cryptograph-predict runs (risk, alerts + drivers, duration, network)
 ├── docs/                     # model_plan.md, hourly_data_notes.md, merge_notes.md
 ├── notebooks/                # 01 data & EDA, 02 networks, 03 models, 04 explanations, 05 persistence, 06 robustness
 ├── reports/                  # audit, quality, baseline, network, explain/ and robustness/ tables, figures
@@ -45,12 +46,14 @@ CryptoGraph/
 │   ├── network/              # centrality, communities, MST, topology, spillover, independent cascade, node features
 │   ├── models/               # LSTM, TGN, DyGFormer, T-GAE (SnapshotTGAE); snapshot GNN not built
 │   ├── explain/              # TempME port, TGN capture, fidelity baselines, integrated gradients
-│   ├── robustness/           # stress tests (noise, missing events, FGSM), anomaly scoring
+│   ├── robustness/           # stress tests (noise, missing events, FGSM / PGD), driver stability, anomaly scoring
+│   ├── serving/              # predict (risk + drivers), compress (int8 / pruning vs fp32), dashboard data
 │   ├── training/             # runner + tasks (TGN, DyGFormer, LSTM, boosting, T-GAE), refit, tracking, metrics
 │   ├── analysis/             # statistics, lead-lag, Diebold-Yilmaz, event studies, persistence, evaluation, baselines
-│   ├── pipelines/            # build_data (cryptograph-data), train (cryptograph-train), package_data, evaluate, explain
+│   ├── pipelines/            # build_data (cryptograph-data), train (cryptograph-train), predict (cryptograph-predict),
+│   │                         #   package_data, evaluate, explain
 │   └── common/               # logging, shared types
-└── tests/unit/{data,models,explain,robustness,training,analysis,network}, tests/integration/
+└── tests/unit/{data,models,explain,robustness,training,analysis,network,serving}, tests/integration/
 ```
 
 ---
@@ -155,3 +158,23 @@ cryptograph-data --config configs/data/hourly.yaml --stage all      # = audit, f
 - **CI:** `.github/workflows/tests.yml` runs `pytest` on every push with the pinned versions of `requirements-lock.txt`
   (integration tests skip on CI because data is never in git; they run locally where the artifacts exist).
 
+## 🔮 Serving: predictions, dashboard, compression
+
+Needs the final TGN run (`runs/*_tgn_1h_final_v2_0_*`, with its `predictions_val.pt`) and `data/processed/v2/`.
+
+```bash
+cryptograph-predict                                   # latest shock bar -> runs/<run_id>/risk.csv, alerts.json, ...
+cryptograph-predict --as-of "2025-10-10 21:00"        # the risk as it stood at that hour
+streamlit run dashboard/app.py                        # shows the latest prediction run
+cryptograph-train --config configs/experiment/compress_tgn_1h.yaml        # int8 / pruning vs fp32 on the test events
+cryptograph-train --config configs/experiment/robustness_extra_1h.yaml    # PGD attacks + driver stability
+```
+
+- **Risk** per coin and horizon (1–24 h) = the highest calibrated probability over the most recent shock events that
+  point at the coin. The focal-loss scores are calibrated by binned isotonic regression on the validation period (never
+  the test period) and made non-decreasing in the horizon. Alerts are ranked by lift over each horizon's base rate.
+- **Drivers** = integrated gradients on the prediction head for the coin's top event (completeness checked per run).
+- **Shock context** = type of the source shock (notebook 05) and how long such shocks lasted before the as-of hour.
+- **Compression** (`serving/compress.py`): every variant replays the whole stream and is scored on the same test
+  events; AUPRC cost with the paired day-block bootstrap, top-1% alert overlap, CPU latency per 200-event batch, size
+  (`reports/compression/`).

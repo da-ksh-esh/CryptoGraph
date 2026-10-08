@@ -1,5 +1,8 @@
 """Robustness run behind notebook 06: stress tests of the final TGN and gradient boosting on the test period.
 
+Optional (robustness_extra_1h): PGD attacks (`pgd_levels`, `pgd_steps`) next to FGSM, and the stability of the
+per-alert integrated-gradient drivers under input noise (`driver_stability`), written to their own report files.
+
 Checks before any perturbation: the clean TGN pass must reproduce the run's saved test predictions, and the refitted
 boosting model (same trees, same data, deterministic) must reproduce its saved validation AUPRC.
 """
@@ -50,6 +53,29 @@ def _fit_gbm(run_dir, seed: int):
     return models, g, val_err
 
 
+def _driver_stability(runner, D: dict, target, sc: dict, seed: int, tracker) -> pd.DataFrame:
+    """Stability of the integrated-gradient drivers (the dashboard's "why") of the riskiest test alerts under noise."""
+    from ..explain.attribution import driver_stability
+    from ..explain.tgn_capture import ExplainableTGN, capture
+
+    kidx = list(D["k_hours"]).index(sc.get("horizon_hours", 6))
+    pt = load_pt(target / "predictions_test.pt")
+    pos, prob, m = pt["position"].numpy(), pt["prob"].float().numpy()[:, kidx], pt["mask"].numpy()[:, kidx]
+    cand = np.flatnonzero(m)
+    top = pos[cand[np.argsort(-prob[cand], kind="stable")[:max(1, int(round(sc.get("top_frac", 0.01) * len(cand))))]]]
+    rng = np.random.default_rng(seed)
+    top = np.sort(rng.choice(top, size=min(len(top), sc.get("max_alerts", 2000)), replace=False))
+    sel = np.zeros(len(D["d"].t), bool)
+    sel[top] = True
+    cap = capture(runner, sel, end=int(top[-1]) + 1)
+    ex = ExplainableTGN(runner.model)
+    rows = [driver_stability(ex, cap, kidx, s, sc.get("top_k", 5), sc.get("ig_steps", 32), seed)
+            for s in sc.get("noise_levels", [0.05, 0.1, 0.25])]
+    tracker.log("driver stability: " + ", ".join(f"noise {r['noise']}: Jaccard {r['mean_jaccard_topk']:.2f}, top-1 "
+                                                   f"kept {r['top1_unchanged']:.0%}" for r in rows))
+    return pd.DataFrame(rows).assign(horizon_hours=D["k_hours"][kidx])
+
+
 def robustness_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, Any]:
     rc = cfg["robustness"]
     target = _find_run(rc["tgn_experiment"], rc.get("tgn_seed", 0))
@@ -97,18 +123,25 @@ def robustness_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict
         add("TGN", "missing events", p, r["prob"], clean["prob"])
         add("gradient boosting", "missing events", p, gb_clean, gb_clean)     # no event memory: unaffected
         tracker.log(f"drop {p}: done")
-    for eps in rc.get("fgsm_levels", [0.05, 0.1, 0.25]):
-        r = tgn_test_pass(runner, bounds, fgsm=eps, seed=seed, keep_inputs=True)
-        add("TGN", "FGSM attack (white-box)", eps, r["prob"], clean["prob"])
+    attacks = [("FGSM", 1, eps) for eps in rc.get("fgsm_levels", [0.05, 0.1, 0.25])]
+    attacks += [("PGD", rc.get("pgd_steps", 10), eps) for eps in rc.get("pgd_levels", [])]
+    for name, steps, eps in attacks:
+        r = tgn_test_pass(runner, bounds, fgsm=eps, attack_steps=steps, seed=seed, keep_inputs=True)
+        add("TGN", f"{name} attack (white-box)", eps, r["prob"], clean["prob"])
         Xa = Xt.copy()
         Xa[:, :npb] = np.concatenate([r["x_src"], r["x_dst"], r["msg"]], axis=1)
-        add("gradient boosting", "FGSM transferred from TGN", eps, gbm_prob(Xa), gb_clean)
-        tracker.log(f"fgsm {eps}: done")
+        add("gradient boosting", f"{name} transferred from TGN", eps, gbm_prob(Xa), gb_clean)
+        tracker.log(f"{name.lower()} {eps}: done")
     df = pd.DataFrame(rows)
     out = PROJECT_ROOT / "reports" / "robustness"
     out.mkdir(parents=True, exist_ok=True)
-    df.to_csv(out / "stress_tests.csv", index=False)
-    df.to_csv(tracker.dir / "stress_tests.csv", index=False)
+    report = rc.get("report", "stress_tests.csv")
+    df.to_csv(out / report, index=False)
+    df.to_csv(tracker.dir / report, index=False)
+    if rc.get("driver_stability"):
+        stab = _driver_stability(runner, D, target, rc["driver_stability"], seed, tracker)
+        stab.to_csv(out / "driver_stability.csv", index=False)
+        stab.to_csv(tracker.dir / "driver_stability.csv", index=False)
     metrics: dict[str, Any] = {"tgn_run": target.name, "gbm_run": gbm_dir.name, "clean_rebuild_max_dp": rebuild,
                                "gbm_refit_val_err": val_err, "evaluated_test": True}
     for _, r in df.iterrows():

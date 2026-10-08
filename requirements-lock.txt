@@ -25,5 +25,6 @@ ipykernel==6.29.5
 nbconvert==7.16.4
 nbformat==5.10.4
 nbclient==0.10.0
-# Not installed in the experiment environment (only needed for the deferred dashboard / coverage reports):
-# streamlit, pytest-cov
+streamlit==1.57.0
+# Not installed in the experiment environment (only needed for coverage reports):
+# pytest-cov
