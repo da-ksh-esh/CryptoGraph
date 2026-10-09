@@ -113,6 +113,9 @@ def test_predict_task_end_to_end(toy_project):
     assert all(a["lift"] >= b["lift"] for a, b in zip(alerts, alerts[1:]))
     summary = json.loads((rd / "summary.json").read_text())
     assert summary["hours_since_as_of"] == 0 and summary["n_events"] == int((d.t >= d.t.max() - 1).sum())
+    drivers = json.loads((rd / "drivers.json").read_text())
+    assert set(drivers) == {f"{c}|{kh}" for c, kh in zip(risk.coin, risk.horizon_h)}       # every coin x horizon
+    assert all(len(v) == 3 for v in drivers.values())
     shocks = pd.read_csv(rd / "shock_sources.csv")
     last = d.t.max()
     assert set(shocks.coin) == {COINS[s] for s in d.src[d.t == last].unique().tolist()}

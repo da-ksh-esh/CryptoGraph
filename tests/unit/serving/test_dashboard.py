@@ -73,15 +73,20 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     root, rd = predicted
     at = _app(monkeypatch, root)
     assert not at.exception, at.exception
-    assert [t.label for t in at.tabs] == ["Risk per coin", "Event explorer", "Riskiest alerts", "Shock duration",
-                                          "Network", "How good is the model"]
+    assert [t.label for t in at.tabs] == ["📊 Who's at risk", "🔍 Why", "📜 Past crises", "🕸️ Market map",
+                                          "ℹ️ How it works"]
     as_of = pd.Timestamp(dd.load_prediction(rd).summary["as_of"])
-    assert at.metric[0].value == as_of.strftime("%d %b %H:%M") and len(at.metric[0].value) <= 12
-    assert at.metric[0].label == f"As of (UTC, {as_of.year})"
+    assert any(as_of.strftime("%d %b %Y, %H:%M UTC") in m.value for m in at.markdown)
+    assert at.metric[0].label == "Most likely to move next (6 hours)" and at.metric[0].value in COINS
     assert "pumpes" not in " ".join(m.value for m in at.markdown)
-    assert len(at.expander) >= 3
-    at.radio[0].set_value(1).run()                             # switch horizon
-    assert not at.exception
+    assert any(e.label.startswith("Details: every time window") for e in at.expander)
+    assert "dropped sharply" in " ".join(m.value for m in at.markdown) or "jumped sharply" in         " ".join(m.value for m in at.markdown)
+    at.select_slider(key="horizon").set_value(1).run()          # switch the time window
+    assert not at.exception, at.exception
+    assert at.metric[0].label == "Most likely to move next (1 hour)"
+    at.selectbox(key="why_coin").set_value(at.selectbox(key="why_coin").options[-1]).run()
+    assert not at.exception, at.exception
+    assert any("the risk)" in m.value for m in at.markdown)                 # plain-language reasons
 
 
 def test_dashboard_without_runs_explains_what_to_do(tmp_path, monkeypatch):
@@ -134,12 +139,38 @@ def test_event_explorer_renders_and_switches_events(with_events, monkeypatch):
     at = _app(monkeypatch, root)
     assert not at.exception, at.exception
     box = at.selectbox(key="event")
-    assert [o.split(" · ")[1] for o in box.options] == ["early (train)", "late (test)"]
-    assert any("Train period" in w.value for w in at.warning)
+    assert [o.split(" · ")[1] for o in box.options] == ["early", "late"]
+    assert any("Not a fair test" in w.value for w in at.warning)
     late_id = dd.load_events_index(ev_dir)["events"][1]["id"]
     box.set_value(late_id).run()
     assert not at.exception, at.exception
-    assert any("Test period" in s.value for s in at.success)
-    assert any("riskiest coins" in m.value for m in at.markdown)
+    assert any("A real test" in s.value for s in at.success)
+    assert any("flagged" in m.value and "at random" in m.value for m in at.markdown)
     at.multiselect(key="event_sectors").select("x").run()
     assert not at.exception, at.exception
+
+
+def test_plain_language_helpers():
+    assert dd.risk_level(1.6)[0] == "Much higher than usual" and dd.risk_level(1.2)[0] == "Higher than usual"
+    assert dd.risk_level(1.0)[0] == "About normal" and dd.risk_level(0.5)[0] == "Lower than usual"
+    assert dd.risk_level(None)[0] == "Unknown" and dd.risk_level(float("nan"))[0] == "Unknown"
+    assert dd.horizon_label(1) == "1 hour" and dd.horizon_label(24) == "24 hours"
+    up = {"input": "receiver coin: volume_rel_168h", "attribution": 0.3}
+    assert dd.plain_driver(up, "JUP", "QNT") == "JUP: trading volume compared with its past week (raises the risk)"
+    down = {"input": "source coin: network: dy_net", "attribution": -0.1}
+    assert dd.plain_driver(down, "JUP", "QNT").startswith("QNT: whether it tends to spread") and "lowers" in \
+        dd.plain_driver(down, "JUP", "QNT")
+    ev = {"input": "event: contemp_corr", "attribution": 0.2}
+    assert dd.plain_driver(ev, "JUP", "QNT") == ("how closely the two coins move together (from QNT to JUP) "
+                                                 "(raises the risk)")
+    assert dd.plain_driver({"input": "receiver coin: futures: 0", "attribution": 0.1}, "A", "B") == \
+        "A: futures: 0 (raises the risk)"                                      # unknown inputs stay readable
+    solo = dd.shock_sentence({"coin": "QNT", "direction": "crash", "z": -4.8, "breadth": 0.0},
+                             {"median_hours_to_normal": 8.0})
+    assert "QNT** dropped sharply" in solo and "4.8 times" in solo and "on its own" in solo and "8 hours" in solo
+    wide = dd.shock_sentence({"coin": "BTC", "direction": "pump", "z": 3.1, "breadth": 0.6}, None)
+    assert "jumped" in wide and "60% of the other coins" in wide and "market-wide" in wide and "hours" not in wide
+    assert dd.crisis_verdict(5, 5, 5.0, 1.0)[0] == "neutral"                # everyone moved: says nothing
+    assert dd.crisis_verdict(3, 5, 1.6, 0.32)[0] == "good"
+    assert dd.crisis_verdict(2, 5, 1.9, 0.38)[0] == "neutral"
+    assert dd.crisis_verdict(0, 5, 2.5, 0.5)[0] == "weak"

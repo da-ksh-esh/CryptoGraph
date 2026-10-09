@@ -24,6 +24,7 @@ class Prediction:
     sources: pd.DataFrame = field(default_factory=pd.DataFrame)
     persistence: pd.DataFrame = field(default_factory=pd.DataFrame)
     model_metrics: dict = field(default_factory=dict)
+    drivers: dict = field(default_factory=dict)            # "COIN|h" -> drivers (older runs: only the alerts')
 
 
 def prediction_runs(runs_dir: Path | str = PROJECT_ROOT / "runs") -> list[Path]:
@@ -41,10 +42,13 @@ def load_prediction(run_dir: Path | str) -> Prediction:
     opt = lambda f: pd.read_csv(run_dir / f) if (run_dir / f).exists() else pd.DataFrame()   # noqa: E731
     target_metrics = run_dir.parent / summary["target_run"] / "metrics.json"
     metrics = json.loads(target_metrics.read_text(encoding="utf-8")) if target_metrics.exists() else {}
-    return Prediction(run_dir, summary, pd.read_csv(run_dir / "risk.csv"),
-                      json.loads((run_dir / "alerts.json").read_text(encoding="utf-8")),
+    alerts = json.loads((run_dir / "alerts.json").read_text(encoding="utf-8"))
+    dp = run_dir / "drivers.json"
+    drivers = (json.loads(dp.read_text(encoding="utf-8")) if dp.exists()
+               else {f"{a['coin']}|{a['horizon_h']}": a.get("drivers", []) for a in alerts})
+    return Prediction(run_dir, summary, pd.read_csv(run_dir / "risk.csv"), alerts,
                       opt("shock_sources.csv"), opt("persistence.csv"),
-                      {k: v for k, v in metrics.items() if not isinstance(v, (list, dict))})
+                      {k: v for k, v in metrics.items() if not isinstance(v, (list, dict))}, drivers)
 
 
 def risk_matrix(risk: pd.DataFrame) -> pd.DataFrame:
@@ -173,3 +177,86 @@ def outcome_table(risk: pd.DataFrame, horizon: int, sectors: list[str] | None = 
                           for ds in t["drivers"]])
     cols = ["coin", "sector", "risk", "score", "lift", "outcome", "source", "drivers"]   # score orders equal risks
     return t[[c for c in cols if c in t]].reset_index(drop=True)
+
+
+# --- plain language (the dashboard is for readers without a data-science background) -----------------------------
+
+# (label, colour, lower bound of the lift over a typical coin)
+RISK_LEVELS = (("Much higher than usual", "#d62728", 1.5), ("Higher than usual", "#ff7f0e", 1.15),
+               ("About normal", "#9aa5b1", 0.85), ("Lower than usual", "#1f77b4", 0.0))
+
+FEATURE_PLAIN = {
+    "log_return": "price change in the last hour",
+    "rv_24h": "how jumpy its price was over the last day",
+    "rv_72h": "how jumpy its price was over the last 3 days",
+    "log_volume_ds": "trading volume",
+    "volume_rel_168h": "trading volume compared with its past week",
+    "log_hours_listed": "how long it has been trading",
+    "network: strength": "how strongly it moves with other coins",
+    "network: eigenvector": "how central it is in the market",
+    "network: mst_degree": "how many coins it is most closely linked to",
+    "network: community_size_frac": "the size of its group of closely linked coins",
+    "network: dy_pagerank": "its role in spreading price swings",
+    "network: dy_net": "whether it tends to spread or absorb price swings",
+    "network: shock_pagerank": "how often its big moves are followed by others",
+    "network: shock_out_lift": "how often other coins follow its big moves",
+    "memory + recent events": "its recent history of big moves",
+}
+EVENT_PLAIN = {
+    "lag1_corr": "how closely the two coins moved together an hour apart",
+    "contemp_corr": "how closely the two coins move together",
+    "src_return_scaled": "the size of the move that started it",
+    "src_vol_z": "how unusual the triggering coin's swings were",
+    "src_shock": "that the triggering coin is in a big move",
+}
+
+
+def risk_level(lift: float | None) -> tuple[str, str]:
+    """(label, colour) for a coin's risk compared with a typical coin (lift = risk / typical risk)."""
+    if lift is None or not np.isfinite(lift):
+        return "Unknown", "#9aa5b1"
+    for label, colour, lo in RISK_LEVELS:
+        if lift >= lo:
+            return label, colour
+    return RISK_LEVELS[-1][:2]
+
+
+def horizon_label(h: int) -> str:
+    return f"{h} hour" + ("" if h == 1 else "s")
+
+
+def plain_driver(d: dict, coin: str, source: str) -> str:
+    """One driver (from integrated gradients) in words, e.g. "JUP: trading volume compared with its past week (raises
+    the risk)"."""
+    side, _, name = d["input"].partition(": ")
+    if side == "event":
+        what = f"{EVENT_PLAIN.get(name, name)} (from {source} to {coin})"
+    else:
+        what = f"{coin if side.startswith('receiver') else source}: {FEATURE_PLAIN.get(name, name)}"
+    return f"{what} ({'raises' if d['attribution'] > 0 else 'lowers'} the risk)"
+
+
+def shock_sentence(src: dict, typical: dict | None) -> str:
+    """What just happened, in words: one source shock and how long such shocks usually last."""
+    move = "jumped" if src["direction"] == "pump" else "dropped"
+    size = abs(src["z"])
+    together = ("on its own; no other coin moved sharply in the same hour" if src["breadth"] < 0.10
+                else f"together with {src['breadth']:.0%} of the other coins" + (", a market-wide move"
+                                                                                  if src["breadth"] >= 0.30 else ""))
+    out = f"**{src['coin']}** {move} sharply, about **{size:.1f} times** its usual hourly move, {together}."
+    if typical:
+        out += (f" Shocks like this have usually calmed down within about "
+                f"**{typical['median_hours_to_normal']:.0f} hours**.")
+    return out
+
+
+def crisis_verdict(hits: int, n: int, expected: float, share_shocked: float) -> tuple[str, str]:
+    """(kind, sentence) on how the model's top picks did against random picks: kind is good / neutral / weak."""
+    if share_shocked >= 0.95:
+        return "neutral", ("Almost every coin made a big move, so any pick would have been right: this crisis does not "
+                           "show whether the model is useful.")
+    if hits >= expected + 1:
+        return "good", "The model did clearly better than picking coins at random."
+    if hits > expected - 1:
+        return "neutral", "The model did about as well as picking coins at random."
+    return "weak", "The model did worse than picking coins at random here."

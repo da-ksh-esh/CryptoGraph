@@ -11,9 +11,10 @@ and made non-decreasing in k, since "shocks within 6 h" includes "shocks within 
 Drivers are integrated gradients on the prediction head (explain/attribution.py) for each coin's top event; TempME is
 not used per alert because it is weakly faithful (notebook 04).
 
-Outputs (runs/<run_id>/): risk.csv (coin x horizon), alerts.json (the coin-horizons with the largest lift over their
-horizon's base rate, with drivers), summary.json, shock_sources.csv and persistence.csv (type of the source shocks and
-how long such shocks lasted before). The dashboard reads the latest of these runs.
+Outputs (runs/<run_id>/): risk.csv (coin x horizon), drivers.json (drivers of every coin x horizon), alerts.json (the
+coin-horizons with the largest lift over their horizon's base rate, with drivers), summary.json, shock_sources.csv and
+persistence.csv (type of the source shocks and how long such shocks lasted before). The dashboard reads the latest of
+these runs.
 """
 
 from __future__ import annotations
@@ -206,6 +207,9 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
 
     out = table.drop(columns=["row", "drivers"])
     out.to_csv(tracker.dir / "risk.csv", index=False)
+    (tracker.dir / "drivers.json").write_text(json.dumps(       # the drivers of every coin x horizon (dashboard)
+        {f"{c}|{kh}": dv for c, kh, dv in zip(table["coin"], table["horizon_h"], table["drivers"])},
+        default=float), encoding="utf-8")
     # riskiest = largest lift over the horizon's base rate (absolute risk always favours the 24 h horizon)
     rank_by = ["lift", "risk"] if "lift" in table else ["risk"]
     alerts = table.sort_values(rank_by, ascending=False).head(pc.get("n_alerts", 20))
