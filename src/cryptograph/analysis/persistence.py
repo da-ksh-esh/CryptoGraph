@@ -205,6 +205,13 @@ def sector_half_life(ep: dict, coins: list[str], sector_of: dict[str, str], time
     return pd.DataFrame(rows), pd.DataFrame(pairs)
 
 
+def event_anchor(shock: np.ndarray, times: pd.DatetimeIndex, date) -> int | None:
+    """Hour of the event's calendar date (UTC) with the most shocks (the first such hour on ties); None if the date is
+    outside the data. The date alone can sit hours away from the shock (midnight vs the afternoon crash)."""
+    day = np.flatnonzero(times.floor("D") == pd.Timestamp(date).floor("D"))
+    return int(day[np.argmax(shock[day].sum(1))]) if len(day) else None
+
+
 def event_blast_radius(shock: np.ndarray, valid: np.ndarray, active: np.ndarray, times: pd.DatetimeIndex,
                        coins: list[str], events: pd.DataFrame, horizon: int = 72, control_from: int = 168,
                        control_to: int = 24) -> pd.DataFrame:
@@ -215,10 +222,9 @@ def event_blast_radius(shock: np.ndarray, valid: np.ndarray, active: np.ndarray,
     br = shock_breadth(sh, act)
     rows = []
     for e in events.itertuples():
-        day = np.flatnonzero(times.floor("D") == pd.Timestamp(e.date).floor("D"))
-        if not len(day) or day[0] < control_from or day[0] + horizon >= len(times):
+        t0 = event_anchor(sh, times, e.date)
+        if t0 is None or t0 < control_from or t0 + horizon >= len(times):
             continue
-        t0 = int(day[np.argmax(sh[day].sum(1))])
         first = np.flatnonzero(sh[t0])
         win, ctrl = slice(t0, t0 + horizon), slice(t0 - control_from, t0 - control_to)
         rate = lambda s: float(sh[s].sum() / max(act[s].sum(), 1))                   # noqa: E731

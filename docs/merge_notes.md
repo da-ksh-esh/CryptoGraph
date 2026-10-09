@@ -90,4 +90,15 @@ folders were extracted into `runs/` (the zip holds them at its top level, not un
   the riskiest 2,000 test alerts at 6 h, the top driver is unchanged for 99 / 98 / 97% of alerts under input noise of
   0.05 / 0.1 / 0.25 std (top-5 Jaccard 0.97 / 0.94 / 0.86). `robustness_1h` and its report are unchanged.
 
+**Event explorer (dashboard), from the web interface on `main`.** The `main` web UI's best ideas are ported into the
+Streamlit dashboard, on the v2 data and the final TGN (its code is not reused: it reads the old `processed_dataset.pt`
+and leaky checkpoints, anchors events at midnight and is a second app): an "Event explorer" tab over the 9 catalogued
+crises inside the hourly data (`serving/events.py`, `configs/experiment/predict_events_1h.yaml`). Each crisis is
+anchored at the hour of its date with the most shocks (`analysis.persistence.event_anchor`, now shared with
+`event_blast_radius`); the tab replays the shock network hour by hour (Plotly animation), shows coins shocking per
+hour and the per-coin sequence, and sets the model's risk at the crisis hour next to what happened (hits among the 5
+riskiest coins vs chance). Every event is labelled with its period (train / validation / test); only the BTC ETF
+approval, the yen carry-trade unwind and the 10-Oct-2025 cascade are test-period forecasts. Both network views now use
+a fixed sector-circle layout (from `main`), and the explorer has a sector filter and method notes with source links.
+
 **For Hardik's review:** the branch is ready to merge into `feat/hourly-network-models`; nothing was merged.

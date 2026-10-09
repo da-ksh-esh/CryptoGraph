@@ -23,8 +23,6 @@ def test_graph_at_takes_latest_snapshot_and_dedupes_edges():
     assert bar is None and e.empty
     e, bar = dd.graph_at(snaps, 100)
     assert bar == 58 and e.empty
-    pos = dd.layout(["A", "B", "C"], dd.graph_at(snaps, 40)[0])
-    assert set(pos) == {"A", "B", "C"} and pos == dd.layout(["A", "B", "C"], dd.graph_at(snaps, 40)[0])
 
 
 def test_risk_matrix_drivers_duration_and_metrics():
@@ -75,8 +73,8 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     root, rd = predicted
     at = _app(monkeypatch, root)
     assert not at.exception, at.exception
-    assert [t.label for t in at.tabs] == ["Risk per coin", "Riskiest alerts", "Shock duration", "Network",
-                                          "How good is the model"]
+    assert [t.label for t in at.tabs] == ["Risk per coin", "Event explorer", "Riskiest alerts", "Shock duration",
+                                          "Network", "How good is the model"]
     as_of = pd.Timestamp(dd.load_prediction(rd).summary["as_of"])
     assert at.metric[0].value == as_of.strftime("%d %b %H:%M") and len(at.metric[0].value) <= 12
     assert at.metric[0].label == f"As of (UTC, {as_of.year})"
@@ -89,3 +87,59 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
 def test_dashboard_without_runs_explains_what_to_do(tmp_path, monkeypatch):
     at = _app(monkeypatch, tmp_path)
     assert not at.exception and "cryptograph-predict" in at.info[0].value
+
+
+def test_circle_layout_groups_sectors_and_is_stable():
+    sectors = {"A": "y", "B": "x", "C": "x", "D": "y"}
+    pos = dd.circle_layout(["A", "B", "C", "D"], sectors)
+    assert pos == dd.circle_layout(["D", "C", "B", "A"], sectors)            # same place regardless of input order
+    assert np.allclose(pos["B"], (0.0, 1.0))                                 # first of sector x at the top
+    assert all(abs(np.hypot(*p) - 1) < 1e-12 for p in pos.values())
+    order = sorted(pos, key=lambda c: (-np.arctan2(pos[c][1], pos[c][0]) + np.pi / 2) % (2 * np.pi))
+    assert order == ["B", "C", "A", "D"]                                     # clockwise: x then y
+
+
+def test_node_states_and_outcome_table():
+    frames = [{"shocked": [], "active": [0, 1]}, {"shocked": [0], "active": [0, 1, 2]},
+              {"shocked": [1], "active": [0, 1, 2]}]
+    st = dd.node_states(frames, 3)
+    assert st[0] == ["not yet", "not yet", "inactive"]
+    assert st[1] == ["shocking now", "not yet", "not yet"]
+    assert st[2] == ["shocked earlier in the window", "shocking now", "not yet"]
+    risk = pd.DataFrame({"coin": ["A", "B", "C", "A"], "sector": ["x", "y", "x", "x"], "horizon_h": [6, 6, 6, 1],
+                         "risk": [0.2, 0.5, 0.3, 0.9], "score": [0.0] * 4, "lift": [1.0, 2.5, 1.5, 3.0],
+                         "actual": [1.0, 0.0, np.nan, 1.0], "source": ["B"] * 4,
+                         "drivers": [[{"input": "f", "attribution": 0.2}], [{"input": "g", "attribution": -0.1}], [],
+                                     []]})
+    t = dd.outcome_table(risk, 6)
+    assert t.coin.tolist() == ["B", "C", "A"] and t.outcome.tolist() == ["no shock", "not observed", "shocked"]
+    assert t.drivers.tolist() == ["g (−)", "", "f (+)"]
+    assert dd.outcome_table(risk, 6, ["x"]).coin.tolist() == ["C", "A"]
+
+
+@pytest.fixture
+def with_events(predicted):
+    from cryptograph.training.runner import run_experiment
+
+    root, rd = predicted
+    cfg = {"name": "events_toy", "model": {"name": "events"}, "device": "cpu",
+           "events": {"target_experiment": "toy_tgn", "ig_steps": 4, "before_hours": 6, "after_hours": 24}}
+    out = run_experiment(cfg, seed=0, runs_dir=root / "runs")
+    return root, root / "runs" / out["run_id"]
+
+
+def test_event_explorer_renders_and_switches_events(with_events, monkeypatch):
+    root, ev_dir = with_events
+    assert dd.latest_events_dir(root / "runs") == ev_dir and dd.prediction_runs(root / "runs")    # both kinds found
+    at = _app(monkeypatch, root)
+    assert not at.exception, at.exception
+    box = at.selectbox(key="event")
+    assert [o.split(" · ")[1] for o in box.options] == ["early (train)", "late (test)"]
+    assert any("Train period" in w.value for w in at.warning)
+    late_id = dd.load_events_index(ev_dir)["events"][1]["id"]
+    box.set_value(late_id).run()
+    assert not at.exception, at.exception
+    assert any("Test period" in s.value for s in at.success)
+    assert any("riskiest coins" in m.value for m in at.markdown)
+    at.multiselect(key="event_sectors").select("x").run()
+    assert not at.exception, at.exception

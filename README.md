@@ -168,6 +168,7 @@ cryptograph-predict --as-of "2025-10-10 21:00"        # the risk as it stood at 
 streamlit run dashboard/app.py                        # shows the latest prediction run
 cryptograph-train --config configs/experiment/compress_tgn_1h.yaml        # int8 / pruning vs fp32 on the test events
 cryptograph-train --config configs/experiment/robustness_extra_1h.yaml    # PGD attacks + driver stability
+cryptograph-train --config configs/experiment/predict_events_1h.yaml     # catalogued crises for the dashboard
 ```
 
 - **Risk** per coin and horizon (1–24 h) = the highest calibrated probability over the most recent shock events that
@@ -175,6 +176,10 @@ cryptograph-train --config configs/experiment/robustness_extra_1h.yaml    # PGD 
   the test period) and made non-decreasing in the horizon. Alerts are ranked by lift over each horizon's base rate.
 - **Drivers** = integrated gradients on the prediction head for the coin's top event (completeness checked per run).
 - **Shock context** = type of the source shock (notebook 05) and how long such shocks lasted before the as-of hour.
+- **Event explorer** (dashboard tab, `serving/events.py`): each catalogued crisis in the hourly data, anchored at the
+  hour of its date with the most shocks: an hour-by-hour replay of the shock network, coins shocking per hour, the
+  per-coin shock sequence, and the model's risk at the crisis hour next to what happened (hits vs chance). Each event
+  shows its period; only test-period events are genuine forecasts.
 - **Compression** (`serving/compress.py`): every variant replays the whole stream and is scored on the same test
   events; AUPRC cost with the paired day-block bootstrap, top-1% alert overlap, CPU latency per 200-event batch, size
   (`reports/compression/`).

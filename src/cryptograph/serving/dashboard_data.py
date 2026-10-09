@@ -109,11 +109,67 @@ def load_graph_at(summary: dict, root: Path = PROJECT_ROOT) -> tuple[pd.DataFram
     return graph_at(load_pt(p), int(summary["as_of_bar"]))
 
 
-def layout(coins: list[str], edges: pd.DataFrame, seed: int = 0) -> dict[str, tuple[float, float]]:
-    """Force-directed positions (fixed seed, so the picture is stable between reloads)."""
-    import networkx as nx
+# --- event explorer (serving/events.py runs) ---------------------------------------------------------------------
 
-    g = nx.Graph()
-    g.add_nodes_from(coins)
-    g.add_weighted_edges_from(edges[["a", "b", "weight"]].itertuples(index=False))
-    return {k: (float(v[0]), float(v[1])) for k, v in nx.spring_layout(g, seed=seed, weight="weight").items()}
+def latest_events_dir(runs_dir: Path | str = PROJECT_ROOT / "runs") -> Path | None:
+    """The newest run of the events task (contains events.json)."""
+    runs_dir = Path(runs_dir)
+    if not runs_dir.exists():
+        return None
+    runs = sorted(p for p in runs_dir.iterdir() if p.is_dir() and (p / "events.json").exists())
+    return runs[-1] if runs else None
+
+
+def load_events_index(run_dir: Path | str) -> dict:
+    return json.loads((Path(run_dir) / "events.json").read_text(encoding="utf-8"))
+
+
+def load_event(run_dir: Path | str, event_id: int) -> dict:
+    ev = json.loads((Path(run_dir) / f"event_{event_id}.json").read_text(encoding="utf-8"))
+    ev["risk"] = pd.DataFrame(ev["risk"])
+    ev["model_vs_outcome"] = pd.DataFrame(ev["model_vs_outcome"])
+    return ev
+
+
+def load_sectors(root: Path = PROJECT_ROOT) -> dict[str, str]:
+    p = Path(root) / "data" / "external" / "sectors.csv"
+    return dict(pd.read_csv(p)[["coin", "sector"]].values) if p.exists() else {}
+
+
+def circle_layout(coins: list[str], sector_of: dict[str, str]) -> dict[str, tuple[float, float]]:
+    """Coins on a circle, grouped by sector (then by name), starting at the top and going clockwise: every coin keeps
+    its place in every view and every frame."""
+    order = sorted(coins, key=lambda c: (sector_of.get(c, "other"), c))
+    n = max(len(order), 1)
+    return {c: (float(np.cos(np.pi / 2 - 2 * np.pi * i / n)), float(np.sin(np.pi / 2 - 2 * np.pi * i / n)))
+            for i, c in enumerate(order)}
+
+
+NODE_STATES = ("shocking now", "shocked earlier in the window", "not yet", "inactive")
+
+
+def node_states(frames: list[dict], n_coins: int) -> list[list[str]]:
+    """Per frame and coin: shocking now, shocked earlier in the window, not yet, or inactive (not trading)."""
+    seen = np.zeros(n_coins, bool)
+    out = []
+    for f in frames:
+        now = np.zeros(n_coins, bool)
+        now[f["shocked"]] = True
+        act = np.zeros(n_coins, bool)
+        act[f["active"]] = True
+        out.append([NODE_STATES[3] if not act[c] else NODE_STATES[0] if now[c] else NODE_STATES[1] if seen[c]
+                    else NODE_STATES[2] for c in range(n_coins)])
+        seen |= now
+    return out
+
+
+def outcome_table(risk: pd.DataFrame, horizon: int, sectors: list[str] | None = None) -> pd.DataFrame:
+    """The model's risk per coin at one horizon next to what happened, riskiest first."""
+    t = risk[risk["horizon_h"] == horizon].sort_values(["risk", "score"], ascending=False)
+    if sectors:
+        t = t[t["sector"].isin(sectors)]
+    t = t.assign(outcome=t["actual"].map({1.0: "shocked", 0.0: "no shock"}).fillna("not observed"),
+                 drivers=[", ".join(f"{d['input']} ({'+' if d['attribution'] > 0 else '−'})" for d in ds)
+                          for ds in t["drivers"]])
+    cols = ["coin", "sector", "risk", "lift", "outcome", "source", "drivers"]
+    return t[[c for c in cols if c in t]].reset_index(drop=True)

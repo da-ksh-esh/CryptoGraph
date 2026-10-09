@@ -80,9 +80,17 @@ def toy_project(tmp_path, monkeypatch):
     import cryptograph.data.config as config
     import cryptograph.explain.run as explain_run
     import cryptograph.serving.compress as compress
+    import cryptograph.serving.events as events
     import cryptograph.serving.predict as predict
 
-    for mod in (config, explain_run, predict, compress):
+    for mod in (config, explain_run, predict, compress, events):
         monkeypatch.setattr(mod, "PROJECT_ROOT", tmp_path)
     d, F = _write_project(tmp_path)
+    ext = tmp_path / "data" / "external"
+    ext.mkdir(parents=True)
+    pd.DataFrame({"date": ["2025-12-01", "2026-01-03", "2026-01-12"], "name": ["before data", "early", "late"],
+                  "origin_coin": [None, "AAA", None], "event_type": ["macro"] * 3,
+                  "description": ["", "an early crash", "a late crash"], "source_url": ["", "https://example.org", ""]}
+                 ).to_csv(ext / "events.csv", index=False)
+    pd.DataFrame({"coin": COINS, "sector": ["x", "x", "x", "y", "y"]}).to_csv(ext / "sectors.csv", index=False)
     return tmp_path, _write_run(tmp_path, d, F), d

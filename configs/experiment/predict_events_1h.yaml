@@ -1,0 +1,19 @@
+# The catalogued crises (data/external/events.csv) through the final TGN (tgn_1h_final_v2, seed 0): its calibrated
+# risk per coin at each crisis hour next to what then happened, IG drivers, and an hour-by-hour replay of the window
+# (serving/events.py). The dashboard's "Event explorer" reads the latest such run. Each event records its period:
+# only test-period events are genuine forecasts (train = learned from, validation = used for selection/calibration).
+#   cryptograph-train --config configs/experiment/predict_events_1h.yaml
+name: predict_events_1h
+seed: 0
+device: cpu
+deterministic: true
+model:
+  name: events
+events:
+  target_experiment: tgn_1h_final_v2
+  target_seed: 0
+  before_hours: 48          # replay window around each crisis hour
+  after_hours: 168
+  ig_steps: 32
+  top_drivers: 3
+  top: 5                    # model vs outcome: hits among the 5 riskiest coins
