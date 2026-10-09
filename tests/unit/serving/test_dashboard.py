@@ -114,7 +114,7 @@ def test_node_states_and_outcome_table():
     t = dd.outcome_table(risk, 6)
     assert t.coin.tolist() == ["B", "C", "A"] and t.outcome.tolist() == ["no shock", "not observed", "shocked"]
     assert t.drivers.tolist() == ["g (−)", "", "f (+)"]
-    assert dd.outcome_table(risk, 6, ["x"]).coin.tolist() == ["C", "A"]
+    assert dd.outcome_table(risk, 6, ["x"]).coin.tolist() == ["C", "A"] and "score" in t.columns
 
 
 @pytest.fixture

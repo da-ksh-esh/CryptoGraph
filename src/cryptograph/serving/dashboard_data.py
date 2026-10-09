@@ -171,5 +171,5 @@ def outcome_table(risk: pd.DataFrame, horizon: int, sectors: list[str] | None = 
     t = t.assign(outcome=t["actual"].map({1.0: "shocked", 0.0: "no shock"}).fillna("not observed"),
                  drivers=[", ".join(f"{d['input']} ({'+' if d['attribution'] > 0 else '−'})" for d in ds)
                           for ds in t["drivers"]])
-    cols = ["coin", "sector", "risk", "lift", "outcome", "source", "drivers"]
+    cols = ["coin", "sector", "risk", "score", "lift", "outcome", "source", "drivers"]   # score orders equal risks
     return t[[c for c in cols if c in t]].reset_index(drop=True)

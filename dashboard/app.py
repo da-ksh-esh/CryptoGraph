@@ -211,8 +211,10 @@ with tab_events:
         else:
             st.info(f"No observed outcomes at {h} h for this event.")
         ot = dd.outcome_table(ev["risk"], h, pick)
-        st.dataframe(ot.style.format({"risk": "{:.1%}", "lift": "{:.2f}×"}, na_rep="—"), hide_index=True,
-                     use_container_width=True)
+        st.dataframe(ot.style.format({"risk": "{:.1%}", "score": "{:.3f}", "lift": "{:.2f}×"}, na_rep="—"),
+                     hide_index=True, use_container_width=True)
+        st.caption("Risk is calibrated in bins, so neighbouring coins can share a value; the raw model score orders "
+                   "them (and picks the riskiest coins above).")
 
         st.subheader("Shock sequence per coin")
         seq = pd.DataFrame(rp["sequence"]).assign(sector=lambda x: x["coin"].map(sector_of).fillna("other"))
