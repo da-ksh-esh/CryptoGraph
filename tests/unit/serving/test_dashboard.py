@@ -78,7 +78,8 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     assert [t.label for t in at.tabs] == ["Risk per coin", "Riskiest alerts", "Shock duration", "Network",
                                           "How good is the model"]
     as_of = pd.Timestamp(dd.load_prediction(rd).summary["as_of"])
-    assert at.metric[0].value == as_of.strftime("%d %b %Y, %H:%M")
+    assert at.metric[0].value == as_of.strftime("%d %b %H:%M") and len(at.metric[0].value) <= 12
+    assert at.metric[0].label == f"As of (UTC, {as_of.year})"
     assert "pumpes" not in " ".join(m.value for m in at.markdown)
     assert len(at.expander) >= 3
     at.radio[0].set_value(1).run()                             # switch horizon

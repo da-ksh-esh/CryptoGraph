@@ -59,12 +59,12 @@ with st.sidebar:
     st.caption("Research output, not investment advice.")
 
 S = P.summary
-short = lambda ts: pd.Timestamp(ts).strftime("%d %b %Y, %H:%M")   # noqa: E731
+short = lambda ts: pd.Timestamp(ts).strftime("%d %b %H:%M")   # noqa: E731  (year in the label: fits narrow columns)
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("As of (UTC)", short(S["as_of"]))
+c1.metric(f"As of (UTC, {S['as_of'][:4]})", short(S["as_of"]))
 c2.metric("Shocking coins", ", ".join(S["source_coins"]))
 c3.metric("Events scored", f"{S['n_events']:,}")
-c4.metric("Data ends (UTC)", short(S["data_end"]), delta=f"{S['hours_since_as_of']} h after as-of"
+c4.metric(f"Data ends (UTC, {S['data_end'][:4]})", short(S["data_end"]), delta=f"{S['hours_since_as_of']} h after as-of"
           if S["hours_since_as_of"] else "same hour", delta_color="off")
 PLURAL = {"crash": "crashes", "pump": "pumps"}
 if not S["calibrated"]:
@@ -150,7 +150,8 @@ with tab_net:
         for e in edges.itertuples():
             ex += [pos[e.a][0], pos[e.b][0], None]
             ey += [pos[e.a][1], pos[e.b][1], None]
-        fig = go.Figure(go.Scatter(x=ex, y=ey, mode="lines", line=dict(width=0.7, color="#999"), hoverinfo="none"))
+        fig = go.Figure(go.Scatter(x=ex, y=ey, mode="lines", line=dict(width=0.7, color="#999"), hoverinfo="none",
+                                   name="correlation edges", showlegend=False))
         for sec in (sorted(sector.reindex(coins).fillna("other").unique()) if sector is not None else ["coins"]):
             cs = [c for c in coins if sector is None or sector.get(c, "other") == sec]
             fig.add_trace(go.Scatter(
