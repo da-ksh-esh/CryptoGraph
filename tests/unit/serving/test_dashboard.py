@@ -73,8 +73,7 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     root, rd = predicted
     at = _app(monkeypatch, root)
     assert not at.exception, at.exception
-    assert [t.label for t in at.tabs] == ["📊 Who's at risk", "🔍 Why", "📜 Past crises", "🕸️ Market map",
-                                          "ℹ️ How it works"]
+    assert [t.label for t in at.tabs] == ["Who's at risk", "Why", "Past crises", "Market map", "How it works"]
     as_of = pd.Timestamp(dd.load_prediction(rd).summary["as_of"])
     assert any(as_of.strftime("%d %b %Y, %H:%M UTC") in m.value for m in at.markdown)
     assert at.metric[0].label == "Most likely to move next (6 hours)" and at.metric[0].value.split(":")[0] in COINS

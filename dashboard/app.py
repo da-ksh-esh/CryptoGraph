@@ -26,6 +26,21 @@ RUNS = Path(os.environ.get("CRYPTOGRAPH_RUNS_DIR", ROOT / "runs"))
 
 st.set_page_config(page_title="CryptoGraph | who moves next", page_icon="🕸️", layout="wide")
 
+# Minimal dark look: a black-to-grey gradient behind everything (base colours in .streamlit/config.toml)
+st.markdown("""<style>
+.stApp {background: linear-gradient(160deg, #07080a 0%, #111317 45%, #1c1f25 100%); background-attachment: fixed;}
+[data-testid="stHeader"] {background: transparent;}
+[data-testid="stSidebar"] {background: rgba(10, 11, 14, 0.72); border-right: 1px solid rgba(255, 255, 255, 0.06);}
+[data-testid="stVerticalBlockBorderWrapper"] {border-color: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.02);}
+h1 {font-weight: 600; letter-spacing: -0.02em;}
+h2, h3, h4 {font-weight: 500;}
+[data-testid="stMetricValue"] {font-weight: 400;}
+[data-testid="stMetricLabel"] p {color: #9a9fa8;}
+.stTabs [data-baseweb="tab-list"] {gap: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);}
+footer {visibility: hidden;}
+</style>""", unsafe_allow_html=True)
+
 
 @st.cache_data(show_spinner=False)
 def _prediction(path: str) -> dd.Prediction:
@@ -65,6 +80,14 @@ LEVEL_COLOR = {label: colour for label, colour, _ in dd.RISK_LEVELS} | {"Unknown
 when = lambda ts: pd.Timestamp(ts).strftime("%d %b %Y, %H:%M UTC")   # noqa: E731
 
 
+def show(fig) -> None:
+    """Plot on the page's gradient: transparent backgrounds, faint grid lines."""
+    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig.update_xaxes(gridcolor="rgba(255,255,255,0.06)", zerolinecolor="rgba(255,255,255,0.1)")
+    fig.update_yaxes(gridcolor="rgba(255,255,255,0.06)", zerolinecolor="rgba(255,255,255,0.1)")
+    st.plotly_chart(fig, width="stretch")
+
+
 def network_figure(coins: list[str], edges: pd.DataFrame, sector_of: dict, height: int = 560) -> tuple:
     """Coins on a fixed circle (grouped by sector) with the lines of the correlation snapshot; returns (fig, pos)."""
     pos = dd.circle_layout(coins, sector_of)
@@ -81,7 +104,8 @@ def network_figure(coins: list[str], edges: pd.DataFrame, sector_of: dict, heigh
 
 
 # --- header and sidebar ----------------------------------------------------------------------------------------------
-st.title("🕸️ CryptoGraph: who moves next?")
+st.title("CryptoGraph")
+st.markdown("#### Who moves next?")
 st.markdown("When one cryptocurrency makes a sudden big move, others often follow within hours. This page shows "
             "**which coins are most likely to make a big move of their own next**, and why.")
 runs = dd.prediction_runs(RUNS)
@@ -99,7 +123,7 @@ with st.sidebar:
     h = st.select_slider("Look ahead", options=k_hours, value=6 if 6 in k_hours else k_hours[0],
                          format_func=dd.horizon_label, key="horizon",
                          help="How far ahead to look: the chance of a big move within this many hours.")
-    st.caption(f"Model: `{P.summary['target_run']}`")
+    st.caption(f"Model run {P.summary['target_run']}")
     st.caption("A research tool, not financial advice.")
 
 S = P.summary
@@ -132,7 +156,7 @@ if not S["calibrated"]:
     st.warning("These numbers are raw model scores, not chances (the model run has no validation predictions).")
 
 tab_risk, tab_why, tab_past, tab_map, tab_about = st.tabs(
-    ["📊 Who's at risk", "🔍 Why", "📜 Past crises", "🕸️ Market map", "ℹ️ How it works"])
+    ["Who's at risk", "Why", "Past crises", "Market map", "How it works"])
 
 # --- who's at risk -------------------------------------------------------------------------------------------------
 with tab_risk:
@@ -148,7 +172,7 @@ with tab_risk:
     fig.update_layout(height=max(460, 24 * len(risk_h) + 90), xaxis_tickformat=".0%",
                       yaxis=dict(categoryorder="array", categoryarray=risk_h["coin"].tolist()[::-1]),
                       legend=dict(orientation="h", y=1.0, yanchor="bottom", title=None), margin=dict(t=90))
-    st.plotly_chart(fig, use_container_width=True)
+    show(fig)
     st.caption("A **big move** is an hourly price change several times larger than the coin's usual swings over the "
                "past week, up or down. Colours compare each coin with a typical coin.")
     with st.expander("Details: every time window"):
@@ -157,11 +181,11 @@ with tab_risk:
                        aspect="auto", zmin=0, labels=dict(color="chance"))
         hm.update_traces(text=[[f"{v:.0%}" for v in r] for r in m.values], texttemplate="%{text}")
         hm.update_layout(height=max(380, 22 * len(m)), margin=dict(t=10))
-        st.plotly_chart(hm, use_container_width=True)
+        show(hm)
         st.dataframe(risk_h[["coin", "risk", "lift", "score", "source", "event_time"]].rename(
             columns={"risk": "chance", "lift": "× typical coin", "score": "raw model score",
                      "source": "after the move of", "event_time": "at"}).round(3), hide_index=True,
-            use_container_width=True)
+            width="stretch")
 
 # --- why --------------------------------------------------------------------------------------------------------------
 with tab_why:
@@ -234,7 +258,7 @@ with tab_past:
                        .fillna("— unknown"))
         st.dataframe(ot[["coin", "sector", "risk", "result"]].rename(
             columns={"risk": f"model's chance ({H})", "result": "what happened"}).style.format(
-            {f"model's chance ({H})": "{:.0%}"}), hide_index=True, use_container_width=True)
+            {f"model's chance ({H})": "{:.0%}"}), hide_index=True, width="stretch")
 
         st.markdown("#### Replay the crisis hour by hour")
         st.caption("Press ▶ Play under the picture. Each dot is a coin; lines join coins that moved closely together "
@@ -275,7 +299,7 @@ with tab_past:
                                       args=[[str(f["offset"])], dict(mode="immediate",
                                                                       frame=dict(duration=0, redraw=True))])
                                  for f in rp["frames"]])])
-        st.plotly_chart(fig, use_container_width=True)
+        show(fig)
 
         act = pd.DataFrame(rp["activity"])
         fa = px.bar(act, x="offset", y="coins_shocking", hover_data=["time"],
@@ -283,7 +307,7 @@ with tab_past:
                     title="How many coins made a big move, hour by hour")
         fa.add_vline(x=0, line_dash="dash", line_color="#d62728")
         fa.update_layout(height=280, margin=dict(t=40, b=10))
-        st.plotly_chart(fa, use_container_width=True)
+        show(fa)
 
         with st.expander("Details: every coin during this crisis"):
             pick = st.multiselect("Sectors", sorted({sector_of.get(c, "other") for c in coins_ev}),
@@ -297,10 +321,10 @@ with tab_past:
                 "first_shock_offset_h": "first big move (hours after)",
                 "first_run_h": "lasted (hours)", "shock_hours_after": "big-move hours that week",
                 "peak_abs_return_pct": "largest hourly move (%)"}).round(1), hide_index=True,
-                use_container_width=True)
+                width="stretch")
             st.dataframe(dd.outcome_table(ev["risk"], h, pick).style.format(
                 {"risk": "{:.1%}", "score": "{:.3f}", "lift": "{:.2f}×"}, na_rep="—"), hide_index=True,
-                use_container_width=True)
+                width="stretch")
             st.caption("The model's chance is grouped into bands, so neighbouring coins can share a value; the raw "
                        "score sets their order.")
 
@@ -325,7 +349,7 @@ with tab_map:
             hovertext=[f"{c} ({sec}): {chance.get(c, float('nan')):.0%} chance within {H}" for c in cs],
             hoverinfo="text"))
     fig.update_layout(legend_title="What the coin is used for")
-    st.plotly_chart(fig, use_container_width=True)
+    show(fig)
     if not ranks.empty:
         with st.expander("Details: network rankings"):
             st.caption("Measured on the test period (notebook 02): which coins tend to spread price swings to others "
@@ -335,7 +359,7 @@ with tab_map:
                     "shock_out_lift": "how often others follow (× chance)"}
             st.dataframe(ranks[[c for c in cols if c in ranks]].rename(columns=cols)
                          .sort_values(cols["dy_net"], ascending=False).round(3), hide_index=True,
-                         use_container_width=True)
+                         width="stretch")
 
 # --- how it works -----------------------------------------------------------------------------------------------------
 with tab_about:
@@ -355,7 +379,7 @@ with tab_about:
             "test_auprc": "model's precision score", "positive_rate": "random guess",
             "lift": "times better than random"})
             [["window", "model's precision score", "random guess", "times better than random"]].round(2),
-            hide_index=True, use_container_width=True)
+            hide_index=True, width="stretch")
         st.caption("The precision score is the average share of correct alerts when the model's alerts are ranked from "
                    "most to least confident (average precision); a random guess scores the share of coins that move.")
     if not P.persistence.empty:
@@ -371,7 +395,7 @@ with tab_about:
                          arrayminus=pt["median_hours_to_normal"] - pt["q25_hours"]),
             marker_color=["#d62728" if f"{t} {d}" in cur else "#7f7f7f" for t, d in zip(pt["type"], pt["direction"])]))
         fig.update_layout(yaxis_title="hours", height=360, margin=dict(t=10))
-        st.plotly_chart(fig, use_container_width=True)
+        show(fig)
         st.caption("Red: the kind of move that just happened. Market-wide = many coins at once; single-coin = one coin "
                    "on its own.")
     st.caption("A research project, not financial advice. Past patterns do not guarantee future moves.")
