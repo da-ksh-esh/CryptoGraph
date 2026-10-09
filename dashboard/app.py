@@ -59,6 +59,8 @@ def _event(path: str, event_id: int) -> dict:
 
 STATE_LABEL = dict(zip(dd.NODE_STATES, ("big move now", "moved earlier", "calm so far", "not trading yet")))
 STATE_COLOR = dict(zip(dd.NODE_STATES, ("#d62728", "#ff9f43", "#9aa5b1", "#3a3f47")))
+UP, DOWN = ("<span style='color:#d62728; font-weight:700'>▲</span>",
+            "<span style='color:#2ca02c; font-weight:700'>▼</span>")
 LEVEL_COLOR = {label: colour for label, colour, _ in dd.RISK_LEVELS} | {"Unknown": "#9aa5b1"}
 when = lambda ts: pd.Timestamp(ts).strftime("%d %b %Y, %H:%M UTC")   # noqa: E731
 
@@ -119,7 +121,8 @@ with st.container(border=True):
         st.caption(f"The data runs {S['hours_since_as_of']} hours past this moment.")
 
 c1, c2, c3 = st.columns(3)
-c1.metric(f"Most likely to move next ({H})", top["coin"], f"{top['risk']:.0%} chance", delta_color="off")
+c1.metric(f"Most likely to move next ({H})", f"{top['coin']}: {top['risk']:.0%}",
+          help=f"The coin with the highest chance of a big move within {H}.")
 if typical is not None:
     c2.metric("A typical coin", f"{typical:.0%} chance",
               help=f"How often a coin made a big move within {H} after a shock elsewhere, in past data.")
@@ -136,14 +139,14 @@ with tab_risk:
     st.markdown(f"The chance that each coin makes **a big move of its own within the next {H}**, most likely first.")
     fig = px.bar(risk_h.iloc[::-1], x="risk", y="coin", orientation="h", color="level",
                  color_discrete_map=LEVEL_COLOR, category_orders={"level": [x[0] for x in dd.RISK_LEVELS]},
-                 labels={"risk": f"chance of a big move within {H}", "coin": "",
-                         "level": "Compared with a typical coin"},
+                 labels={"risk": f"chance of a big move within {H}", "coin": "", "level": ""},
                  hover_data={"risk": ":.0%", "level": True, "coin": False})
     if typical is not None:
         fig.add_vline(x=typical, line_dash="dot", line_color="#bbb", annotation_text="typical coin",
-                      annotation_position="top")
-    fig.update_layout(height=max(420, 24 * len(risk_h)), xaxis_tickformat=".0%", legend=dict(orientation="h", y=1.04),
-                      margin=dict(t=40))
+                      annotation_position="bottom right")
+    fig.update_layout(height=max(460, 24 * len(risk_h) + 90), xaxis_tickformat=".0%",
+                      yaxis=dict(categoryorder="array", categoryarray=risk_h["coin"].tolist()[::-1]),  # likeliest on top
+                      legend=dict(orientation="h", y=1.0, yanchor="bottom", title=None), margin=dict(t=90))
     st.plotly_chart(fig, use_container_width=True)
     st.caption("A **big move** is an hourly price change several times larger than the coin's usual swings over the "
                "past week, up or down. Colours compare each coin with a typical coin.")
@@ -173,8 +176,9 @@ with tab_why:
     if drivers:
         st.markdown("**What the model weighed most:**")
         for d in drivers:
-            st.markdown(f"- {'🔺' if d['attribution'] > 0 else '🔻'} {dd.plain_driver(d, coin, r['source'])}")
-        st.caption("🔺 pushes the chance up, 🔻 pushes it down. These are the inputs that changed this coin's "
+            arrow = UP if d["attribution"] > 0 else DOWN
+            st.markdown(f"- {arrow} {dd.plain_driver(d, coin, r['source'])}", unsafe_allow_html=True)
+        st.caption("▲ pushes the chance up, ▼ pushes it down. These are the inputs that changed this coin's "
                    "score "
                    "the most, compared with an average situation (they explain the model, not the market).")
     else:
@@ -205,7 +209,7 @@ with tab_past:
         st.markdown(ev["description"] + (f" [Read more]({ev['source_url']})" if ev["source_url"] else ""))
         m = rp["metrics"]
         c1, c2, c3 = st.columns(3)
-        c1.metric("Worst hour (UTC)", f"{pd.Timestamp(ev['anchor_time']):%d %b %Y, %H:%M}",
+        c1.metric(f"Worst hour (UTC, {ev['anchor_time'][:4]})", f"{pd.Timestamp(ev['anchor_time']):%d %b, %H:%M}",
                   help="The hour of that day when the most coins made a big move at once (UTC).")
         c2.metric("Coins hit in that hour", f"{m['coins_shocking_at_anchor']} of {m['coins_active_at_anchor']}")
         c3.metric("Coins hit within a week", f"{m['reach']:.0%}")
@@ -261,6 +265,7 @@ with tab_past:
             legend=dict(orientation="h", y=1.0, yanchor="bottom"), margin=dict(t=40, b=120),
             updatemenus=[dict(type="buttons", direction="left", x=0, xanchor="left", y=0, yanchor="top",
                               pad=dict(t=45), bgcolor="#262730", bordercolor="#888", font=dict(color="#fafafa"),
+                              showactive=False,
                               buttons=[dict(label="▶ Play", method="animate", args=[None, play]),
                                        dict(label="⏸ Pause", method="animate", args=[[None], pause])])],
             sliders=[dict(active=i0, x=0.16, len=0.84, y=0, yanchor="top",

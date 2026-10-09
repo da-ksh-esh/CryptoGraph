@@ -77,7 +77,7 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
                                           "ℹ️ How it works"]
     as_of = pd.Timestamp(dd.load_prediction(rd).summary["as_of"])
     assert any(as_of.strftime("%d %b %Y, %H:%M UTC") in m.value for m in at.markdown)
-    assert at.metric[0].label == "Most likely to move next (6 hours)" and at.metric[0].value in COINS
+    assert at.metric[0].label == "Most likely to move next (6 hours)" and at.metric[0].value.split(":")[0] in COINS
     assert "pumpes" not in " ".join(m.value for m in at.markdown)
     assert any(e.label.startswith("Details: every time window") for e in at.expander)
     assert "dropped sharply" in " ".join(m.value for m in at.markdown) or "jumped sharply" in         " ".join(m.value for m in at.markdown)
