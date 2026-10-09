@@ -144,8 +144,9 @@ with tab_risk:
     if typical is not None:
         fig.add_vline(x=typical, line_dash="dot", line_color="#bbb", annotation_text="typical coin",
                       annotation_position="bottom right")
+    # most likely coin on top
     fig.update_layout(height=max(460, 24 * len(risk_h) + 90), xaxis_tickformat=".0%",
-                      yaxis=dict(categoryorder="array", categoryarray=risk_h["coin"].tolist()[::-1]),  # likeliest on top
+                      yaxis=dict(categoryorder="array", categoryarray=risk_h["coin"].tolist()[::-1]),
                       legend=dict(orientation="h", y=1.0, yanchor="bottom", title=None), margin=dict(t=90))
     st.plotly_chart(fig, use_container_width=True)
     st.caption("A **big move** is an hourly price change several times larger than the coin's usual swings over the "
