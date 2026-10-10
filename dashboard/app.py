@@ -80,7 +80,7 @@ LEVEL_COLOR = {label: colour for label, colour, _ in dd.RISK_LEVELS} | {"Unknown
 when = lambda ts: pd.Timestamp(ts).strftime("%d %b %Y, %H:%M UTC")   # noqa: E731
 
 
-def show(fig) -> None:
+def draw_chart(fig) -> None:
     """Plot on the page's gradient: transparent backgrounds, faint grid lines."""
     fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     fig.update_xaxes(gridcolor="rgba(255,255,255,0.06)", zerolinecolor="rgba(255,255,255,0.1)")
@@ -172,7 +172,7 @@ with tab_risk:
     fig.update_layout(height=max(460, 24 * len(risk_h) + 90), xaxis_tickformat=".0%",
                       yaxis=dict(categoryorder="array", categoryarray=risk_h["coin"].tolist()[::-1]),
                       legend=dict(orientation="h", y=1.0, yanchor="bottom", title=None), margin=dict(t=90))
-    show(fig)
+    draw_chart(fig)
     st.caption("A **big move** is an hourly price change several times larger than the coin's usual swings over the "
                "past week, up or down. Colours compare each coin with a typical coin.")
     with st.expander("Details: every time window"):
@@ -181,7 +181,7 @@ with tab_risk:
                        aspect="auto", zmin=0, labels=dict(color="chance"))
         hm.update_traces(text=[[f"{v:.0%}" for v in r] for r in m.values], texttemplate="%{text}")
         hm.update_layout(height=max(380, 22 * len(m)), margin=dict(t=10))
-        show(hm)
+        draw_chart(hm)
         st.dataframe(risk_h[["coin", "risk", "lift", "score", "source", "event_time"]].rename(
             columns={"risk": "chance", "lift": "× typical coin", "score": "raw model score",
                      "source": "after the move of", "event_time": "at"}).round(3), hide_index=True,
@@ -229,8 +229,8 @@ with tab_past:
         ev = _event(str(ev_dir), eid)
         rp, sector_of = ev["replay"], _sectors()
         coins_ev = [x["coin"] for x in rp["sequence"]]
-        show, text = PERIOD_BANNER.get(ev["split"], (st.warning, ev["split_note"]))
-        show(text)
+        banner, text = PERIOD_BANNER.get(ev["split"], (st.warning, ev["split_note"]))
+        banner(text)
         st.markdown(ev["description"] + (f" [Read more]({ev['source_url']})" if ev["source_url"] else ""))
         m = rp["metrics"]
         c1, c2, c3 = st.columns(3)
@@ -299,7 +299,7 @@ with tab_past:
                                       args=[[str(f["offset"])], dict(mode="immediate",
                                                                       frame=dict(duration=0, redraw=True))])
                                  for f in rp["frames"]])])
-        show(fig)
+        draw_chart(fig)
 
         act = pd.DataFrame(rp["activity"])
         fa = px.bar(act, x="offset", y="coins_shocking", hover_data=["time"],
@@ -307,7 +307,7 @@ with tab_past:
                     title="How many coins made a big move, hour by hour")
         fa.add_vline(x=0, line_dash="dash", line_color="#d62728")
         fa.update_layout(height=280, margin=dict(t=40, b=10))
-        show(fa)
+        draw_chart(fa)
 
         with st.expander("Details: every coin during this crisis"):
             pick = st.multiselect("Sectors", sorted({sector_of.get(c, "other") for c in coins_ev}),
@@ -349,7 +349,7 @@ with tab_map:
             hovertext=[f"{c} ({sec}): {chance.get(c, float('nan')):.0%} chance within {H}" for c in cs],
             hoverinfo="text"))
     fig.update_layout(legend_title="What the coin is used for")
-    show(fig)
+    draw_chart(fig)
     if not ranks.empty:
         with st.expander("Details: network rankings"):
             st.caption("Measured on the test period (notebook 02): which coins tend to spread price swings to others "
@@ -395,7 +395,7 @@ with tab_about:
                          arrayminus=pt["median_hours_to_normal"] - pt["q25_hours"]),
             marker_color=["#d62728" if f"{t} {d}" in cur else "#7f7f7f" for t, d in zip(pt["type"], pt["direction"])]))
         fig.update_layout(yaxis_title="hours", height=360, margin=dict(t=10))
-        show(fig)
+        draw_chart(fig)
         st.caption("Red: the kind of move that just happened. Market-wide = many coins at once; single-coin = one coin "
                    "on its own.")
     st.caption("A research project, not financial advice. Past patterns do not guarantee future moves.")

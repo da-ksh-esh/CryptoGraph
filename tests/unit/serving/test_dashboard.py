@@ -147,6 +147,11 @@ def test_event_explorer_renders_and_switches_events(with_events, monkeypatch):
     assert any("flagged" in m.value and "at random" in m.value for m in at.markdown)
     at.multiselect(key="event_sectors").select("x").run()
     assert not at.exception, at.exception
+    # every chart is drawn as a chart: risk bars, all-windows heatmap, crisis replay, hourly bars, market map, duration
+    # (a chart passed to a banner by mistake would show its source text instead, megabytes of it for the replay)
+    assert len(at.get("plotly_chart")) == 6
+    banners = [b.value for kind in (at.warning, at.success, at.info, at.error) for b in kind]
+    assert banners and not any("Figure(" in b or len(b) > 400 for b in banners)
 
 
 def test_plain_language_helpers():
