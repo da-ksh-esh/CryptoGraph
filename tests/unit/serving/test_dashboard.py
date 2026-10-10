@@ -79,7 +79,8 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     assert at.metric[0].label == "Most likely to move next (6 hours)" and at.metric[0].value.split(":")[0] in COINS
     assert "pumpes" not in " ".join(m.value for m in at.markdown)
     assert any(e.label.startswith("Details: every time window") for e in at.expander)
-    assert "dropped sharply" in " ".join(m.value for m in at.markdown) or "jumped sharply" in         " ".join(m.value for m in at.markdown)
+    words = " ".join(m.value for m in at.markdown)
+    assert "dropped sharply" in words or "jumped sharply" in words
     at.select_slider(key="horizon").set_value(1).run()          # switch the time window
     assert not at.exception, at.exception
     assert at.metric[0].label == "Most likely to move next (1 hour)"
