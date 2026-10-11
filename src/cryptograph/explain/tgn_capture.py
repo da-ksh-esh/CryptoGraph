@@ -196,4 +196,4 @@ def load_trained(run_dir, device: str = "cpu"):
     node_names += [f"futures: {k}" for k in range(feats.shape[-1] - len(node_names))]   # futures columns, if any
     return runner, {"d": d, "panel": panel, "bounds": bounds, "wmask": wmask, "k_hours": ev["label_k_hours"],
                     "coins": list(panel["graph_coins"]), "feats": feats, "cfg": cfg,
-                    "node_names": node_names, "msg_names": list(ev["msg_names"])}
+                    "node_names": node_names, "msg_names": list(ev["msg_names"]), "graph_index": list(gidx)}

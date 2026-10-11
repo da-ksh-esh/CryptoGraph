@@ -182,6 +182,12 @@ def _predict_task(cfg, seed, device, tracker):
     return predict_task(cfg, seed, device, tracker)
 
 
+def _events_task(cfg, seed, device, tracker):
+    from ..serving.events import events_task
+
+    return events_task(cfg, seed, device, tracker)
+
+
 def _compress_task(cfg, seed, device, tracker):
     from ..serving.compress import compress_task
 
@@ -189,7 +195,8 @@ def _compress_task(cfg, seed, device, tracker):
 
 
 TASKS = {"lstm": _lstm_task, "tgn": _tgn_task, "dygformer": _dygformer_task, "gbm": _gbm_task, "tempme": _tempme_task,
-         "tgae": _tgae_task, "robustness": _robustness_task, "predict": _predict_task, "compress": _compress_task}
+         "tgae": _tgae_task, "robustness": _robustness_task, "predict": _predict_task, "compress": _compress_task,
+         "events": _events_task}
 
 
 def run_experiment(cfg: dict, seed: int | None = None, device: str | None = None,

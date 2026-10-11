@@ -1,0 +1,15 @@
+# Dashboard theme (dashboard/app.py): dark and minimal. Streamlit reads this file when started from the project root
+# (`streamlit run dashboard/app.py`). The black-to-grey gradient itself is set in dashboard/app.py.
+[theme]
+base = "dark"
+primaryColor = "#c8ccd4"                 # neutral accent: red is kept for risk only
+backgroundColor = "#0d0e11"
+secondaryBackgroundColor = "#1b1d22"
+textColor = "#e6e7ea"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"                  # no Deploy button or developer menu
+
+[browser]
+gatherUsageStats = false

@@ -102,3 +102,15 @@ def test_event_blast_radius_anchors_on_the_shock_hour():
     assert row.anchor_hour == str(times[t0]) and row.coins_shocking_at_anchor == 3 and row.type == "market-wide"
     assert row.coins_hit_72h == 4 and row.peak_spillover_hour == 5 and row.control_shock_rate == 0
     assert row.abnormal_shock_rate > 0
+
+
+def test_event_anchor_picks_the_busiest_hour_of_the_date():
+    from cryptograph.analysis.persistence import event_anchor
+
+    times = pd.date_range("2024-01-01", periods=72, freq="h")
+    shock = np.zeros((72, 3), bool)
+    shock[24 + 15, :2] = True                                                # day 2, 15:00: 2 coins
+    shock[24 + 3, 0] = True                                                  # day 2, 03:00: 1 coin
+    assert event_anchor(shock, times, "2024-01-02") == 39
+    assert event_anchor(shock, times, "2024-01-01") == 0                    # no shocks: the first hour
+    assert event_anchor(shock, times, "2030-01-01") is None
