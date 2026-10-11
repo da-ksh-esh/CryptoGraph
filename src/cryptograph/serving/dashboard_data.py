@@ -25,6 +25,7 @@ class Prediction:
     persistence: pd.DataFrame = field(default_factory=pd.DataFrame)
     model_metrics: dict = field(default_factory=dict)
     drivers: dict = field(default_factory=dict)            # "COIN|h" -> drivers (older runs: only the alerts')
+    context: pd.DataFrame = field(default_factory=pd.DataFrame)   # real values per coin (context.csv)
 
 
 def prediction_runs(runs_dir: Path | str = PROJECT_ROOT / "runs") -> list[Path]:
@@ -48,7 +49,8 @@ def load_prediction(run_dir: Path | str) -> Prediction:
                else {f"{a['coin']}|{a['horizon_h']}": a.get("drivers", []) for a in alerts})
     return Prediction(run_dir, summary, pd.read_csv(run_dir / "risk.csv"), alerts,
                       opt("shock_sources.csv"), opt("persistence.csv"),
-                      {k: v for k, v in metrics.items() if not isinstance(v, (list, dict))}, drivers)
+                      {k: v for k, v in metrics.items() if not isinstance(v, (list, dict))}, drivers,
+                      opt("context.csv"))
 
 
 def risk_matrix(risk: pd.DataFrame) -> pd.DataFrame:
@@ -225,15 +227,37 @@ def horizon_label(h: int) -> str:
     return f"{h} hour" + ("" if h == 1 else "s")
 
 
-def plain_driver(d: dict, coin: str, source: str) -> str:
+def plain_driver(d: dict, coin: str, source: str, context: pd.DataFrame | None = None) -> str:
     """One driver (from integrated gradients) in words, e.g. "JUP: trading volume compared with its past week (raises
-    the risk)"."""
+    the risk)". With the prediction's context.csv, the coin's real value is added where it reads naturally, e.g.
+    "JUP: trading at 14.6× its usual volume (raises the risk)"."""
     side, _, name = d["input"].partition(": ")
     if side == "event":
         what = f"{EVENT_PLAIN.get(name, name)} (from {source} to {coin})"
     else:
-        what = f"{coin if side.startswith('receiver') else source}: {FEATURE_PLAIN.get(name, name)}"
+        who = coin if side.startswith("receiver") else source
+        what = f"{who}: {real_value(name, who, context) or FEATURE_PLAIN.get(name, name)}"
     return f"{what} ({'raises' if d['attribution'] > 0 else 'lowers'} the risk)"
+
+
+def real_value(feature: str, coin: str, context: pd.DataFrame | None) -> str | None:
+    """The coin's actual value of an input in words, or None when it is unknown or has no natural reading."""
+    if context is None or context.empty or coin not in set(context["coin"]):
+        return None
+    c = context.set_index("coin").loc[coin]
+    ok = lambda k: k in c and pd.notna(c[k]) and np.isfinite(c[k])   # noqa: E731
+    if feature == "volume_rel_168h" and ok("volume_multiple"):
+        return f"trading at {c['volume_multiple']:.1f}× its usual volume"
+    if feature == "rv_24h" and ok("vol_multiple"):
+        return f"price {c['vol_multiple']:.1f}× as jumpy as usual over the last day"
+    if feature == "rv_72h" and ok("vol72_multiple"):
+        return f"price {c['vol72_multiple']:.1f}× as jumpy as usual over the last 3 days"
+    if feature == "log_return" and ok("ret_1h"):
+        return f"moved {c['ret_1h']:+.1%} in the last hour"
+    if feature == "memory + recent events" and ok("shocks_24h"):
+        n = int(c["shocks_24h"])
+        return f"{n} big move{'s' if n != 1 else ''} in the last 24 hours (its recent history)"
+    return None
 
 
 def shock_sentence(src: dict, typical: dict | None) -> str:

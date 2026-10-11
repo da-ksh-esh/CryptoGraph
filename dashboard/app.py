@@ -202,7 +202,7 @@ with tab_why:
         st.markdown("**What the model weighed most:**")
         for d in drivers:
             arrow = UP if d["attribution"] > 0 else DOWN
-            st.markdown(f"- {arrow} {dd.plain_driver(d, coin, r['source'])}", unsafe_allow_html=True)
+            st.markdown(f"- {arrow} {dd.plain_driver(d, coin, r['source'], P.context)}", unsafe_allow_html=True)
         st.caption("▲ pushes the chance up, ▼ pushes it down. These are the inputs that changed this coin's "
                    "score "
                    "the most, compared with an average situation (they explain the model, not the market).")

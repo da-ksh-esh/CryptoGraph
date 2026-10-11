@@ -11,7 +11,8 @@ and made non-decreasing in k, since "shocks within 6 h" includes "shocks within 
 Drivers are integrated gradients on the prediction head (explain/attribution.py) for each coin's top event; TempME is
 not used per alert because it is weakly faithful (notebook 04).
 
-Outputs (runs/<run_id>/): risk.csv (coin x horizon), drivers.json (drivers of every coin x horizon), alerts.json (the
+Outputs (runs/<run_id>/): risk.csv (coin x horizon), context.csv (real values per coin, for the dashboard's
+reasons), drivers.json (drivers of every coin x horizon), alerts.json (the
 coin-horizons with the largest lift over their horizon's base rate, with drivers), summary.json, shock_sources.csv and
 persistence.csv (type of the source shocks and how long such shocks lasted before). The dashboard reads the latest of
 these runs.
@@ -29,6 +30,7 @@ import torch
 
 from ..data.config import PROJECT_ROOT
 from ..data.storage import load_pt
+from .context import coin_context
 
 PREDICT_FILES = ("risk.csv", "alerts.json", "summary.json")
 
@@ -207,6 +209,7 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
 
     out = table.drop(columns=["row", "drivers"])
     out.to_csv(tracker.dir / "risk.csv", index=False)
+    coin_context(D["panel"], D["graph_index"], as_of, coins).to_csv(tracker.dir / "context.csv", index=False)
     (tracker.dir / "drivers.json").write_text(json.dumps(       # the drivers of every coin x horizon (dashboard)
         {f"{c}|{kh}": dv for c, kh, dv in zip(table["coin"], table["horizon_h"], table["drivers"])},
         default=float), encoding="utf-8")
