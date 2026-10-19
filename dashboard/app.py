@@ -138,7 +138,9 @@ st.subheader("What just happened")
 with st.container(border=True):
     st.markdown(f"**{when(S['as_of'])}** (the latest data)")
     for src in P.sources.to_dict("records"):
-        st.markdown(dd.shock_sentence(src, dd.typical_duration(P.persistence, src["type"], src["direction"])))
+        recent = P.context.set_index("coin")["shocks_24h"].get(src["coin"]) if "shocks_24h" in P.context else None
+        st.markdown(dd.shock_sentence(src, dd.typical_duration(P.persistence, src["type"], src["direction"]),
+                                      None if recent is None or pd.isna(recent) else int(recent)))
     if P.sources.empty:
         st.markdown(f"Sudden big moves by: {', '.join(S['source_coins'])}.")
     if S["hours_since_as_of"]:
@@ -363,18 +365,10 @@ with tab_map:
 
 # --- how it works -----------------------------------------------------------------------------------------------------
 with tab_about:
-    st.markdown(
-        "**What is a big move?** An hourly price change much larger than the coin's usual swings over the past week "
-        "(more than about 2.3 times its normal size), up or down.\n\n"
-        "**How does the model work?** It watches every big move across 30 coins since 2020 and remembers how coins "
-        "reacted to each other. When a coin makes a big move, it estimates for every other coin the chance of a big "
-        "move of its own within 1 to 24 hours. Its scores are turned into chances using past data the model was not "
-        "trained on.\n\n"
-        "**What do the reasons mean?** For each coin the model lists the inputs that changed its score the most, "
-        "compared with an average situation. They explain the model's reasoning, not what will happen in the market.")
+    st.markdown(dd.about_text(S.get("data"), k_hours))
     tm = dd.model_test_metrics(P.model_metrics, k_hours)
     if not tm.empty:
-        st.markdown("**How good is it?** On 2024–2026 data it never saw, scored once:")
+        st.markdown(f"**How good is it?** On {dd.test_period_phrase(S.get('data'))} it never saw, scored once:")
         st.dataframe(tm.assign(window=tm["horizon_h"].map(dd.horizon_label)).rename(columns={
             "test_auprc": "model's precision score", "positive_rate": "random guess",
             "lift": "times better than random"})

@@ -20,19 +20,6 @@ from . import load_universe
 
 logger = get_logger(__name__)
 
-# Documented ticker migrations / redenominations affecting the master universe.
-REDENOMINATIONS = [
-    {
-        "coin": "LUNC", "date": "2022-05-28",
-        "what": "After a governance proposal approved on 25 May 2022, a new Terra chain was launched (new LUNA "
-                "tokens traded from 28 May); the original chain was renamed Terra Classic and its token LUNA "
-                "Classic (LUNC). Yahoo LUNC-USD (formerly LUNA1-USD) is the continuous price of the original "
-                "token, so no price adjustment is needed; the collapse itself (May 9-13) is real.",
-        "source_url": "https://en.wikipedia.org/wiki/Terra_(blockchain)",
-    },
-]
-
-
 def load_events(cfg: DataConfig) -> pd.DataFrame:
     ev = pd.read_csv(cfg.external_dir / "events.csv", parse_dates=["date"])
     return ev
@@ -54,9 +41,9 @@ def run(cfg: DataConfig, refresh: bool = False) -> None:
         g.index.name = "date"
         g["close_source"] = g["close_source"].astype(object)
         checked = run_checks(g, g["cm_close_aligned"], event_dates, params, n_duplicates=g["raw_duplicates"])
-        for r in REDENOMINATIONS:
-            if r["coin"] == coin:
-                checked.loc[pd.Timestamp(r["date"]), "qc_flags"] |= int(QC.REDENOMINATION)
+        for r in cfg.universe.redenominations:
+            if r.coin == coin:
+                checked.loc[pd.Timestamp(r.date), "qc_flags"] |= int(QC.REDENOMINATION)
         cleaned = clean_coin(checked, q.max_ffill_gap)
         cleaned["coin"] = coin
         cleaned["panel_A"] = coin in panels["panel_A"]
@@ -95,7 +82,7 @@ def run(cfg: DataConfig, refresh: bool = False) -> None:
 
     lines = ["# Redenominations and ticker migrations", "",
              "| coin | date | description | source |", "|---|---|---|---|"]
-    lines += [f"| {r['coin']} | {r['date']} | {r['what']} | {r['source_url']} |" for r in REDENOMINATIONS]
+    lines += [f"| {r.coin} | {r.date} | {r.what} | {r.source_url} |" for r in cfg.universe.redenominations]
     lines += ["", "Screened: no other coin in the master universe shows a single-day price-level jump "
               "consistent with a redenomination (|log return| > log(10) with no reversal)."]
     jumps = master.assign(r=np.log(master["close"]).groupby(master["coin"]).diff())

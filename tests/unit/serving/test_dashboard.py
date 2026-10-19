@@ -170,12 +170,39 @@ def test_plain_language_helpers():
                                                  "(raises the risk)")
     assert dd.plain_driver({"input": "receiver coin: futures: 0", "attribution": 0.1}, "A", "B") == \
         "A: futures: 0 (raises the risk)"                                      # unknown inputs stay readable
-    solo = dd.shock_sentence({"coin": "QNT", "direction": "crash", "z": -4.8, "breadth": 0.0},
+    solo = dd.shock_sentence({"coin": "QNT", "direction": "crash", "z": -4.8, "breadth": 0.0, "type": "idiosyncratic"},
                              {"median_hours_to_normal": 8.0})
     assert "QNT** dropped sharply" in solo and "4.8 times" in solo and "on its own" in solo and "8 hours" in solo
-    wide = dd.shock_sentence({"coin": "BTC", "direction": "pump", "z": 3.1, "breadth": 0.6}, None)
+    btc = {"coin": "BTC", "direction": "pump", "z": 3.1, "breadth": 0.6, "type": "market-wide"}
+    wide = dd.shock_sentence(btc, None)
     assert "jumped" in wide and "60% of the other coins" in wide and "market-wide" in wide and "hours" not in wide
     assert dd.crisis_verdict(5, 5, 5.0, 1.0)[0] == "neutral"                # everyone moved: says nothing
     assert dd.crisis_verdict(3, 5, 1.6, 0.32)[0] == "good"
     assert dd.crisis_verdict(2, 5, 1.9, 0.38)[0] == "neutral"
     assert dd.crisis_verdict(0, 5, 2.5, 0.5)[0] == "weak"
+
+
+def test_shock_sentence_uses_the_computed_type_and_recent_moves():
+    qnt = {"coin": "QNT", "direction": "crash", "z": -4.8, "breadth": 2 / 29, "type": "idiosyncratic"}
+    few = dd.shock_sentence(qnt, None, recent_shocks=9)
+    assert "no other coin" not in few and "mostly on its own (only 7% of the other coins" in few   # not "no other"
+    assert "made 9 big moves in the last 24 hours, counting this one" in few
+    alone = dd.shock_sentence({"coin": "QNT", "direction": "crash", "z": -4.8, "breadth": 0.0, "type": "idiosyncratic"},
+                              None, recent_shocks=1)
+    assert "no other coin moved sharply" in alone and "big moves in the last 24 hours" not in alone
+    part = dd.shock_sentence({"coin": "SOL", "direction": "pump", "z": 3.0, "breadth": 0.2, "type": "partial"}, None)
+    assert "together with 20% of the other coins." in part and "market-wide" not in part
+
+
+def test_about_text_reads_every_number_from_the_run():
+    facts = {"shock_threshold": 2.29, "n_coins": 30, "start": "2020-01-01 00:00:00",
+             "periods": {"test": ["2024-01-01 00:00:00", "2026-09-27 23:00:00"]}}
+    txt = dd.about_text(facts, [1, 3, 6, 12, 24])
+    assert "2.29 times" in txt and "across 30 coins since January 2020" in txt and "within 1 to 24 hours" in txt
+    other = dd.about_text({"shock_threshold": 3.0, "n_coins": 12, "start": "2021-06-01"}, [2, 4])
+    assert "3.00 times" in other and "12 coins since June 2021" in other and "within 2 to 4 hours" in other
+    bare = dd.about_text(None, [6])                                    # an older run: same text, no numbers
+    assert "times its usual" not in bare and "coins since" not in bare and "within 6 hours" in bare
+    assert dd.test_period_phrase(facts) == "2024–2026 data"
+    assert dd.test_period_phrase({"periods": {"test": ["2025-01-01", "2025-12-31"]}}) == "2025 data"
+    assert dd.test_period_phrase(None) == "data"

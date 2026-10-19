@@ -135,6 +135,19 @@ universe:
   rwa_or_commodity: [xaut, paxg, figr_heloc]   # tokenised real-world assets: price not set by crypto market
   event_coins: [LUNC, FTT]
   include_event_coins_in_panel_b: false
+  # Documented ticker migrations / redenominations (flagged on their date; reports/redenominations.md)
+  redenominations:
+    - coin: LUNC
+      date: "2022-05-28"
+      what: >-
+        After a governance proposal approved on 25 May 2022, a new Terra chain was launched (new LUNA tokens traded
+        from 28 May); the original chain was renamed Terra Classic and its token LUNA Classic (LUNC). Yahoo LUNC-USD
+        (formerly LUNA1-USD) is the continuous price of the original token, so no price adjustment is needed; the
+        collapse itself (May 9-13) is real.
+      source_url: https://en.wikipedia.org/wiki/Terra_(blockchain)
+  # Start dates scored in the universe audit's coverage options (how many coins qualify from each date)
+  audit_start_grid: ["2016-09-28", "2017-11-09", "2018-01-01", "2018-07-01", "2019-01-01", "2019-04-01",
+                     "2019-10-01", "2020-01-01"]
 
 sources:
   priority: [yahoo, coinmetrics, coindesk]

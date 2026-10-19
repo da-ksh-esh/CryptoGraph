@@ -22,9 +22,28 @@ from .attribution import completeness_gap, feature_table, integrated_gradients
 from .tempme import N_CAT, build_walks, null_distribution, tempme_importance, train_tempme
 from .tgn_capture import ExplainableTGN, capture, load_trained
 
-CASES = {"LUNA collapse (May 2022, train period)": ("2022-05-09", "2022-05-13"),
-         "FTX collapse (Nov 2022, validation period)": ("2022-11-07", "2022-11-11"),
-         "10-Oct-2025 liquidation cascade (test period)": ("2025-10-10 12:00", "2025-10-11 12:00")}
+PERIOD_OF_SPLIT = {0: "train", 1: "validation", 2: "test"}
+
+
+def case_windows(cases: list[dict], times: pd.DatetimeIndex, split_id: np.ndarray) -> dict[str, tuple[str, str]]:
+    """Case-study windows from the experiment config (`explain.cases`: name, start, end; end exclusive), in config
+    order. Each window must hold data, and a name that states its period ("(…, train period)") must match the
+    period its hours actually fall in, so a label cannot go stale when the splits change."""
+    import re
+
+    out = {}
+    for c in cases:
+        lo, hi = pd.Timestamp(c["start"]), pd.Timestamp(c["end"])
+        bars = np.flatnonzero((times >= lo) & (times < hi))
+        if not len(bars):
+            raise ValueError(f"case '{c['name']}' ({c['start']} to {c['end']}) has no hours in the data")
+        periods = {PERIOD_OF_SPLIT.get(int(s), "between splits") for s in split_id[bars]}
+        said = re.search(r"\b(train|validation|test) period\b", c["name"])
+        if said and periods != {said.group(1)}:
+            raise ValueError(f"case '{c['name']}' is labelled '{said.group(1)} period' but its hours fall in "
+                             f"{sorted(periods)}")
+        out[c["name"]] = (str(c["start"]), str(c["end"]))
+    return out
 
 
 def _find_run(experiment: str, seed: int, required: str = "checkpoint.pt") -> Path:
@@ -61,7 +80,7 @@ def tempme_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
     train_pos = np.sort(rng.choice(np.flatnonzero(vm) + a, size=min(int(vm.sum()), ec.get("n_train", 10000)),
                                    replace=False))
     case_pos = {}
-    for name, (lo, hi) in CASES.items():
+    for name, (lo, hi) in case_windows(ec.get("cases", []), times, panel["split_id"].numpy()).items():
         bars = np.flatnonzero((times >= pd.Timestamp(lo)) & (times < pd.Timestamp(hi)))
         ev = np.flatnonzero(np.isin(t_np, bars))
         case_pos[name] = np.sort(rng.choice(ev, size=min(len(ev), ec.get("case_events", 1500)), replace=False))
@@ -135,7 +154,8 @@ def tempme_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
         .to_csv(out_dir / "motif_categories.csv", index=False)
 
     # plausibility: which coins the explanations point to (top alerts) vs network rankings
-    rank = pd.read_csv(PROJECT_ROOT / "data" / "processed" / "v2" / "rankings.csv").set_index("coin")
+    ranking_file = PROJECT_ROOT / "data" / "processed" / D["cfg"]["data"]["version"] / "rankings.csv"
+    rank = pd.read_csv(ranking_file).set_index("coin")
     from scipy.stats import spearmanr
     for name in ("TempME", "optimised mask (per alert)", "TGN attention"):
         credit = fd.coin_credit(imps["top alerts"][name], sets["top alerts"], len(coins))
@@ -153,10 +173,7 @@ def tempme_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
     pd.DataFrame(credit_rows).to_csv(out_dir / "plausibility.csv", index=False)
 
     # --- feature level: integrated gradients ----------------------------------------------------------------------
-    net = load_pt(PROJECT_ROOT / "data" / "processed" / D["cfg"]["data"]["version"] / D["cfg"]["data"]["resolution"]
-                     / "network_features.pt")
-    node_names = list(panel["feature_names"]) + [f"network: {n}" for n in net["feature_names"]]
-    msg_names = list(load_pt(PROJECT_ROOT / "data" / "processed" / "v2" / "1h" / "tgn_events.pt")["msg_names"])
+    node_names, msg_names = D["node_names"], D["msg_names"]        # from the target run's own data (load_trained)
     assert len(node_names) == feats.shape[-1]
     ig_tabs = []
     for set_name, cap in {**sets, **{f"case: {k}": pick(v) for k, v in case_pos.items()}}.items():

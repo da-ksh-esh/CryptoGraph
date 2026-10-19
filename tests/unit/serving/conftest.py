@@ -23,7 +23,8 @@ def toy_panel(T=300, F=3, seed=0) -> dict:
             "feature_names": ["log_return"] + [f"f{k}" for k in range(1, F)],
             "times": [str(x) for x in pd.date_range("2026-01-01", periods=T, freq="h")],
             "shock_z": torch.from_numpy(z), "shock_today": torch.from_numpy(np.abs(z) > 2.29),
-            "shock_today_mask": torch.ones(T, N, dtype=torch.bool), "active": torch.ones(T, N, dtype=torch.bool)}
+            "shock_today_mask": torch.ones(T, N, dtype=torch.bool), "active": torch.ones(T, N, dtype=torch.bool),
+            "shock_threshold": 2.29}
 
 
 def _write_project(root, T=300, F=3, seed=0):

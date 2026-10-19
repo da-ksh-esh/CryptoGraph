@@ -42,6 +42,7 @@ universe:
       - {symbol: LUNCUSDT}
     FTT:
       - {symbol: FTTUSDT}
+  event_coin_coingecko: {LUNC: terra-luna, FTT: ftx-token}   # CoinGecko ids of the event coins (ranking lookup)
   # Ticker migrations on Binance (coingecko id -> symbol history, oldest first). Verified in Stage 2.
   symbol_overrides:
     polygon-ecosystem-token:

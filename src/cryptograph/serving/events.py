@@ -135,7 +135,7 @@ def events_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
     err = float((logits - cap.logits).abs().max())
     assert err < 1e-4, f"captured inputs do not reproduce the model (max abs logit diff {err:.2e})"
     prob = torch.sigmoid(logits).numpy()
-    cal = Calibrator.from_run(target)
+    cal = Calibrator.from_run(target, ec.get("calibration_min_bin", 500))
     risk_all = cal(prob) if cal is not None else np.maximum.accumulate(prob, axis=1)
     cpos = cap.pos.numpy()
     where = {int(p): j for j, p in enumerate(cpos)}

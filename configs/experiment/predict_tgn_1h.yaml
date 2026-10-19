@@ -20,3 +20,4 @@ predict:
   top_drivers: 5            # drivers listed per alert
   n_alerts: 20              # riskiest coin x horizon pairs in alerts.json
   shock_context: true       # source shock type and its typical duration (notebook 05 definitions)
+  calibration_min_bin: 500  # validation events per calibration bin (fewer -> noisier chances at the extremes)
