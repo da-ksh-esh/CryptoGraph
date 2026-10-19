@@ -68,6 +68,14 @@ class Candidate(_Strict):
     category: Literal["large_cap", "legacy", "event"]
 
 
+class Redenomination(_Strict):
+    """A documented ticker migration / redenomination (flagged in the quality report on its date)."""
+    coin: str
+    date: date
+    what: str
+    source_url: str
+
+
 class UniverseConfig(_Strict):
     panel_size: int = 20
     panel_a_start_date: date | None = None  # None -> window.start_date
@@ -78,6 +86,8 @@ class UniverseConfig(_Strict):
     rwa_or_commodity: list[str] = Field(default_factory=list)
     event_coins: list[str]
     include_event_coins_in_panel_b: bool = False
+    redenominations: list[Redenomination] = Field(default_factory=list)
+    audit_start_grid: list[date] = Field(default_factory=list)   # start dates scored in the audit's coverage options
 
     @field_validator("candidates")
     @classmethod
@@ -269,6 +279,7 @@ class HourlyUniverseConfig(_Strict):
     wrapped_or_staked: list[str]
     rwa_or_pegged: list[str]
     event_coins: dict[str, list[SymbolOverride]]           # coin -> Binance symbol history
+    event_coin_coingecko: dict[str, str] = Field(default_factory=dict)   # event coin -> CoinGecko id (default: lower)
     symbol_overrides: dict[str, list[SymbolOverride]] = Field(default_factory=dict)   # coingecko id -> history
     yahoo_tickers: dict[str, str] = Field(default_factory=dict)   # coingecko id -> Yahoo ticker (still price-verified)
 

@@ -101,4 +101,21 @@ riskiest coins vs chance). Every event is labelled with its period (train / vali
 approval, the yen carry-trade unwind and the 10-Oct-2025 cascade are test-period forecasts. Both network views now use
 a fixed sector-circle layout (from `main`), and the explorer has a sector filter and method notes with source links.
 
-**For Hardik's review:** the branch is ready to merge into `feat/hourly-network-models`; nothing was merged.
+**Plain-language redesign and dark theme** (merged in `f224b28`). The dashboard is written for readers without a
+data-science background: five tabs (Who's at risk, Why, Past crises, Market map, How it works), risk as "chance of a big
+move within N hours" with levels against a typical coin, the model's reasons in plain English with the coin's real
+values (`drivers.json`, `context.csv`), a fair-test banner and a verdict against random picks for each past crisis, and
+a minimal dark theme (`.streamlit/config.toml`).
+
+**No hard-coded values (branch `fix/remove-hard-coded-values`).** A repository audit found values typed in code that
+belong to the data or the configs; all now come from there:
+- the dashboard's "How it works" facts (shock threshold, coin count, start month, horizons, test years) come from the
+  prediction run (`summary.json` -> `data`, read from the panel); the "what just happened" card uses the computed shock
+  type instead of repeating the breadth cut-offs (it no longer says "no other coin" when a few others moved) and adds
+  the coin's big moves in the last 24 hours;
+- `explain/run.py`: input names and the rankings file follow the target run's own data (no fixed `v2/1h` paths); the
+  case-study windows are in `configs/experiment/tempme_tgn_1h.yaml` (same names, dates and order, so notebook 04's
+  outputs are unchanged), and a name that states a period is checked against the splits;
+- the calibration bin size is a predict / events config key (`calibration_min_bin`);
+- the LUNC redenomination record and the universe audit's start-date grid are in `configs/data/daily.yaml`, the event
+  coins' CoinGecko ids in `configs/data/hourly.yaml`.

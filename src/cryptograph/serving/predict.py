@@ -75,12 +75,12 @@ class Calibrator:
             self.base_rate.append(float(yk.mean()))
 
     @classmethod
-    def from_run(cls, run_dir: Path) -> "Calibrator | None":
+    def from_run(cls, run_dir: Path, min_bin: int = 500) -> "Calibrator | None":
         p = Path(run_dir) / "predictions_val.pt"
         if not p.exists():
             return None
         pv = load_pt(p)
-        return cls(pv["prob"].float().numpy(), pv["y"].numpy(), pv["mask"].numpy())
+        return cls(pv["prob"].float().numpy(), pv["y"].numpy(), pv["mask"].numpy(), min_bin=min_bin)
 
     def __call__(self, prob: np.ndarray) -> np.ndarray:
         """(N, K) scores -> (N, K) calibrated risk, non-decreasing in k ("within 6 h" includes "within 3 h")."""
@@ -150,6 +150,21 @@ def shock_context(panel: dict, gidx: list[int], as_of: int, sources: list[int], 
     return src, hist
 
 
+def data_facts(panel: dict, gidx: list[int]) -> dict:
+    """Facts about the data the model was built on, read from the panel (so the dashboard never types them): the shock
+    threshold on |z|, the number of coins, the first and last hour, and each period's first and last hour."""
+    times = pd.DatetimeIndex(panel["times"])
+    sid = panel["split_id"].numpy()
+    periods = {}
+    for i, name in ((0, "train"), (1, "validation"), (2, "test")):
+        idx = np.flatnonzero(sid == i)
+        if len(idx):
+            periods[name] = [str(times[idx[0]]), str(times[idx[-1]])]
+    thr = panel.get("shock_threshold")
+    return {"shock_threshold": float(thr) if thr is not None else None, "n_coins": len(gidx),
+            "start": str(times[0]), "end": str(times[-1]), "periods": periods}
+
+
 def latest_prediction_dir(runs_dir: Path | str = PROJECT_ROOT / "runs", experiment: str | None = None) -> Path | None:
     """The newest finished prediction run (contains all of PREDICT_FILES), optionally of one experiment name."""
     runs = sorted(p for p in Path(runs_dir).glob("*") if p.is_dir() and all((p / f).exists() for f in PREDICT_FILES)
@@ -189,7 +204,7 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
     assert err < 1e-4, f"captured inputs do not reproduce the model (max abs logit diff {err:.2e})"
     prob = torch.sigmoid(logits).numpy()
 
-    cal = Calibrator.from_run(target)
+    cal = Calibrator.from_run(target, pc.get("calibration_min_bin", 500))
     if cal is None:
         tracker.log("no predictions_val.pt in the target run: risk = uncalibrated score")
     risk = cal(prob) if cal is not None else np.maximum.accumulate(prob, axis=1)
@@ -223,10 +238,9 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
                "hours_since_as_of": int(len(times) - 1 - as_of), "n_events": int(len(pos)),
                "source_coins": sorted({coins[s] for s in p_src}), "k_hours": K, "calibrated": cal is not None,
                "base_rate": cal.base_rate if cal is not None else None, "rebuild_max_abs_logit_diff": err,
-               "ig_completeness_max_gap": gap_max}
+               "ig_completeness_max_gap": gap_max, "data": data_facts(D["panel"], D["graph_index"])}
     if pc.get("shock_context", True):                         # source shock type + typical duration (notebook 05)
-        gidx = load_pt(PROJECT_ROOT / "data" / "processed" / D["cfg"]["data"]["version"]
-                       / D["cfg"]["data"]["resolution"] / "tgn_events.pt")["graph_index"]
+        gidx = D["graph_index"]
         last = sorted({int(s) for s, tt in zip(p_src, p_t) if tt == as_of})
         src_tab, hist = shock_context(D["panel"], gidx, as_of, last, coins)
         src_tab.to_csv(tracker.dir / "shock_sources.csv", index=False)

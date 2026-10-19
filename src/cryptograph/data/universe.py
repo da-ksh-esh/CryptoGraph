@@ -303,10 +303,9 @@ class UniverseAuditor:
             # (c) smaller balanced panel
             options["c_smaller_panel"] = {"size": len(panel_a), "coins": panel_a}
             # number of liquid coins with >= min coverage for a range of start dates
-            grid = ["2016-09-28", "2017-11-09", "2018-01-01", "2018-07-01", "2019-01-01", "2019-04-01",
-                    "2019-10-01", "2020-01-01"]
             options["eligible_by_start"] = {
-                s: int((valid.loc[pd.Timestamp(s):].mean() >= q.min_coverage_panel_a).sum()) for s in grid}
+                str(s): int((valid.loc[pd.Timestamp(s):].mean() >= q.min_coverage_panel_a).sum())
+                for s in self.cfg.universe.audit_start_grid}
         return a, {"panel_A": panel_a, "panel_B": panel_b, "options": options}
 
     # -- entry point --------------------------------------------------------------------

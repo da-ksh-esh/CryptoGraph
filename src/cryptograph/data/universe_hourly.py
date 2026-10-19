@@ -341,7 +341,7 @@ class HourlyUniverseAuditor:
         # event coins
         for coin, hist in u.event_coins.items():
             logger.info(f"auditing event coin {coin}")
-            cg = {"LUNC": "terra-luna", "FTT": "ftx-token"}.get(coin, coin.lower())
+            cg = u.event_coin_coingecko.get(coin, coin.lower())
             audit, _ = self.audit_coin(coin, cg, hist, None, is_event=True)
             m = rk[rk["id"] == cg]
             rows.append({**audit, "rank_all": int(m["rank_all"].iloc[0]) if len(m) else np.nan,

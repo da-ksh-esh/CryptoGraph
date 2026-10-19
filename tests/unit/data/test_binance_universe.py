@@ -88,3 +88,16 @@ def test_hourly_config_loads_and_is_detected():
     assert [s.symbol for s in cfg.universe.event_coins["LUNC"]] == ["LUNAUSDT", "LUNCUSDT"]
     assert cfg.universe.event_coins["LUNC"][0].until == date(2022, 5, 13)
     assert is_hourly_config("configs/data/hourly.yaml") and not is_hourly_config("configs/data/daily.yaml")
+
+
+def test_dataset_facts_live_in_the_data_configs():
+    """Redenominations, the audit's start-date grid and the event coins' CoinGecko ids are config, not code."""
+    from datetime import date
+
+    from cryptograph.data.config import load_config, load_hourly_config
+
+    u = load_config().universe
+    assert [(r.coin, r.date) for r in u.redenominations] == [("LUNC", date(2022, 5, 28))]
+    assert u.redenominations[0].source_url.startswith("https://") and "Terra Classic" in u.redenominations[0].what
+    assert u.audit_start_grid == sorted(u.audit_start_grid) and len(u.audit_start_grid) == 8
+    assert load_hourly_config().universe.event_coin_coingecko == {"LUNC": "terra-luna", "FTT": "ftx-token"}

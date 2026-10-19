@@ -15,7 +15,12 @@ explain:
   max_alerts: 4000
   n_random_test: 4000
   n_train: 10000            # validation events used to train the explainer
-  case_events: 1500
+  case_events: 1500        # events sampled per case window
+  cases:                    # case-study windows (UTC, end exclusive), in this order; a period stated in a name is
+                            # checked against the splits (explain/run.py case_windows)
+    - {name: "LUNA collapse (May 2022, train period)", start: "2022-05-09", end: "2022-05-13"}
+    - {name: "FTX collapse (Nov 2022, validation period)", start: "2022-11-07", end: "2022-11-11"}
+    - {name: "10-Oct-2025 liquidation cascade (test period)", start: "2025-10-10 12:00", end: "2025-10-11 12:00"}
   case_top: 5
   mask_steps: 150
   R2: 3                     # motif width: earlier events of the step-1 neighbour, then of the next node

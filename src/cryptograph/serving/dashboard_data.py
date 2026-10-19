@@ -260,18 +260,54 @@ def real_value(feature: str, coin: str, context: pd.DataFrame | None) -> str | N
     return None
 
 
-def shock_sentence(src: dict, typical: dict | None) -> str:
-    """What just happened, in words: one source shock and how long such shocks usually last."""
+def shock_sentence(src: dict, typical: dict | None, recent_shocks: int | None = None) -> str:
+    """What just happened, in words: one source shock, how many coins moved with it (its type comes from
+    analysis.persistence, so the breadth cut-offs live in one place), how many big moves the coin made in the last
+    24 hours, and how long such shocks usually last."""
     move = "jumped" if src["direction"] == "pump" else "dropped"
-    size = abs(src["z"])
-    together = ("on its own; no other coin moved sharply in the same hour" if src["breadth"] < 0.10
-                else f"together with {src['breadth']:.0%} of the other coins" + (", a market-wide move"
-                                                                                  if src["breadth"] >= 0.30 else ""))
-    out = f"**{src['coin']}** {move} sharply, about **{size:.1f} times** its usual hourly move, {together}."
+    others = f"{src['breadth']:.0%} of the other coins"
+    if src["breadth"] <= 0:
+        together = "on its own; no other coin moved sharply in the same hour"
+    elif src["type"] == "idiosyncratic":
+        together = f"mostly on its own (only {others} moved sharply in the same hour)"
+    else:
+        together = f"together with {others}" + (", a market-wide move" if src["type"] == "market-wide" else "")
+    out = f"**{src['coin']}** {move} sharply, about **{abs(src['z']):.1f} times** its usual hourly move, {together}."
+    if recent_shocks is not None and recent_shocks > 1:
+        out += f" It has made {recent_shocks} big moves in the last 24 hours, counting this one."
     if typical:
         out += (f" Shocks like this have usually calmed down within about "
                 f"**{typical['median_hours_to_normal']:.0f} hours**.")
     return out
+
+
+def about_text(facts: dict | None, k_hours: list[int]) -> str:
+    """The "How it works" explanation, with every number read from the prediction run's data facts (older runs
+    without them get the same text without the numbers)."""
+    f = facts or {}
+    thr = f.get("shock_threshold")
+    size = f" (more than {thr:.2f} times its usual hourly swing)" if thr else ""
+    scope = (f" across {f['n_coins']} coins since {pd.Timestamp(f['start']):%B %Y}"
+             if f.get("n_coins") and f.get("start") else "")
+    horizon = (f"within {min(k_hours)} to {max(k_hours)} hours" if len(k_hours) > 1
+               else f"within {horizon_label(k_hours[0])}" if k_hours else "soon after")
+    return ("**What is a big move?** An hourly price change much larger than the coin's usual swings over the past "
+            f"week{size}, up or down.\n\n"
+            f"**How does the model work?** It watches every big move{scope} and remembers how coins reacted to each "
+            "other. When a coin makes a big move, it estimates for every other coin the chance of a big move of its "
+            f"own {horizon}. Its scores are turned into chances using past data the model was not trained on.\n\n"
+            "**What do the reasons mean?** For each coin the model lists the inputs that changed its score the most, "
+            "compared with an average situation. They explain the model's reasoning, not what will happen in the "
+            "market.")
+
+
+def test_period_phrase(facts: dict | None) -> str:
+    """ "2024–2026 data" from the run's recorded test period, or plain "data" when it is unknown."""
+    test = ((facts or {}).get("periods") or {}).get("test")
+    if not test:
+        return "data"
+    a, b = pd.Timestamp(test[0]).year, pd.Timestamp(test[1]).year
+    return f"{a} data" if a == b else f"{a}–{b} data"
 
 
 def crisis_verdict(hits: int, n: int, expected: float, share_shocked: float) -> tuple[str, str]:

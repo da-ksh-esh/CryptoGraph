@@ -17,3 +17,4 @@ events:
   ig_steps: 32
   top_drivers: 3
   top: 5                    # model vs outcome: hits among the 5 riskiest coins
+  calibration_min_bin: 500  # validation events per calibration bin (as predict_tgn_1h)

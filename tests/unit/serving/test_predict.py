@@ -113,6 +113,10 @@ def test_predict_task_end_to_end(toy_project):
     assert all(a["lift"] >= b["lift"] for a, b in zip(alerts, alerts[1:]))
     summary = json.loads((rd / "summary.json").read_text())
     assert summary["hours_since_as_of"] == 0 and summary["n_events"] == int((d.t >= d.t.max() - 1).sum())
+    facts = summary["data"]                                       # read from the panel, not typed anywhere
+    assert facts["n_coins"] == len(COINS) and facts["start"].startswith("2026-01-01")
+    assert list(facts["periods"]) == ["train", "validation", "test"]
+    assert facts["periods"]["test"][0] < facts["periods"]["test"][1] and facts["shock_threshold"] == 2.29
     drivers = json.loads((rd / "drivers.json").read_text())
     assert set(drivers) == {f"{c}|{kh}" for c, kh in zip(risk.coin, risk.horizon_h)}       # every coin x horizon
     assert all(len(v) == 3 for v in drivers.values())
@@ -151,3 +155,12 @@ def test_predict_matches_the_stream_scores(toy_project):
         p = np.flatnonzero((src == COINS.index(r.source)) & (dst == COINS.index(r.coin)) & (t == r.event_bar))
         assert len(p) == 1
         assert np.isclose(r.score, stream[p[0], K_HOURS.index(r.horizon_h)], atol=1e-5)
+
+
+def test_calibration_bin_size_comes_from_the_caller(tmp_path):
+    rng = np.random.default_rng(0)
+    p = rng.random((3000, 1))
+    torch.save({"prob": torch.from_numpy(p).half(), "y": torch.from_numpy(rng.random((3000, 1)) < p),
+                "mask": torch.ones(3000, 1, dtype=torch.bool)}, tmp_path / "predictions_val.pt")
+    assert len(Calibrator.from_run(tmp_path, min_bin=500).x[0]) == 6
+    assert len(Calibrator.from_run(tmp_path, min_bin=1000).x[0]) == 3
