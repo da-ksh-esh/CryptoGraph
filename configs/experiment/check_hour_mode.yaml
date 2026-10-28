@@ -1,0 +1,26 @@
+# smoke/timing check only (validation): hourly memory updates + mean aggregator + role flag + shock-size messages
+name: check_hour_mode
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {memory_aggregator: mean, role_flag: true, shock_size_messages: true, calendar_features: true, context_features: true}
+training:
+  epochs: 1
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 10
+  loss: focal
+  memory_step: hour
+  select_on: mean
+  max_train_batches: 500
+  max_eval_batches: 300

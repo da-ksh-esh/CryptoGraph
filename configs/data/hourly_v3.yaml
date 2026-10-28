@@ -1,0 +1,154 @@
+# =============================================================================
+# CryptoGraph-Secure — hourly (Binance) data configuration
+# Loaded by cryptograph.data.config.load_hourly_config. Stage 1 (universe audit)
+# uses window/splits/universe/binance; Stages 2-3 add retrieval and preprocessing keys.
+# Prices are quoted in USDT, not USD.
+# =============================================================================
+resolution: "1h"                 # 2h is resampled from 1h for the robustness check
+dataset_version: "v3"   # v3: v2 + regime-free volatility ratios, current-hour range, trades, 5-minute features
+seed: 42
+
+window:
+  start: "2020-01-01T00:00:00Z"
+  end: "2026-09-27T23:00:00Z"   # last hour, inclusive
+  reference_date: "2026-09-27"   # market-cap ranking date (CoinGecko snapshot fetched 2026-09-28)
+
+splits:                          # same dates as daily; train now starts 2020 (COVID, China ban, Terra)
+  train: ["2020-01-01", "2022-06-30"]
+  val:   ["2022-07-01", "2023-12-31"]
+  test:  ["2024-01-01", "2026-09-27"]
+  embargo_days: 7
+
+universe:
+  target_size: 30
+  candidate_pool: 60             # top-60 non-stable coins are audited; the first 30 that pass are selected
+  quote_asset: "USDT"
+  min_history_days: 730          # >= 2 years of hourly data inside the window
+  min_test_coverage: 0.90        # >= 90% of test-period hours (2024-01-01 .. 2026-09-27) with data
+  identity_price_tolerance: 0.10 # Binance last close vs CoinGecko reference price
+  # Not independent shock nodes (matched on CoinGecko symbol or id).
+  stablecoins: [usdt, usdc, dai, fdusd, usde, tusd, pyusd, usds, usd1, usdg, rlusd, busd, usdd, gusd,
+                frax, lusd, usdp, usdy, usyc, buidl, eurc, susds, susde, usdtb, usdf, usdx, crvusd, gho,
+                u, united-stables, usdgo, bfusd]
+  wrapped_or_staked: [wbtc, weth, steth, wsteth, weeth, cbbtc, cbeth, reth, wbeth, bnsol, jitosol,
+                      msol, ezeth, rseth, lbtc, solvbtc, meth, tbtc, clbtc, wbnb, weth.e]
+  rwa_or_pegged: [xaut, paxg, figr_heloc, eursafo]   # tokenised gold / loans / funds: price set off-chain
+  # Event coins (kept for event studies, not model coins). Binance symbol history, oldest first.
+  # LUNAUSDT is two different coins: the original Terra LUNA traded until its delisting in May 2022;
+  # the same symbol was reused for the new LUNA (Terra 2.0) from 2022-05-31. Only the old segment is LUNC.
+  event_coins:
+    LUNC:
+      - {symbol: LUNAUSDT, until: "2022-05-13"}
+      - {symbol: LUNCUSDT}
+    FTT:
+      - {symbol: FTTUSDT}
+  # Ticker migrations on Binance (coingecko id -> symbol history, oldest first). Verified in Stage 2.
+  symbol_overrides:
+    polygon-ecosystem-token:
+      - {symbol: MATICUSDT, until: "2024-09-10"}   # verified: last MATICUSDT hour 2024-09-10 02:00, POLUSDT from 2024-09-13 10:00 (1:1, -0.7%)
+      - {symbol: POLUSDT}
+    render-token:
+      - {symbol: RNDRUSDT, until: "2024-07-26"}
+      - {symbol: RENDERUSDT}
+    the-open-network:                # CoinGecko symbol is now "gram"; TONUSDT files end 2026-06-30, GRAMUSDT continues
+      - {symbol: TONUSDT, until: "2026-06-30"}
+      - {symbol: GRAMUSDT}
+
+  # Yahoo daily tickers that Yahoo search does not return (still verified against the reference price).
+  yahoo_tickers:
+    polygon-ecosystem-token: POL28321-USD
+    jupiter-exchange-solana: JUP29210-USD   # Yahoo "JUP-USD" is a different token (price ~0.0003)
+
+binance:
+  archive_url: "https://data.binance.vision"
+  list_url: "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision"
+  market: "spot"
+  interval: "1h"
+  retries: 5
+  backoff_base_seconds: 2.0
+  download_workers: 8
+
+quality:
+  max_ffill_hours: 2             # forward-fill at most 2 consecutive missing hours (flagged); longer gaps masked
+  stale_hours: 6                 # close unchanged for >= 6 consecutive hours -> flagged
+  volume_spike_mult: 20          # volume > 20x trailing 7-day median -> flagged
+  volume_spike_window_hours: 168
+  abs_logret_flag: 0.25          # |hourly log return| > 0.25 is checked against the daily source / events
+  daily_confirm_logret: 0.10     # a same-day daily move of >= 10% (log) confirms it
+  event_window_days: 3
+  crosscheck_tol: 0.01           # hourly-derived daily close vs daily dataset: flag differences > 1%
+  usdt_peg_tol: 0.005            # USDT off its peg by > 0.5% -> day flagged (Coin Metrics, daily; ends 2026-05-23)
+  rename_max_price_jump: 0.05    # ticker migrations are 1:1 swaps: price should not jump across the switch
+
+features:                        # windows in hours (divided by the bar size at 2h)
+  rv_windows_hours: [24, 72, 168]
+  range_window_hours: 24         # Parkinson range volatility (Garman-Klass dropped: rho 0.99 at daily)
+  volume_window_hours: 168       # volume relative to its trailing 7-day median
+  listing_cap_hours: 17520       # hours since listing, capped at 2 years
+  redundancy_threshold: 0.90     # drop one feature of any pair with |Spearman rho| >= 0.90 on train
+  # v3: rv_168h is the shock label's own scale (z = return / trailing 168h volatility), so it is never pruned;
+  # log_hours_listed is constant once every coin is 2 years old (all of val/test) and only marks the 2020-21 era
+  protected_features: [log_return, rv_168h]
+  drop_features: [log_hours_listed]
+  short_rv_windows_hours: [3, 6]
+  range_1h: true
+  trades_feature: true
+  ratio_features: true
+  subhour_5m: true
+
+targets:
+  horizons_hours: [1, 6, 24]     # forward log return / realized volatility
+  shock_vol_window_hours: 168    # z = deseasonalised return / trailing 7-day volatility (up to t-1)
+  shock_target_rate: 0.04        # z* chosen on train so the train shock rate is ~4% (comparable with daily 3.9%)
+  contagion_k_hours: [1, 3, 6, 12, 24]
+
+graph:
+  corr_window_hours: 168
+  snapshot_step_hours: 24        # one graph snapshot per day of hourly data
+  # Stage 4: hourly |corr| is high at every sampling interval (weak Epps effect: 0.58 at 1h, 0.62 at 4-12h),
+  # so 0.5 gave ~76% density. The threshold is fitted per resolution on TRAIN snapshots to match the daily
+  # graph's 30% train density (notebook 01, section 16). Set a number here to override.
+  threshold: null
+  target_train_density: 0.30
+  top_k: 2
+  # Stage 4: no usable lead-lag at 1h-24h (|ccf| <= 0.05, Granger dR2 < 0.5%, does not replicate on val),
+  # so hourly snapshots carry no directed lag-1 edges. Directed networks come from GFEVD in Stage 5.
+  directed_lag_threshold: null
+  min_obs_frac: 0.8
+
+datasets:
+  build_resolutions: ["1h"]      # v3: the 5-minute features exist for 1h bars only
+  lookback_hours: 168            # LSTM input window
+  sample_stride_hours: 1
+  include_event_coins_in_graph: false
+  tgn_max_events: 2000000        # stop at a checkpoint above this. Raised from 1M (2026-10-01): full 1h stream
+                                 # (1.46M events) kept unbiased, trained on Colab GPU; 2h stream = robustness check
+  tgn_top_k_receivers: null
+  scaler_min_train_hours: 2160   # 90 days of train data for a per-coin scaler, else the global train scaler
+
+network:                         # Stage 5 (notebook 02); all networks use trailing windows only
+  corr_window_hours: 168         # correlation networks (communities, MST, topology): same windows as graph_snapshots
+  spillover_window_hours: 720    # rolling Diebold-Yilmaz GFEVD network (30 days of hourly bars)
+  spillover_var_lags: 1
+  spillover_horizon_hours: 24
+  ranking_var_maxlags: 3         # static DY on the test window (rankings.csv): VAR lag order by BIC up to this
+  cascade_window_hours: 2160     # rolling shock-transmission network (90 days)
+  cascade_k_hours: 1             # "j shocks within k hours after i shocks"
+  cascade_prior_strength: 10     # p_ij shrunk towards j's base rate with this many pseudo-observations
+  louvain_resolution: 1.0
+  pagerank_alpha: 0.85
+  min_coverage: 0.9              # a coin enters a window's networks with >= 90% of its bars
+
+scaling:
+  method: "robust"
+  scope: "per_coin"
+  clip: 5.0
+
+paths:
+  raw_dir: "data/raw"
+  interim_dir: "data/interim/hourly"
+  processed_dir: "data/processed"
+  external_dir: "data/external"
+  reports_dir: "reports"
+  coingecko_snapshot: "data/raw/coingecko/markets_snapshot.json"
+  daily_audit: "reports/universe_audit.csv"

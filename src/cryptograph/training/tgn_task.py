@@ -82,6 +82,23 @@ def context_tables(panel: dict, gidx: list[int]) -> tuple[torch.Tensor, torch.Te
     return torch.from_numpy(node.astype(np.float32)), torch.from_numpy(np.stack([breadth, b24], 1).astype(np.float32))
 
 
+def shock_size_messages(data, panel: dict, gidx: list[int]) -> torch.Tensor:
+    """Event messages with the always-1 source shock flag replaced by the signed shock size z (clipped at +-10, /3)
+    of the source and of the receiver at bar t (both known when bar t closes)."""
+    z = torch.from_numpy(np.clip(np.nan_to_num(panel["shock_z"].numpy()[:, gidx]), -10, 10) / 3).float()
+    return torch.cat([data.msg[:, :4], z[data.t, data.src][:, None], z[data.t, data.dst][:, None]], dim=-1)
+
+
+def calendar_table(panel: dict) -> torch.Tensor:
+    """(T, 3) calendar of the hour being predicted (t+1): hour-of-day sine/cosine and a weekend flag. The returns are
+    deseasonalised, but the train shock rate still ranges from 3.1% (04 UTC) to 4.6% (18 UTC)."""
+    import pandas as pd
+
+    nxt = pd.DatetimeIndex(panel["times"]) + pd.Timedelta(hours=panel.get("bar_hours", 1))
+    h = 2 * np.pi * nxt.hour.to_numpy() / 24
+    return torch.from_numpy(np.stack([np.sin(h), np.cos(h), (nxt.dayofweek >= 5).astype(float)], 1).astype(np.float32))
+
+
 def _batches(t: np.ndarray, start: int, end: int, size: int) -> list[tuple[int, int]]:
     """[start, end) cut into consecutive slices of about `size` events, never splitting one bar."""
     out, a = [], start
@@ -96,11 +113,16 @@ def _batches(t: np.ndarray, start: int, end: int, size: int) -> list[tuple[int, 
 
 class StreamRunner:
     def __init__(self, model, data, feats: torch.Tensor, weight_mask: dict[str, np.ndarray], device, batch_size: int,
-                 num_neighbors: int = 10, ctx: tuple[torch.Tensor, torch.Tensor] | None = None):
+                 num_neighbors: int = 10, ctx: tuple[torch.Tensor, torch.Tensor] | None = None,
+                 memory_step: str = "batch"):
         from torch_geometric.nn.models.tgn import LastNeighborLoader
 
         self.model, self.d, self.feats, self.device = model, data, feats, device
         self.ctx = ctx
+        # "batch": memory and neighbours are updated once per batch of ~batch_size events (about 4 hours, so later
+        # hours of a batch are predicted without the earlier ones). "hour": updated after every hour inside the
+        # batch; gradients are accumulated and the optimiser still steps once per batch.
+        self.memory_step = memory_step
         self.wmask = weight_mask
         self.bs = batch_size
         self.N = model.memory.num_nodes
@@ -152,20 +174,36 @@ class StreamRunner:
                 break
             w = torch.from_numpy(self.wmask[split][self.t_np[s:e]])
             y, ym = self.d.y[s:e], self.d.y_mask[s:e] & w[:, None]
-            with torch.set_grad_enabled(train):
-                logits, ev = self._step(s, e)
-                if loss_fn is not None and ym.any():          # loss_fn None = replay only (memory warm-up)
-                    loss = loss_fn(logits, y.to(self.device), ym.to(self.device))
-                    if train:
-                        optimizer.zero_grad()
-                        loss.backward()
-                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-                        optimizer.step()
-                    losses.append(float(loss.detach()))
-            self._commit(ev)
-            self.model.memory.detach()
+            if self.memory_step == "hour":
+                cuts = np.flatnonzero(np.diff(self.t_np[s:e])) + 1 + s
+                subs = list(zip(np.r_[s, cuts], np.r_[cuts, e]))
+            else:
+                subs = [(s, e)]
+            n_counted = float(ym.sum())
+            if train:
+                optimizer.zero_grad()
+            batch_loss, lg_parts = 0.0, []
+            for n_sub, (sa, sb) in enumerate(subs):
+                ysub, ymsub = y[sa - s:sb - s], ym[sa - s:sb - s]
+                with torch.set_grad_enabled(train):
+                    logits, ev = self._step(sa, sb)
+                    if loss_fn is not None and ymsub.any():   # loss_fn None = replay only (memory warm-up)
+                        loss = loss_fn(logits, ysub.to(self.device), ymsub.to(self.device))
+                        share = float(ymsub.sum()) / n_counted   # the batch loss = mean over its counted labels
+                        if train:
+                            (loss * share).backward()
+                        batch_loss += float(loss.detach()) * share
+                # the optimiser steps before the batch's last memory update (as in v2, where a batch was one step)
+                if train and loss_fn is not None and ym.any() and n_sub == len(subs) - 1:
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                    optimizer.step()
+                self._commit(ev)
+                self.model.memory.detach()
+                lg_parts.append(logits.detach().cpu())
+            if loss_fn is not None and ym.any():
+                losses.append(batch_loss)
             if not train and ym.any():
-                out_l.append(logits.detach().cpu())
+                out_l.append(torch.cat(lg_parts))
                 out_y.append(y)
                 out_m.append(ym)
                 out_p.append(torch.arange(s, e))
@@ -207,13 +245,23 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
     wmask = {s: panel["sample_mask"][s].numpy() for s in ("train", "val", "test")}
 
     mcfg = _read_yaml(cfg["model"]["config"]) | cfg["model"].get("overrides", {})
+    msg_names = ev["msg_names"]
+    if mcfg.get("shock_size_messages", False):
+        d.msg = shock_size_messages(d, panel, gidx)
+        msg_names = msg_names[:4] + ["src_z", "dst_z"]
+    if mcfg.get("calendar_features", False):
+        cal = calendar_table(panel)
+        feats = torch.cat([feats, cal[:, None, :].expand(-1, feats.shape[1], -1)], dim=-1).contiguous()
     ctx = context_tables(panel, gidx) if mcfg.get("context_features", False) else None
     ctx_dim = 2 * len(CTX_NODE) + len(CTX_GLOBAL) if ctx is not None else 0
     model = ContagionTGN(num_nodes=len(gidx), msg_dim=d.msg.shape[1], node_feat_dim=feats.shape[-1],
                          memory_dim=mcfg["memory_dim"], time_dim=mcfg["time_dim"],
                          embedding_dim=mcfg["embedding_dim"], out_horizons=len(k_hours),
-                         dropout=mcfg["dropout"], use_memory=mcfg.get("use_memory", True), ctx_dim=ctx_dim).to(device)
-    runner = StreamRunner(model, d, feats, wmask, device, tr["batch_size"], tr.get("num_neighbors", 10), ctx=ctx)
+                         dropout=mcfg["dropout"], use_memory=mcfg.get("use_memory", True), ctx_dim=ctx_dim,
+                         aggregator=mcfg.get("memory_aggregator", "last"),
+                         role_flag=mcfg.get("role_flag", False)).to(device)
+    runner = StreamRunner(model, d, feats, wmask, device, tr["batch_size"], tr.get("num_neighbors", 10), ctx=ctx,
+                          memory_step=tr.get("memory_step", "batch"))
 
     a, b = bounds["train"]
     tw = wmask["train"][d.t.numpy()[a:b]]
@@ -236,7 +284,7 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
     if is_refit(tr):                                  # final refit on train + val, fixed epochs, test once
         return refit_and_score(runner, d, bounds, wmask, tr["epochs"], opt, loss_fn, k_hours, tracker,
                                {"model_config": mcfg, "k_hours": k_hours, "node_feat_dim": feats.shape[-1],
-                                "msg_names": ev["msg_names"], "ctx_dim": ctx_dim})
+                                "msg_names": msg_names, "ctx_dim": ctx_dim})
     stopper = EarlyStopping(patience=tr.get("patience", 5), mode="max")
     # optional: halve the learning rate when validation AUPRC stalls (the v2 curves still crept up at epoch 98)
     sched = (torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="max", factor=tr.get("lr_factor", 0.5),
@@ -253,9 +301,13 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
         history.append({"epoch": epoch, "train_loss": tl, "val_loss": vl, **vm})
         tracker.log(f"epoch {epoch}: train loss {tl:.5f}, val loss {vl:.5f}, {sel_key} {vm.get(sel_key, float('nan')):.4f}, "
                     f"lr {opt.param_groups[0]['lr']:.2e}")
-        if sched is not None and np.isfinite(vm.get(sel_key, float("nan"))):
-            sched.step(vm[sel_key])
-        score = vm.get(sel_key, float("nan"))
+        # select_on "mean": the epoch with the best mean validation AUPRC over all horizons (default: the 1h one)
+        score = (float(np.mean([vm[f"val_auprc_k{kh}h"] for kh in k_hours])) if tr.get("select_on") == "mean"
+                 else vm.get(sel_key, float("nan")))
+        if tr.get("select_on") == "mean":
+            tracker.log(f"epoch {epoch}: mean val AUPRC {score:.4f}")
+        if sched is not None and np.isfinite(score):
+            sched.step(score)
         if best is None or stopper.improved(score):
             best = copy.deepcopy(model.state_dict())
         # min_epochs: no early stop before this many epochs (slow, U-shaped validation curves, e.g. the
@@ -266,7 +318,7 @@ def tgn_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str, A
 
     model.load_state_dict(best)
     tracker.save_checkpoint({"model_state": best, "model_config": mcfg, "k_hours": k_hours,
-                             "node_feat_dim": feats.shape[-1], "msg_names": ev["msg_names"], "ctx_dim": ctx_dim})
+                             "node_feat_dim": feats.shape[-1], "msg_names": msg_names, "ctx_dim": ctx_dim})
     runner.reset()                                 # final pass: replay train (no gradient), then val and test
     _, lg_tr, y_tr, m_tr = runner.run(*bounds["train"], "train", max_batches=mb)
     metrics: dict[str, Any] = {"best_epoch": stopper.best_epoch, "epochs_run": len(history),
