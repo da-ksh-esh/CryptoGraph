@@ -132,6 +132,21 @@ class GraphAttentionEmbedding(nn.Module):
         return self.conv(x, edge_index, edge_attr)
 
 
+class RoleMessage(nn.Module):
+    """IdentityMessage plus a role flag (0 = the coin sent the event, 1 = it received it). PyG's TGNMemory keeps one
+    message store per role but gives both the same raw message, so without the flag a coin's memory cannot tell
+    "I shocked" from "another coin shocked"."""
+
+    def __init__(self, raw_msg_dim: int, memory_dim: int, time_dim: int, role: float = 0.0):
+        super().__init__()
+        self.role = role
+        self.out_channels = raw_msg_dim + 2 * memory_dim + time_dim + 1
+
+    def forward(self, z_src, z_dst, raw_msg, t_enc):
+        flag = raw_msg.new_full((raw_msg.size(0), 1), self.role)
+        return torch.cat([z_src, z_dst, raw_msg, flag, t_enc], dim=-1)
+
+
 class ContagionTGN(nn.Module):
     """Edge-level contagion model on the shock-triggered event stream.
 
@@ -142,17 +157,23 @@ class ContagionTGN(nn.Module):
 
     def __init__(self, num_nodes: int, msg_dim: int, node_feat_dim: int, memory_dim: int = 64, time_dim: int = 16,
                  embedding_dim: int = 64, out_horizons: int = 5, dropout: float = 0.2, use_memory: bool = True,
-                 ctx_dim: int = 0):
+                 ctx_dim: int = 0, aggregator: str = "last", role_flag: bool = False):
         super().__init__()
-        from torch_geometric.nn.models.tgn import TimeEncoder
+        from torch_geometric.nn.models.tgn import MeanAggregator, TimeEncoder
 
         self.use_memory = use_memory          # False = ablation: the head sees only node features and the message
         self.embedding_dim = embedding_dim
         self.ctx_dim = ctx_dim                # event context known at t (market breadth, shock state of i and j)
 
-        self.memory = TGNMemory(num_nodes, msg_dim, memory_dim, time_dim,
-                                message_module=IdentityMessage(msg_dim, memory_dim, time_dim),
-                                aggregator_module=LastAggregator())
+        # "last" keeps one message per coin per update (all events of an hour share a timestamp, so an arbitrary
+        # one); "mean" averages every message the coin received since its last update
+        aggr = {"last": LastAggregator, "mean": MeanAggregator}[aggregator]()
+        msg_module = (RoleMessage(msg_dim, memory_dim, time_dim, role=0.0) if role_flag
+                      else IdentityMessage(msg_dim, memory_dim, time_dim))
+        self.memory = TGNMemory(num_nodes, msg_dim, memory_dim, time_dim, message_module=msg_module,
+                                aggregator_module=aggr)
+        if role_flag:
+            self.memory.msg_d_module.role = 1.0
         self.gnn = GraphAttentionEmbedding(memory_dim, embedding_dim, msg_dim, TimeEncoder(time_dim), dropout=0.1)
         d_in = 2 * embedding_dim + 2 * node_feat_dim + msg_dim + ctx_dim
         self.head = nn.Sequential(nn.Linear(d_in, embedding_dim), nn.ReLU(), nn.Dropout(dropout),

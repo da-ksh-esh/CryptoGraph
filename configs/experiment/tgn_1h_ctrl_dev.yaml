@@ -1,0 +1,25 @@
+# DEV (validation only, sandbox exp/accuracy-v3): control: v2 data and model, only the faster learning-rate schedule and mean-horizon selection
+name: tgn_1h_ctrl_dev
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: false
+data:
+  version: v2
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {}
+training:
+  epochs: 60
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.001
+  lr_schedule: plateau     # halve the learning rate after 3 epochs without a better mean validation AUPRC
+  weight_decay: 0.0001
+  patience: 8
+  loss: focal
+  memory_step: batch
+  select_on: mean          # best epoch = best mean validation AUPRC over the 5 horizons

@@ -1,0 +1,26 @@
+# FINAL (sandbox exp/accuracy-v3): frozen from tgn_1h_v3_nomem_dev, the best TGN variant on validation (mean AUPRC 0.400).
+# Scores the test period once per seed; seeds 0-4.
+name: tgn_1h_v3_final
+seed: 0
+device: auto
+deterministic: true
+evaluate_test: true
+data:
+  version: v3
+  resolution: "1h"
+  network_features: true
+model:
+  name: tgn
+  config: configs/model/tgn.yaml
+  overrides: {use_memory: false, shock_size_messages: true, calendar_features: true, context_features: true}
+training:
+  epochs: 60
+  batch_size: 200
+  num_neighbors: 10
+  learning_rate: 0.001
+  lr_schedule: plateau     # halve the learning rate after 3 epochs without a better mean validation AUPRC
+  weight_decay: 0.0001
+  patience: 8
+  loss: focal
+  memory_step: hour
+  select_on: mean          # best epoch = best mean validation AUPRC over the 5 horizons
