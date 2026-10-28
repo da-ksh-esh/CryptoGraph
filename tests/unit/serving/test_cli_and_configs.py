@@ -27,6 +27,14 @@ def test_serving_configs_point_at_the_final_tgn():
         assert (PROJECT_ROOT / "configs" / "experiment" / "tgn_1h_final_v2.yaml").exists()
 
 
+def test_v3_serving_configs_point_at_the_final_v3_tgn():
+    for name, key in (("predict_tgn_1h_v3", "predict"), ("predict_events_1h_v3", "events")):
+        cfg = load_experiment(PROJECT_ROOT / "configs" / "experiment" / f"{name}.yaml")
+        assert cfg[key]["target_experiment"] == "tgn_1h_v3_final" and cfg[key]["target_seed"] == 0
+    final = load_experiment(PROJECT_ROOT / "configs" / "experiment" / "tgn_1h_v3_final.yaml")
+    assert final["data"]["version"] == "v3"
+
+
 def test_predict_cli_overrides_and_prints(toy_project, monkeypatch, capsys, tmp_path):
     import yaml
 

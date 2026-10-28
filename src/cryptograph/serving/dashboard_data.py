@@ -203,6 +203,30 @@ FEATURE_PLAIN = {
     "network: shock_pagerank": "how often its big moves are followed by others",
     "network: shock_out_lift": "how often other coins follow its big moves",
     "memory + recent events": "its recent history of big moves",
+    # v3 inputs
+    "rv_168h": "how jumpy its price was over the last week",
+    "rvs_3h": "how jumpy its price was hour to hour over the last 3 hours",
+    "rvs_6h": "how jumpy its price was hour to hour over the last 6 hours",
+    "parkinson_24h": "its price range over the last day",
+    "parkinson_1h": "its price range in the last hour",
+    "trades_rel_168h": "number of trades compared with its past week",
+    "rv5_ratio": "how jumpy its price was minute to minute in the last hour",
+    "rv5_3h_ratio": "how jumpy its price was minute to minute over the last 3 hours",
+    "max5_ratio": "its largest 5-minute move in the last hour",
+    "jump_share": "whether the last hour's move came in one jump",
+    "last15": "its price change in the last 15 minutes",
+    "last15_abs": "the size of its move in the last 15 minutes",
+    "calendar: hour_sin": "the time of day",
+    "calendar: hour_cos": "the time of day",
+    "calendar: weekend": "whether it is the weekend",
+    "abs_z_now": "the size of its move right now",
+    "shock_now": "whether it is making a big move right now",
+    "shocks_last_24h": "how many big moves it made in the last 24 hours",
+    "log_hours_since_shock": "how long since its last big move",
+}
+MARKET_PLAIN = {
+    "breadth_now": "how many coins are making a big move right now",
+    "breadth_mean_24h": "how many coins made big moves over the last 24 hours",
 }
 EVENT_PLAIN = {
     "lag1_corr": "how closely the two coins moved together an hour apart",
@@ -210,7 +234,18 @@ EVENT_PLAIN = {
     "src_return_scaled": "the size of the move that started it",
     "src_vol_z": "how unusual the triggering coin's swings were",
     "src_shock": "that the triggering coin is in a big move",
+    "src_z": "the size of the move that started it",
+    "dst_z": "how much the coin itself moved in the same hour",
 }
+
+
+def feature_plain(name: str) -> str:
+    """A node input in words; v3's volatility ratios (lr_<input>) read as that input compared with its usual level."""
+    if name in FEATURE_PLAIN:
+        return FEATURE_PLAIN[name]
+    if name.startswith("lr_") and name[3:] in FEATURE_PLAIN:
+        return f"{FEATURE_PLAIN[name[3:]]}, compared with its usual level"
+    return name
 
 
 def risk_level(lift: float | None) -> tuple[str, str]:
@@ -234,9 +269,11 @@ def plain_driver(d: dict, coin: str, source: str, context: pd.DataFrame | None =
     side, _, name = d["input"].partition(": ")
     if side == "event":
         what = f"{EVENT_PLAIN.get(name, name)} (from {source} to {coin})"
+    elif side == "market":
+        what = f"the market: {MARKET_PLAIN.get(name, name)}"
     else:
         who = coin if side.startswith("receiver") else source
-        what = f"{who}: {real_value(name, who, context) or FEATURE_PLAIN.get(name, name)}"
+        what = f"{who}: {real_value(name, who, context) or feature_plain(name)}"
     return f"{what} ({'raises' if d['attribution'] > 0 else 'lowers'} the risk)"
 
 
@@ -248,13 +285,13 @@ def real_value(feature: str, coin: str, context: pd.DataFrame | None) -> str | N
     ok = lambda k: k in c and pd.notna(c[k]) and np.isfinite(c[k])   # noqa: E731
     if feature == "volume_rel_168h" and ok("volume_multiple"):
         return f"trading at {c['volume_multiple']:.1f}× its usual volume"
-    if feature == "rv_24h" and ok("vol_multiple"):
+    if feature in ("rv_24h", "lr_rv_24h") and ok("vol_multiple"):
         return f"price {c['vol_multiple']:.1f}× as jumpy as usual over the last day"
-    if feature == "rv_72h" and ok("vol72_multiple"):
+    if feature in ("rv_72h", "lr_rv_72h") and ok("vol72_multiple"):
         return f"price {c['vol72_multiple']:.1f}× as jumpy as usual over the last 3 days"
     if feature == "log_return" and ok("ret_1h"):
         return f"moved {c['ret_1h']:+.1%} in the last hour"
-    if feature == "memory + recent events" and ok("shocks_24h"):
+    if feature in ("memory + recent events", "shocks_last_24h") and ok("shocks_24h"):
         n = int(c["shocks_24h"])
         return f"{n} big move{'s' if n != 1 else ''} in the last 24 hours (its recent history)"
     return None
@@ -281,9 +318,10 @@ def shock_sentence(src: dict, typical: dict | None, recent_shocks: int | None = 
     return out
 
 
-def about_text(facts: dict | None, k_hours: list[int]) -> str:
+def about_text(facts: dict | None, k_hours: list[int], uses_memory: bool = True) -> str:
     """The "How it works" explanation, with every number read from the prediction run's data facts (older runs
-    without them get the same text without the numbers)."""
+    without them get the same text without the numbers). `uses_memory`: the model keeps a memory of past big moves
+    (v2); without it (v3) it reads each coin's recent moves and the market's state at the time of the shock."""
     f = facts or {}
     thr = f.get("shock_threshold")
     size = f" (more than {thr:.2f} times its usual hourly swing)" if thr else ""
@@ -293,8 +331,10 @@ def about_text(facts: dict | None, k_hours: list[int]) -> str:
                else f"within {horizon_label(k_hours[0])}" if k_hours else "soon after")
     return ("**What is a big move?** An hourly price change much larger than the coin's usual swings over the past "
             f"week{size}, up or down.\n\n"
-            f"**How does the model work?** It watches every big move{scope} and remembers how coins reacted to each "
-            "other. When a coin makes a big move, it estimates for every other coin the chance of a big move of its "
+            f"**How does the model work?** It watches every big move{scope} and "
+            + ("remembers how coins reacted to each other." if uses_memory else
+               "looks at how each coin and the whole market are moving at that moment.")
+            + " When a coin makes a big move, it estimates for every other coin the chance of a big move of its "
             f"own {horizon}. Its scores are turned into chances using past data the model was not trained on.\n\n"
             "**What do the reasons mean?** For each coin the model lists the inputs that changed its score the most, "
             "compared with an average situation. They explain the model's reasoning, not what will happen in the "

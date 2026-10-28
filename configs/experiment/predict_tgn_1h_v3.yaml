@@ -1,0 +1,24 @@
+# v3: per-coin contagion risk from the final v3 TGN (tgn_1h_v3_final, seed 0; data/processed/v3, built with
+# configs/data/hourly_v3.yaml) after the most recent shocks in the processed
+# 1h data, with integrated-gradient drivers per alert (serving/predict.py). Run with `cryptograph-predict`:
+#   cryptograph-predict --config configs/experiment/predict_tgn_1h_v3.yaml   # latest shock bar in data/processed/v3/1h
+#   cryptograph-predict --config configs/experiment/predict_tgn_1h_v3.yaml --as-of "2025-10-10 21:00"   # risk as it stood at that hour
+# Writes runs/<run_id>/{risk.csv, alerts.json, summary.json, shock_sources.csv, persistence.csv}; the dashboard
+# (streamlit run dashboard/app.py) reads the latest such run.
+name: predict_tgn_1h_v3
+seed: 0
+device: cpu
+deterministic: true
+model:
+  name: predict
+predict:
+  target_experiment: tgn_1h_v3_final
+  target_seed: 0
+  target_run: null          # or runs/<run_id> to pin one run
+  as_of: null               # null = the latest bar with shock events; else a UTC time "YYYY-MM-DD HH:MM"
+  lookback_hours: 1         # events from the last N bars up to as_of (1 = only the most recent shocks)
+  ig_steps: 64              # integrated-gradient steps (completeness gap reported in summary.json)
+  top_drivers: 5            # drivers listed per alert
+  n_alerts: 20              # riskiest coin x horizon pairs in alerts.json
+  shock_context: true       # source shock type and its typical duration (notebook 05 definitions)
+  calibration_min_bin: 500  # validation events per calibration bin (fewer -> noisier chances at the extremes)

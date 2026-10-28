@@ -180,7 +180,7 @@ def tempme_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
         attr, gap = integrated_gradients(ex, cap, kidx, steps=64)
         metrics.setdefault("ig_completeness_max_gap", 0.0)
         metrics["ig_completeness_max_gap"] = max(metrics["ig_completeness_max_gap"], completeness_gap(attr, gap))
-        tab = feature_table(attr, node_names, msg_names)
+        tab = feature_table(attr, node_names, msg_names, D.get("ctx_names"))
         tab.insert(0, "events", set_name)
         ig_tabs.append(tab)
     pd.concat(ig_tabs).to_csv(out_dir / "feature_attributions.csv", index=False)
@@ -206,7 +206,7 @@ def tempme_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
                 if q >= 0:
                     evs.append({"side": "source" if side == 0 else "receiver", "time": str(times[t_np[q]]),
                                 "event": f"{coins[src[q]]} -> {coins[dst[q]]}", "importance": float(flat[f])})
-            one = feature_table([x[r:r + 1] for x in attr], node_names, msg_names)
+            one = feature_table([x[r:r + 1] for x in attr], node_names, msg_names, D.get("ctx_names"))
             cases.append({"case": name, "time": str(times[t_np[pp]]), "event": f"{coins[src[pp]]} -> {coins[dst[pp]]}",
                           "p": float(p[order[r]]), "label": int(d.y[pp, kidx]) if bool(d.y_mask[pp, kidx]) else None,
                           "top_recent_events": evs,

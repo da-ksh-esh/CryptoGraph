@@ -38,6 +38,7 @@ class Captured:
     x_dst: torch.Tensor          # (N, F)
     msg: torch.Tensor            # (N, M) message of the explained event
     logits: torch.Tensor         # (N, K) the model's own logits from the stream run
+    ctx: torch.Tensor | None = None   # (N, C) event context: node ctx of i, of j, market (context-feature models)
 
     @property
     def mask(self) -> torch.Tensor:
@@ -47,10 +48,24 @@ class Captured:
         return len(self.pos)
 
     def subset(self, idx) -> "Captured":
-        return Captured(**{k: getattr(self, k)[idx] for k in self.__dataclass_fields__})
+        return Captured(**{k: None if getattr(self, k) is None else getattr(self, k)[idx]
+                           for k in self.__dataclass_fields__})
 
     def to_dict(self) -> dict:
         return {k: getattr(self, k) for k in self.__dataclass_fields__}
+
+
+def _steps(runner, end: int) -> list[tuple[int, int]]:
+    """The [s, e) slices the runner predicts at once before updating memory: its batches, or every hour inside them
+    when the model was trained with `memory_step: hour` (as StreamRunner.run does)."""
+    out = []
+    for s, e in _batches(runner.t_np, 0, end, runner.bs):
+        if getattr(runner, "memory_step", "batch") == "hour":
+            cuts = np.flatnonzero(np.diff(runner.t_np[s:e])) + 1 + s
+            out += list(zip(np.r_[s, cuts].tolist(), np.r_[cuts, e].tolist()))
+        else:
+            out.append((s, e))
+    return out
 
 
 @torch.no_grad()
@@ -61,7 +76,7 @@ def capture(runner, selected: np.ndarray, end: int, L: int = 10) -> Captured:
     model.eval()
     runner.reset()
     rows = {k: [] for k in Captured.__dataclass_fields__}
-    for s, e in _batches(runner.t_np, 0, end, runner.bs):
+    for s, e in _steps(runner, end):
         sel = np.flatnonzero(selected[s:e]) + s
         if len(sel):
             src, dst = d.src[s:e].to(dev), d.dst[s:e].to(dev)
@@ -99,12 +114,15 @@ def capture(runner, selected: np.ndarray, end: int, L: int = 10) -> Captured:
                 rows["x_dst"].append(runner.feats[tt, d.dst[p]])
                 rows["msg"].append(d.msg[p].float())
                 rows["logits"].append(logits[p - s].cpu())
+                if runner.ctx is not None:                 # as StreamRunner._step builds it
+                    node, glob = runner.ctx
+                    rows["ctx"].append(torch.cat([node[tt, d.src[p]], node[tt, d.dst[p]], glob[tt]]))
             runner._commit((s, e, src, dst, d.t[s:e].to(dev), d.msg[s:e].to(dev)))
         else:
             _, ev = runner._step(s, e)
             runner._commit(ev)
         model.memory.detach()
-    return Captured(**{k: torch.stack(v) for k, v in rows.items()})
+    return Captured(**{k: torch.stack(v) if v else None for k, v in rows.items()})
 
 
 class ExplainableTGN(nn.Module):
@@ -145,7 +163,7 @@ class ExplainableTGN(nn.Module):
         zj, _ = self.embed(cap.x_c[:, 1], cap.x_n[:, 1], cap.rel_t[:, 1], cap.msg_n[:, 1], mask[:, 1], wj)
         if not self.model.use_memory:
             zi, zj = torch.zeros_like(zi), torch.zeros_like(zj)
-        return self.model.decode(zi, zj, cap.x_src, cap.x_dst, cap.msg)
+        return self.model.decode(zi, zj, cap.x_src, cap.x_dst, cap.msg, cap.ctx)
 
     @torch.no_grad()
     def attention(self, cap: Captured) -> torch.Tensor:
@@ -166,7 +184,8 @@ def load_trained(run_dir, device: str = "cpu"):
 
     from ..data.config import PROJECT_ROOT
     from ..models.tgn import ContagionTGN
-    from ..training.tgn_task import StreamRunner, context_tables, node_feature_table, with_futures
+    from ..training.tgn_task import (CTX_GLOBAL, CTX_NODE, StreamRunner, calendar_table, context_tables,
+                                     node_feature_table, shock_size_messages, with_futures)
 
     run_dir = Path(run_dir)
     cfg = yaml.safe_load((run_dir / "config.resolved.yaml").read_text(encoding="utf-8"))
@@ -182,18 +201,31 @@ def load_trained(run_dir, device: str = "cpu"):
     bounds = {s: (int(np.searchsorted(sid, i, "left")), int(np.searchsorted(sid, i, "right")))
               for i, s in enumerate(("train", "val", "test"))}
     wmask = {s: panel["sample_mask"][s].numpy() for s in ("train", "val", "test")}
+    node_names = list(panel["feature_names"]) + ([f"network: {n}" for n in net["feature_names"]] if net else [])
+    node_names += [f"futures: {k}" for k in range(feats.shape[-1] - len(node_names))]   # futures columns, if any
+    # the v3 options, applied exactly as tgn_task does (defaults reproduce v2)
+    msg_names = list(ev["msg_names"])
+    if mcfg.get("shock_size_messages", False):
+        d.msg = shock_size_messages(d, panel, gidx)
+        msg_names = msg_names[:4] + ["src_z", "dst_z"]
+    if mcfg.get("calendar_features", False):
+        cal = calendar_table(panel)
+        feats = torch.cat([feats, cal[:, None, :].expand(-1, feats.shape[1], -1)], dim=-1).contiguous()
+        node_names += ["calendar: hour_sin", "calendar: hour_cos", "calendar: weekend"]
     ctx = context_tables(panel, gidx) if mcfg.get("context_features", False) else None
+    ctx_names = ([f"source coin: {n}" for n in CTX_NODE] + [f"receiver coin: {n}" for n in CTX_NODE]
+                 + [f"market: {n}" for n in CTX_GLOBAL]) if ctx is not None else []
     model = ContagionTGN(num_nodes=len(gidx), msg_dim=d.msg.shape[1], node_feat_dim=feats.shape[-1],
                          memory_dim=mcfg["memory_dim"], time_dim=mcfg["time_dim"],
                          embedding_dim=mcfg["embedding_dim"], out_horizons=len(ev["label_k_hours"]),
                          dropout=mcfg["dropout"], use_memory=mcfg.get("use_memory", True),
-                         ctx_dim=ck.get("ctx_dim", 0)).to(device)
+                         ctx_dim=ck.get("ctx_dim", 0), aggregator=mcfg.get("memory_aggregator", "last"),
+                         role_flag=mcfg.get("role_flag", False)).to(device)
     model.load_state_dict(ck["model_state"])
     model.eval()
-    assert ctx is None, "explanations support the TGN without event-context features (the final model)"
-    runner = StreamRunner(model, d, feats, wmask, torch.device(device), tr["batch_size"], tr.get("num_neighbors", 10))
-    node_names = list(panel["feature_names"]) + ([f"network: {n}" for n in net["feature_names"]] if net else [])
-    node_names += [f"futures: {k}" for k in range(feats.shape[-1] - len(node_names))]   # futures columns, if any
+    runner = StreamRunner(model, d, feats, wmask, torch.device(device), tr["batch_size"], tr.get("num_neighbors", 10),
+                          ctx=ctx, memory_step=tr.get("memory_step", "batch"))
     return runner, {"d": d, "panel": panel, "bounds": bounds, "wmask": wmask, "k_hours": ev["label_k_hours"],
                     "coins": list(panel["graph_coins"]), "feats": feats, "cfg": cfg,
-                    "node_names": node_names, "msg_names": list(ev["msg_names"]), "graph_index": list(gidx)}
+                    "node_names": node_names, "msg_names": msg_names, "ctx_names": ctx_names,
+                    "graph_index": list(gidx)}
