@@ -317,6 +317,14 @@ class HourlyFeaturesConfig(_Strict):
     volume_window_hours: int = 168
     listing_cap_hours: int = 17520            # "new coin" signal capped at 2 years
     redundancy_threshold: float = 0.90        # drop one of any feature pair with |Spearman rho| >= this (train)
+    # v3 additions (defaults reproduce v2)
+    protected_features: list[str] = ["log_return"]  # never pruned (rv_168h is the shock label's own scale)
+    drop_features: list[str] = []             # computed but not used as inputs (e.g. log_hours_listed)
+    short_rv_windows_hours: list[int] = []    # root-mean-square deseasonalised return over the last few hours
+    range_1h: bool = False                    # Parkinson range of the current bar (seasonality removed)
+    trades_feature: bool = False              # log trade count minus its trailing 7-day median
+    ratio_features: bool = False              # log(volatility / trailing 168h volatility): regime-free scale
+    subhour_5m: bool = False                  # features of the 5-minute bars inside each hour (klines_5m.parquet)
 
 
 class HourlyTargetsConfig(_Strict):

@@ -22,7 +22,8 @@ import torch
 from ...common.logger import get_logger
 from ...data.config import PROJECT_ROOT, HourlyConfig
 from ...data.datasets.indexed import sample_mask_times, window_index
-from ...data.features.intraday import SeasonalityProfile, bars, build_intraday_features, prune_redundant
+from ...data.features.intraday import (SeasonalityProfile, bars, bucket_index, build_intraday_features,
+                                      prune_redundant)
 from ...data.features.scaling import RobustScalerSet
 from ...data.features.targets import (forward_realized_vol, forward_returns, future_any, next_day_shock,
                                       shock_indicator, shock_z)
@@ -74,8 +75,13 @@ def build_resolution(cfg: HourlyConfig, res: str) -> dict:
     X_all, times, names_all, r_ds = build_intraday_features(master, coins, profile, f.rv_windows_hours,
                                                             f.range_window_hours, f.volume_window_hours,
                                                             f.listing_cap_hours)
+    extra = extra_features(master, coins, profile, r_ds, X_all, names_all, f, bh, cfg.interim_dir)
+    if extra:
+        X_all = np.concatenate([X_all, np.stack(list(extra.values()), axis=-1)], axis=-1)
+        names_all = names_all + list(extra)
     kept, dropped = prune_redundant(X_all[:, [coins.index(c) for c in model_coins]], names_all, train_rows,
-                                    f.redundancy_threshold)
+                                    f.redundancy_threshold, protected=tuple(f.protected_features))
+    kept = [n for n in kept if n not in f.drop_features]
     fi_all = {n: i for i, n in enumerate(names_all)}
     X_raw = X_all[:, :, [fi_all[n] for n in kept]]
     fnames = kept
@@ -259,11 +265,54 @@ def build_resolution(cfg: HourlyConfig, res: str) -> dict:
             else [float(np.nanmean(dens[:, 0])), float("nan")], "threshold": thr}
 
 
+def extra_features(master: pd.DataFrame, coins: list[str], profile: SeasonalityProfile, r_ds: pd.DataFrame,
+                   X_all: np.ndarray, names_all: list[str], f, bh: int, interim_dir) -> dict[str, np.ndarray]:
+    """v3 features (all off by default, so v2 is unchanged); every value at bar t uses data up to the close of t.
+
+    rvs_<w>h: root-mean-square deseasonalised return over the last w hours; parkinson_1h: the current bar's range;
+    trades_rel_168h: log trades minus their trailing 7-day median; lr_<name>: log(volatility / sigma168), where
+    sigma168 is the shock label's own scale (trailing 168h std of the deseasonalised returns, up to t); and the
+    5-minute features of data/features/subhour.py.
+    """
+    out: dict[str, np.ndarray] = {}
+    times = r_ds.index
+    n168 = bars(168, bh)
+    sig = r_ds.rolling(n168, min_periods=int(0.8 * n168)).std()
+    fb = profile.vol[bucket_index(times, bh)]
+    vols: dict[str, np.ndarray] = {n: X_all[:, :, names_all.index(n)] for n in names_all
+                                   if (n.startswith("rv_") or n.startswith("parkinson")) and n != f"rv_{168}h"}
+    for w in f.short_rv_windows_hours:
+        n = bars(w, bh)
+        out[f"rvs_{w}h"] = np.sqrt((r_ds ** 2).rolling(n, min_periods=max(1, int(0.8 * n))).mean()).to_numpy()
+        vols[f"rvs_{w}h"] = out[f"rvs_{w}h"]
+    if f.range_1h:
+        hi, lo = (master[c].unstack("coin").reindex(index=times, columns=coins).astype(float) for c in ("high", "low"))
+        out["parkinson_1h"] = (np.log(hi / lo) / np.sqrt(4 * np.log(2.0))).div(np.sqrt(fb), axis=0).to_numpy()
+        vols["parkinson_1h"] = out["parkinson_1h"]
+    if f.trades_feature:
+        tr = master["trades"].unstack("coin").reindex(index=times, columns=coins).astype(float)
+        lt = np.log(tr.where(tr > 0))
+        out["trades_rel_168h"] = (lt - lt.shift(1).rolling(n168, min_periods=n168 // 2).median()).to_numpy()
+    if f.ratio_features:
+        s = sig.to_numpy()
+        with np.errstate(divide="ignore", invalid="ignore"):
+            for n, v in vols.items():
+                out[f"lr_{n}"] = np.log(v / s)
+    if f.subhour_5m:
+        from ...data.features.subhour import subhour_features
+
+        k5 = pd.read_parquet(interim_dir / "klines_5m.parquet", columns=["close"])
+        out |= subhour_features(k5, times, coins, fb, sig.to_numpy())
+    return {k: np.where(np.isfinite(v), v, np.nan).astype(np.float32) for k, v in out.items()}
+
+
 def build_tgn_stream(out_dir, cal, coins, gidx, src_all, act_g, rds, X_in, fnames, kb, fut, split_id, W, min_obs,
                      top_k, k_hours) -> None:
     from torch_geometric.data import TemporalData
 
-    li, vi = fnames.index("log_return"), fnames.index(next(n for n in fnames if n.startswith("rv_")))
+    # the message's source volatility is rv_24h (v2: the first rv_ feature, which was rv_24h)
+    li = fnames.index("log_return")
+    vi = fnames.index("rv_24h") if "rv_24h" in fnames else fnames.index(next(n for n in fnames if n.startswith("rv_")))
     ts, ss, ds, msgs, ys, yms = [], [], [], [], [], []
     for t in np.flatnonzero(src_all.any(axis=1)):
         if t < W:

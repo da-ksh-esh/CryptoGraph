@@ -1,10 +1,11 @@
 """Feature-level explanations of the TGN's contagion predictions: integrated gradients on the prediction head.
 
-The head sees [z_i, z_j, x_i(t), x_j(t), msg]: the embeddings of source i and receiver j (memory + attention over their
-recent events), the node features of both coins at t and the event message. Integrated gradients (Sundararajan et
-al., 2017) attribute logit(input) - logit(baseline) to the individual inputs; the baseline is all zeros, which for
-the standardised node features and messages is the training mean. Attributions satisfy completeness (they sum to
-the logit difference), checked by `completeness_gap`.
+The head sees [z_i, z_j, x_i(t), x_j(t), msg] (+ ctx for models with event-context features): the embeddings of
+source i and receiver j (memory + attention over their recent events), the node features of both coins at t, the event
+message and, if used, the event context (shock state of i and j and market breadth at t). Integrated gradients
+(Sundararajan et al., 2017) attribute logit(input) - logit(baseline) to the individual inputs; the baseline is all
+zeros, which for the standardised node features and messages is the training mean. Attributions satisfy
+completeness (they sum to the logit difference), checked by `completeness_gap`.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ def head_inputs(ex: ExplainableTGN, cap: Captured) -> list[torch.Tensor]:
         zj, _ = ex.embed(cap.x_c[:, 1], cap.x_n[:, 1], cap.rel_t[:, 1], cap.msg_n[:, 1], cap.mask[:, 1])
     if not ex.model.use_memory:
         zi, zj = torch.zeros_like(zi), torch.zeros_like(zj)
-    return [zi, zj, cap.x_src, cap.x_dst, cap.msg]
+    return [zi, zj, cap.x_src, cap.x_dst, cap.msg] + ([cap.ctx] if ex.model.ctx_dim else [])
 
 
 def integrated_gradients(ex: ExplainableTGN, cap: Captured, horizon: int, steps: int = 32,
@@ -53,9 +54,9 @@ def integrated_gradients(ex: ExplainableTGN, cap: Captured, horizon: int, steps:
 
 def flat_attributions(attr: list[torch.Tensor]) -> torch.Tensor:
     """(N, n_inputs) in the rows of `feature_table`: each embedding summed to one input, then node features of i, of j,
-    and the message."""
-    zi, zj, xi, xj, msg = attr
-    return torch.cat([zi.sum(1, keepdim=True), zj.sum(1, keepdim=True), xi, xj, msg], dim=1)
+    the message and the event context (if any)."""
+    zi, zj, xi, xj, msg, *ctx = attr
+    return torch.cat([zi.sum(1, keepdim=True), zj.sum(1, keepdim=True), xi, xj, msg, *ctx], dim=1)
 
 
 def driver_stability(ex: ExplainableTGN, cap: Captured, horizon: int, noise: float, top: int = 5, steps: int = 32,
@@ -84,11 +85,13 @@ def completeness_gap(attr: list[torch.Tensor], gap: torch.Tensor) -> float:
     return float((total - gap).abs().max())
 
 
-def feature_table(attr: list[torch.Tensor], node_names: list[str], msg_names: list[str]) -> "pd.DataFrame":
-    """One row per input: mean signed and mean absolute attribution; embeddings summed into one row per side."""
+def feature_table(attr: list[torch.Tensor], node_names: list[str], msg_names: list[str],
+                  ctx_names: list[str] | None = None) -> "pd.DataFrame":
+    """One row per input: mean signed and mean absolute attribution; embeddings summed into one row per side.
+    `ctx_names` names the event-context columns (already prefixed "source coin: ", "receiver coin: " or "market: ")."""
     import pandas as pd
 
-    zi, zj, xi, xj, msg = attr
+    zi, zj, xi, xj, msg, *ctx = attr
     cols = {"source coin: memory + recent events": zi.sum(1), "receiver coin: memory + recent events": zj.sum(1)}
     for k, n in enumerate(node_names):
         cols[f"source coin: {n}"] = xi[:, k]
@@ -96,6 +99,10 @@ def feature_table(attr: list[torch.Tensor], node_names: list[str], msg_names: li
         cols[f"receiver coin: {n}"] = xj[:, k]
     for k, n in enumerate(msg_names):
         cols[f"event: {n}"] = msg[:, k]
+    if ctx:
+        names = ctx_names or [f"context: {k}" for k in range(ctx[0].shape[1])]
+        for k, n in enumerate(names):
+            cols[n] = ctx[0][:, k]
     rows = []
     for name, v in cols.items():
         v = v.numpy()

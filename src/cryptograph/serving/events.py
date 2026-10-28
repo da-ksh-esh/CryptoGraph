@@ -158,7 +158,8 @@ def events_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[str
             attr, gap = integrated_gradients(ex, cap.subset(idx), k, steps=ec.get("ig_steps", 32))
             gap_max = max(gap_max, completeness_gap(attr, gap))
             for j, r in enumerate(sub):
-                drivers[r] = top_drivers(attr, j, D["node_names"], D["msg_names"], ec.get("top_drivers", 3))
+                drivers[r] = top_drivers(attr, j, D["node_names"], D["msg_names"], ec.get("top_drivers", 3),
+                                         D.get("ctx_names"))
         table["drivers"] = [drivers[r] for r in table.index]
         split = SPLIT_NAMES.get(int(split_id[t0]), "between splits")
         replay = event_replay(sh, act, ret, times, coins, t0, ec.get("before_hours", 48), ec.get("after_hours", 168))

@@ -1,7 +1,7 @@
 """Per-coin contagion risk after the most recent shocks, with the drivers of each alert (`cryptograph-predict`).
 
 The final TGN scores events "coin i shocks at bar t -> will receiver j shock within k hours". For the latest bars that
-have shock events (the newest data in data/processed/v2/<res>/), the whole stream is replayed so memory holds
+have shock events (the newest data in data/processed/<version>/<res>/), the whole stream is replayed so memory holds
 exactly what evaluation sees, and each receiver coin gets, per horizon k in {1, 3, 6, 12, 24} h:
     risk  = the highest calibrated probability over the recent events that point at it,
     source = the shocking coin of that event.
@@ -109,11 +109,11 @@ def coin_risk(prob: np.ndarray, risk: np.ndarray, src: np.ndarray, dst: np.ndarr
 
 
 def top_drivers(attr: list[torch.Tensor], r: int, node_names: list[str], msg_names: list[str],
-                top: int = 5) -> list[dict]:
+                top: int = 5, ctx_names: list[str] | None = None) -> list[dict]:
     """The `top` inputs with the largest |attribution| for row r (sign: + raises the risk, - lowers it)."""
     from ..explain.attribution import feature_table
 
-    tab = feature_table([a[r:r + 1] for a in attr], node_names, msg_names).head(top)
+    tab = feature_table([a[r:r + 1] for a in attr], node_names, msg_names, ctx_names).head(top)
     return [{"input": x["input"], "attribution": round(float(x["mean_attribution"]), 6),
              "direction": "raises" if x["mean_attribution"] > 0 else "lowers"} for x in tab.to_dict("records")]
 
@@ -218,7 +218,8 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
         attr, gap = integrated_gradients(ex, cap.subset(torch.from_numpy(rows)), k, steps=pc.get("ig_steps", 64))
         gap_max = max(gap_max, completeness_gap(attr, gap))
         for i, r in enumerate(rows):
-            drivers[(int(r), kh)] = top_drivers(attr, i, D["node_names"], D["msg_names"], pc.get("top_drivers", 5))
+            drivers[(int(r), kh)] = top_drivers(attr, i, D["node_names"], D["msg_names"], pc.get("top_drivers", 5),
+                                                D.get("ctx_names"))
     table["drivers"] = [drivers[(r, h)] for r, h in zip(table["row"], table["horizon_h"])]
     table["event_time"] = [str(times[b]) for b in table["event_bar"]]
 
@@ -236,6 +237,7 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
     summary = {"target_run": target.name, "as_of": str(times[as_of]), "as_of_bar": as_of, "data_end": str(times[-1]),
                "data_version": D["cfg"]["data"]["version"], "resolution": D["cfg"]["data"]["resolution"],
                "hours_since_as_of": int(len(times) - 1 - as_of), "n_events": int(len(pos)),
+               "uses_memory": bool(runner.model.use_memory),
                "source_coins": sorted({coins[s] for s in p_src}), "k_hours": K, "calibrated": cal is not None,
                "base_rate": cal.base_rate if cal is not None else None, "rebuild_max_abs_logit_diff": err,
                "ig_completeness_max_gap": gap_max, "data": data_facts(D["panel"], D["graph_index"])}
