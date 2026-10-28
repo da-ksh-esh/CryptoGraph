@@ -115,6 +115,18 @@ def rankings(cfg: HourlyConfig, p: dict, gidx: list[int], gcoins: list[str], sec
     return df.sort_values("dy_net", ascending=False).reset_index(drop=True), meta
 
 
+def network_params(cfg: HourlyConfig, bh: int, threshold: float) -> NetworkParams:
+    """Window lengths in bars and the other network settings; `threshold` = the graph's fitted |corr| threshold."""
+    nc = cfg.network
+    return NetworkParams(
+        corr_window=bars(nc.corr_window_hours, bh), spill_window=bars(nc.spillover_window_hours, bh),
+        spill_lags=nc.spillover_var_lags, spill_horizon=bars(nc.spillover_horizon_hours, bh),
+        cascade_window=bars(nc.cascade_window_hours, bh), cascade_k=bars(nc.cascade_k_hours, bh),
+        cascade_prior=nc.cascade_prior_strength, threshold=float(threshold),
+        louvain_resolution=nc.louvain_resolution, pagerank_alpha=nc.pagerank_alpha, min_coverage=nc.min_coverage,
+        min_obs_frac=cfg.graph.min_obs_frac, seed=cfg.seed)
+
+
 def build_resolution(cfg: HourlyConfig, res: str) -> dict:
     out_dir = cfg.processed_dir(res)
     p = load_pt(out_dir / "panel.pt")
@@ -126,14 +138,7 @@ def build_resolution(cfg: HourlyConfig, res: str) -> dict:
     valid = p["shock_today_mask"].numpy()[:, gidx]
     active = p["active"].numpy()[:, gidx]
     sector_id, sector_names, sectors = load_sectors(cfg, gcoins)
-    nc = cfg.network
-    params = NetworkParams(
-        corr_window=bars(nc.corr_window_hours, bh), spill_window=bars(nc.spillover_window_hours, bh),
-        spill_lags=nc.spillover_var_lags, spill_horizon=bars(nc.spillover_horizon_hours, bh),
-        cascade_window=bars(nc.cascade_window_hours, bh), cascade_k=bars(nc.cascade_k_hours, bh),
-        cascade_prior=nc.cascade_prior_strength, threshold=float(g["undirected_threshold"]),
-        louvain_resolution=nc.louvain_resolution, pagerank_alpha=nc.pagerank_alpha, min_coverage=nc.min_coverage,
-        min_obs_frac=cfg.graph.min_obs_frac, seed=cfg.seed)
+    params = network_params(cfg, bh, g["undirected_threshold"])
     snap_t = g["snapshot_t"].numpy()
     logger.info(f"[{res}] network features for {len(snap_t)} snapshots × {len(gcoins)} coins")
     X, comm, glob = compute_network_features(r, shock, valid, active, snap_t, sector_id, params)

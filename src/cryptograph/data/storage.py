@@ -98,16 +98,19 @@ def hash_tree(paths: list[Path], root: Path) -> dict[str, str]:
 def load_pt(path: str | Path, map_location=None) -> Any:
     """torch.load in safe mode (weights_only=True): tensors, containers and plain types only, so a tampered file
     cannot run code when it is opened. The PyG event stream (tgn_events.pt) also needs PyG's TemporalData and its
-    storage class, which are allow-listed explicitly; any other object type is refused."""
+    storage class, which are allow-listed explicitly; any other object type is refused. PyG is imported only for a
+    file that needs it (the import takes seconds, e.g. on the dashboard's first load)."""
+    import pickle
+
     import torch
 
-    allowed = []
     try:
-        from torch_geometric.data.storage import GlobalStorage
-        from torch_geometric.data.temporal import TemporalData
+        return torch.load(path, weights_only=True, map_location=map_location)
+    except pickle.UnpicklingError as e:
+        if "torch_geometric" not in str(e):
+            raise
+    from torch_geometric.data.storage import GlobalStorage
+    from torch_geometric.data.temporal import TemporalData
 
-        allowed = [TemporalData, GlobalStorage]
-    except ImportError:
-        pass
-    with torch.serialization.safe_globals(allowed):
+    with torch.serialization.safe_globals([TemporalData, GlobalStorage]):
         return torch.load(path, weights_only=True, map_location=map_location)

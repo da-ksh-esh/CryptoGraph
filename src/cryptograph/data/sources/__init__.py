@@ -1,7 +1,8 @@
-"""Pluggable market-data sources (Yahoo, Coin Metrics, CoinGecko ranking, CoinDesk, Binance archive)."""
+"""Pluggable market-data sources (Yahoo, Coin Metrics, CoinGecko ranking, CoinDesk, Binance archive and REST)."""
 
 from .base import OHLCV_COLUMNS, DataSource, to_utc_daily_index, with_retries
 from .binance import BinanceArchive, read_klines
+from .binance_rest import BinanceRestKlines
 from .coindesk import CoinDeskSource
 from .coingecko import CoinGeckoRanking
 from .coinmetrics import CoinMetricsSource
@@ -17,5 +18,6 @@ __all__ = [
     "CoinGeckoRanking",
     "CoinDeskSource",
     "BinanceArchive",
+    "BinanceRestKlines",
     "read_klines",
 ]

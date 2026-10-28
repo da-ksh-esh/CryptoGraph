@@ -158,8 +158,12 @@ class ExplainableTGN(nn.Module):
         return torch.stack(out, dim=1)
 
 
-def load_trained(run_dir, device: str = "cpu"):
-    """Rebuild a trained `tgn` run (runs/<run_id>/) and its StreamRunner. Returns (runner, data dict)."""
+def load_trained(run_dir, device: str = "cpu", data_version: str | None = None):
+    """Rebuild a trained `tgn` run (runs/<run_id>/) and its StreamRunner. Returns (runner, data dict).
+
+    `data_version` reads another dataset version with the same coins and features as the one the model was trained
+    on (e.g. `v2_live`, the research data extended past the test period by serving/live.py); the returned cfg then
+    names that version."""
     from pathlib import Path
 
     import yaml
@@ -170,6 +174,8 @@ def load_trained(run_dir, device: str = "cpu"):
 
     run_dir = Path(run_dir)
     cfg = yaml.safe_load((run_dir / "config.resolved.yaml").read_text(encoding="utf-8"))
+    if data_version:
+        cfg["data"]["version"] = data_version
     ck = load_pt(run_dir / "checkpoint.pt", map_location=device)
     data_cfg, tr, mcfg = cfg["data"], cfg["training"], ck["model_config"]
     base = PROJECT_ROOT / "data" / "processed" / data_cfg["version"] / data_cfg["resolution"]
@@ -179,8 +185,11 @@ def load_trained(run_dir, device: str = "cpu"):
     d, gidx = ev["full"], ev["graph_index"]
     feats = with_futures(node_feature_table(panel, net, gidx), base, data_cfg, panel["graph_coins"])
     sid = panel["split_id"].numpy()[d.t.numpy()]
-    bounds = {s: (int(np.searchsorted(sid, i, "left")), int(np.searchsorted(sid, i, "right")))
-              for i, s in enumerate(("train", "val", "test"))}
+    # first and last event of each split (bars after the test period, split -1, only exist in live data)
+    bounds = {}
+    for i, s in enumerate(("train", "val", "test")):
+        idx = np.flatnonzero(sid == i)
+        bounds[s] = (int(idx[0]), int(idx[-1]) + 1) if len(idx) else (0, 0)
     wmask = {s: panel["sample_mask"][s].numpy() for s in ("train", "val", "test")}
     ctx = context_tables(panel, gidx) if mcfg.get("context_features", False) else None
     model = ContagionTGN(num_nodes=len(gidx), msg_dim=d.msg.shape[1], node_feat_dim=feats.shape[-1],

@@ -22,6 +22,7 @@ shock next, with motif-based explanations (TempME) and robustness tests.
 | Shock persistence by type (notebook 05) | done |
 | Robustness: T-GAE anomaly scores, noise / missing-data / FGSM stress tests (notebook 06) | done |
 | Serving: `cryptograph-predict` (calibrated risk per coin + integrated-gradient drivers), Streamlit dashboard, TGN compression for CPU | done: final runs on `tgn_1h_final_v2` seed 0; serve fp32 (int8 is 3x smaller but slower and costs ~0.005 AUPRC; `reports/compression/`, `docs/merge_notes.md`) |
+| Live scanning (`cryptograph-live`: Binance's newest hours, verified against v2), hour-by-hour replay, track record | done: dashboard tabs Replay and Track record; demo flow in `docs/demo_script.md` |
 
 ---
 
@@ -32,8 +33,9 @@ CryptoGraph/
 ├── configs/
 │   ├── data/daily.yaml, hourly.yaml   # windows, universe, quality, features, labels, splits, graphs, network
 │   ├── model/                # architecture of lstm, tgn, dygformer (training settings in experiment/)
-│   └── experiment/           # one YAML per run: *_dev (validation only), *_final (test), tempme, tgae, robustness,
-│                             #   predict_tgn_1h, compress_tgn_1h
+│   ├── experiment/           # one YAML per run: *_dev (validation only), *_final (test), tempme, tgae, robustness,
+│   │                         #   predict_tgn_1h, predict_events_1h, replay_1h, compress_tgn_1h
+│   └── serving/live_1h.yaml  # live scanning (cryptograph-live)
 ├── colab/                    # self-contained Colab notebooks + runner.ipynb + README (Colab / Kaggle)
 ├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv, sectors.csv
 ├── dashboard/                # Streamlit UI over cryptograph-predict runs (risk, alerts + drivers, duration, network)
@@ -47,7 +49,8 @@ CryptoGraph/
 │   ├── models/               # LSTM, TGN, DyGFormer, T-GAE (SnapshotTGAE); snapshot GNN not built
 │   ├── explain/              # TempME port, TGN capture, fidelity baselines, integrated gradients
 │   ├── robustness/           # stress tests (noise, missing events, FGSM / PGD), driver stability, anomaly scoring
-│   ├── serving/              # predict (risk + drivers), compress (int8 / pruning vs fp32), dashboard data
+│   ├── serving/              # predict (risk + drivers), live scanning, replay, test-period evidence,
+│   │                         #   compress (int8 / pruning vs fp32), dashboard data
 │   ├── training/             # runner + tasks (TGN, DyGFormer, LSTM, boosting, T-GAE), refit, tracking, metrics
 │   ├── analysis/             # statistics, lead-lag, Diebold-Yilmaz, event studies, persistence, evaluation, baselines
 │   ├── pipelines/            # build_data (cryptograph-data), train (cryptograph-train), predict (cryptograph-predict),
@@ -183,3 +186,27 @@ cryptograph-train --config configs/experiment/predict_events_1h.yaml     # catal
 - **Compression** (`serving/compress.py`): every variant replays the whole stream and is scored on the same test
   events; AUPRC cost with the paired day-block bootstrap, top-1% alert overlap, CPU latency per 200-event batch, size
   (`reports/compression/`).
+
+## 📡 Live scanning and replay
+
+```bash
+cryptograph-live                     # one cycle: Binance's newest closed hours -> rebuild, verify, predict, score alerts
+cryptograph-live --loop              # one cycle per closed hour (hh:02 UTC) until stopped
+cryptograph-live --status            # last cycle, riskiest coins now, live track record
+cryptograph-train --config configs/experiment/replay_1h.yaml    # past days hour by hour for the dashboard (offline)
+```
+
+- **Live** (`serving/live.py`, `configs/serving/live_1h.yaml`): fetches the closed 1h bars after the research data
+  from Binance's public REST API (`data/sources/binance_rest.py`, no key, mirror fallback), rebuilds them with the
+  research clean and build stages into dataset version **`v2_live`** (v2, `data/interim/hourly` and `reports/` are only
+  read), extends the network features for the new days, then scores the latest shocks (`runs/live/<run_id>/`). Every
+  fitted setting comes from the unchanged train rows, and each cycle **verifies** that v2_live reproduces v2 exactly on
+  the research period (inputs, shocks, splits, thresholds, shock events); a mismatch stops the cycle. A cycle takes
+  about 5 minutes and does nothing when no new hour has closed. Hours after the research period have split -1 and are
+  never used for training, selection or calibration.
+- **Alert log** (`runs/live/alert_log.csv`): each cycle's 3 riskiest coins per horizon (by lift); each alert is scored
+  once its window has passed against the share of the other coins that moved in the same hours (random picks).
+- **Dashboard**: a LIVE badge and auto-follow of new live runs; **Replay** plays a test-period window hour by hour
+  (`serving/replay.py`: the model's calibrated risk at every hour, outcomes revealed as time passes, a running score
+  against random picks); **Track record** shows the served model's top-alert precision and calibration on the test
+  period per coin and hour (`serving/evidence.py`) and the live alerts. Demo flow: `docs/demo_script.md`.

@@ -37,11 +37,20 @@ def prediction_runs(runs_dir: Path | str = PROJECT_ROOT / "runs") -> list[Path]:
                   reverse=True)
 
 
+def target_run_dir(run_dir: Path | str, summary: dict) -> Path:
+    """The trained run behind a prediction run: next to it (runs/) or, for live runs (runs/live/), one level up."""
+    run_dir = Path(run_dir)
+    for base in (run_dir.parent, run_dir.parent.parent):
+        if (base / summary["target_run"]).exists():
+            return base / summary["target_run"]
+    return run_dir.parent / summary["target_run"]
+
+
 def load_prediction(run_dir: Path | str) -> Prediction:
     run_dir = Path(run_dir)
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
     opt = lambda f: pd.read_csv(run_dir / f) if (run_dir / f).exists() else pd.DataFrame()   # noqa: E731
-    target_metrics = run_dir.parent / summary["target_run"] / "metrics.json"
+    target_metrics = target_run_dir(run_dir, summary) / "metrics.json"
     metrics = json.loads(target_metrics.read_text(encoding="utf-8")) if target_metrics.exists() else {}
     alerts = json.loads((run_dir / "alerts.json").read_text(encoding="utf-8"))
     dp = run_dir / "drivers.json"
@@ -264,9 +273,10 @@ def shock_sentence(src: dict, typical: dict | None) -> str:
     """What just happened, in words: one source shock and how long such shocks usually last."""
     move = "jumped" if src["direction"] == "pump" else "dropped"
     size = abs(src["z"])
-    together = ("on its own; no other coin moved sharply in the same hour" if src["breadth"] < 0.10
-                else f"together with {src['breadth']:.0%} of the other coins" + (", a market-wide move"
-                                                                                  if src["breadth"] >= 0.30 else ""))
+    b = src["breadth"]                                     # share of the *other* coins that moved in the same hour
+    together = ("on its own; no other coin moved sharply in the same hour" if b <= 0
+                else f"along with a few other coins ({b:.0%} of the others), not a market-wide move" if b < 0.10
+                else f"together with {b:.0%} of the other coins" + (", a market-wide move" if b >= 0.30 else ""))
     out = f"**{src['coin']}** {move} sharply, about **{size:.1f} times** its usual hourly move, {together}."
     if typical:
         out += (f" Shocks like this have usually calmed down within about "
@@ -284,3 +294,125 @@ def crisis_verdict(hits: int, n: int, expected: float, share_shocked: float) -> 
     if hits > expected - 1:
         return "neutral", "The model did about as well as picking coins at random."
     return "weak", "The model did worse than picking coins at random here."
+
+
+def score_verdict(hits: int, expected: float, decided: int) -> tuple[str, str]:
+    """(kind, sentence) for a running score of flagged coins against random picks: kind is good / neutral / weak."""
+    if decided < 5 or expected <= 0:
+        return "neutral", "Too few alerts have been decided yet to judge."
+    ratio = hits / expected
+    if ratio >= 1.25:
+        return "good", f"So far the model's picks came true {ratio:.1f} times as often as random picks."
+    if ratio >= 0.9:
+        return "neutral", "So far the model's picks did about as well as random picks."
+    return "weak", "So far the model's picks did worse than random picks."
+
+
+# --- live scanning (serving/live.py) ------------------------------------------------------------------------------
+
+def live_runs(runs_dir: Path | str = PROJECT_ROOT / "runs") -> list[Path]:
+    """Finished live prediction runs (runs/live/), newest first."""
+    return prediction_runs(Path(runs_dir) / "live")
+
+
+def live_status(runs_dir: Path | str = PROJECT_ROOT / "runs") -> dict | None:
+    """The last live cycle (runs/live/status.json), or None if there was none."""
+    p = Path(runs_dir) / "live" / "status.json"
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+
+
+def hours_since(ts, now=None) -> float:
+    """Hours from a UTC time to now (UTC)."""
+    now = pd.Timestamp.now(tz="UTC").tz_localize(None) if now is None else pd.Timestamp(now)
+    return (now - pd.Timestamp(ts)).total_seconds() / 3600
+
+
+def load_alert_log(runs_dir: Path | str = PROJECT_ROOT / "runs") -> pd.DataFrame:
+    from .live import read_alert_log
+
+    return read_alert_log(Path(runs_dir) / "live" / "alert_log.csv")
+
+
+def live_alert_table(log: pd.DataFrame, n: int = 30) -> pd.DataFrame:
+    """The newest live alerts, with what happened in words."""
+    if log.empty:
+        return pd.DataFrame()
+    t = log.sort_values(["issued_at", "horizon_h", "lift"], ascending=[False, True, False]).head(n).copy()
+
+    def words(r) -> str:
+        if r["status"] == "hit":
+            h = (pd.Timestamp(r["first_shock_at"]) - pd.Timestamp(r["issued_at"])).total_seconds() / 3600
+            return f"✅ big move {h:.0f} h later"
+        if r["status"] == "miss":
+            return "❌ no big move"
+        return f"⏳ watching until {pd.Timestamp(r['due_at']):%d %b %H:%M}"
+
+    t["what happened"] = [words(r) for r in t.to_dict("records")]
+    return t
+
+
+# --- replay (serving/replay.py) -----------------------------------------------------------------------------------
+
+def latest_replay_dir(runs_dir: Path | str = PROJECT_ROOT / "runs") -> Path | None:
+    """The newest run of the replay task (contains replay.json)."""
+    runs_dir = Path(runs_dir)
+    if not runs_dir.exists():
+        return None
+    runs = sorted(p for p in runs_dir.iterdir() if p.is_dir() and (p / "replay.json").exists())
+    return runs[-1] if runs else None
+
+
+def load_replay_index(run_dir: Path | str) -> dict:
+    return json.loads((Path(run_dir) / "replay.json").read_text(encoding="utf-8"))
+
+
+def load_replay(run_dir: Path | str, window_id: int) -> dict:
+    w = json.loads((Path(run_dir) / f"replay_{window_id}.json").read_text(encoding="utf-8"))
+    w["risk"] = pd.DataFrame(w["risk"])
+    return w
+
+
+def replay_alerts(risk: pd.DataFrame, horizon: int, top: int, skip_moving: bool = False) -> pd.DataFrame:
+    """The coins flagged at each scored hour: the model's `top` coins by lift at this horizon (by risk without base
+    rates), optionally leaving out coins that are already making a big move."""
+    r = risk[risk["horizon_h"] == horizon]
+    if skip_moving:
+        r = r[~r["shocking_now"].astype(bool)]
+    key = ["lift", "risk"] if "lift" in r and r["lift"].notna().any() else ["risk", "score"]
+    picks = r.sort_values(key, ascending=False).groupby("bar", sort=False).head(top)
+    return picks.sort_values(["bar", *key], ascending=[True, False, False]).reset_index(drop=True)
+
+
+def alert_status(alerts: pd.DataFrame, clock: int, horizon: int) -> pd.DataFrame:
+    """The alerts issued up to bar `clock`, as known at that bar:
+    hit      the coin made a big move within the window (shown as soon as it happens)
+    miss     the window is over without one
+    unknown  the window is over but the outcome was not observed (missing data)
+    pending  the window is still open (`hours_left`)
+    `decided` = the window is over and the outcome observed: only these enter the running score, so early hits do not
+    count before the misses of the same hour are known."""
+    a = alerts[alerts["bar"] <= clock].copy()
+    fm = pd.to_numeric(a["first_move_h"], errors="coerce")
+    hit = (fm <= horizon) & (a["bar"] + fm <= clock)
+    over = clock >= a["bar"] + horizon
+    a["status"] = np.where(hit, "hit", np.where(over, np.where(a["actual"].isna(), "unknown", "miss"), "pending"))
+    a["hours_left"] = (a["bar"] + horizon - clock).clip(lower=0)
+    a["decided"] = over & a["actual"].notna()
+    return a
+
+
+def replay_score(risk: pd.DataFrame, status: pd.DataFrame, horizon: int, skip_moving: bool = False) -> dict:
+    """Running score over the decided alerts: how many came true, and how many random picks of the same number of coins
+    at the same hours would have (the share of the eligible coins that made a big move within the window)."""
+    d = status[status["decided"]]
+    out = {"decided": int(len(d)), "hits": int(d["actual"].sum()) if len(d) else 0, "expected": 0.0,
+           "confirmed_early": int(((status["status"] == "hit") & ~status["decided"]).sum()),
+           "pending": int((status["status"] == "pending").sum())}
+    if len(d):
+        r = risk[(risk["horizon_h"] == horizon) & risk["actual"].notna() & risk["bar"].isin(set(d["bar"]))]
+        if skip_moving:
+            r = r[~r["shocking_now"].astype(bool)]
+        share = r.groupby("bar")["actual"].mean()
+        n = d.groupby("bar").size()
+        out["expected"] = float((n * share.reindex(n.index).fillna(0)).sum())
+    return out

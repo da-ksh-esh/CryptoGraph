@@ -1,0 +1,1683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CryptoGraph Presentation Script</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Presentation script, same design as the viva guide. Layout: field manual - a sticky contents rail on the left, one reading column of about 70 characters, figures and
+   tables run wider inside their own scrollers. Signal teal marks what to say out loud; amber marks traps. */
+:root {
+  --paper: #f5f7f9;
+  --sheet: #ffffff;
+  --ink: #16212e;
+  --muted: #586577;
+  --rule: #d6dde6;
+  --accent: #0b6b83;
+  --accent-soft: #e1f0f4;
+  --simple: #4152a6;
+  --simple-soft: #eceffb;
+  --amber: #8f5300;
+  --amber-soft: #fbefd9;
+  --up: #1b7744;
+  --down: #b5302a;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  --measure: 70ch;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e141b; --sheet: #141c25; --ink: #e3eaf2; --muted: #9ba7b6; --rule: #273342;
+    --accent: #5cc4da; --accent-soft: #10303a; --simple: #aab5ff; --simple-soft: #1c2240;
+    --amber: #f3b45c; --amber-soft: #33260e; --up: #52c584; --down: #ff7d70; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e141b; --sheet: #141c25; --ink: #e3eaf2; --muted: #9ba7b6; --rule: #273342;
+  --accent: #5cc4da; --accent-soft: #10303a; --simple: #aab5ff; --simple-soft: #1c2240;
+  --amber: #f3b45c; --amber-soft: #33260e; --up: #52c584; --down: #ff7d70; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--body); font-size: 1.0625rem; line-height: 1.62;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+.shell { display: grid; grid-template-columns: 15.5rem minmax(0, 1fr); gap: 3rem; max-width: 76rem; margin: 0 auto; }
+@media (max-width: 62rem) { .shell { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+
+/* contents rail */
+.rail { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; max-height: 100vh; overflow-y: auto;
+  padding-block: 2rem 2rem; font-family: var(--display); }
+.rail h2 { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 .75rem; }
+.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .1rem; }
+.rail a { display: grid; grid-template-columns: 2.2rem 1fr; padding: .28rem .5rem; border-radius: 4px;
+  color: var(--ink); text-decoration: none; font-size: .95rem; line-height: 1.3; }
+.rail a:hover { background: var(--accent-soft); }
+.rail a span { color: var(--muted); font-family: var(--mono); font-size: .8rem; padding-top: .1rem; }
+.rail .tools { margin-top: 1.25rem; display: grid; gap: .5rem; }
+@media (max-width: 62rem) { .rail { display: none; } }
+.mobile-toc { display: none; margin-block: 1rem; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet);
+  font-family: var(--display); }
+.mobile-toc summary { padding: .7rem 1rem; cursor: pointer; font-weight: 600; }
+.mobile-toc ol { margin: 0; padding: 0 1rem .9rem 2.2rem; display: grid; gap: .3rem; }
+@media (max-width: 62rem) { .mobile-toc { display: block; } }
+
+main { min-width: 0; padding-block: 2.5rem 5rem; }
+.col { max-width: var(--measure); }
+h1, h2, h3, h4 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: clamp(1.7rem, 3.2vw, 2.25rem); font-weight: 700; }
+h3 { font-size: 1.35rem; font-weight: 600; margin-top: 2.2rem; }
+h4 { font-size: 1.08rem; font-weight: 600; margin-top: 1.4rem; }
+p { margin: .8rem 0; }
+ul, ol { padding-left: 1.3rem; margin: .7rem 0; }
+li { margin: .3rem 0; }
+strong { font-weight: 600; }
+code, .num { font-family: var(--mono); font-size: .88em; }
+code { background: var(--accent-soft); padding: .05em .35em; border-radius: 3px; overflow-wrap: anywhere; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* opening */
+.masthead { padding-block: .5rem 1.5rem; border-bottom: 1px solid var(--rule); }
+.eyebrow { font-family: var(--display); font-size: .82rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--accent); font-weight: 600; }
+.lede { font-size: 1.22rem; color: var(--muted); max-width: 60ch; }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--rule);
+  border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; margin-top: 1.5rem; }
+@media (max-width: 40rem) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.facts div { background: var(--sheet); padding: .8rem 1rem; }
+.facts b { display: block; font-family: var(--mono); font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.facts span { font-family: var(--display); font-size: .88rem; color: var(--muted); }
+
+/* parts */
+section.part { padding-top: 3.2rem; scroll-margin-top: 1rem; }
+.part-head { display: grid; gap: .45rem; padding-bottom: .9rem; border-bottom: 2px solid var(--ink); max-width: var(--measure); }
+.part-head .eyebrow { color: var(--muted); }
+.goal { font-family: var(--display); color: var(--muted); font-size: 1rem; }
+
+/* notes */
+.note { border-radius: 6px; padding: .9rem 1.1rem; margin: 1.1rem 0; max-width: var(--measure); background: var(--sheet);
+  border: 1px solid var(--rule); }
+.note > :first-child { margin-top: 0; }
+.note > :last-child { margin-bottom: 0; }
+.note .tag { display: inline-block; font-family: var(--display); font-size: .75rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; margin-bottom: .35rem; }
+.note.simple { background: var(--simple-soft); border-color: transparent; }
+.note.simple .tag { color: var(--simple); }
+.note.say { background: var(--accent-soft); border-color: transparent; }
+.note.say .tag { color: var(--accent); }
+.note.careful { background: var(--amber-soft); border-color: transparent; }
+.note.careful .tag { color: var(--amber); }
+.note.numbers .tag { color: var(--muted); }
+.note.say blockquote { margin: .4rem 0 0; font-style: italic; }
+
+/* tables and figures */
+.scroll { overflow-x: auto; margin: 1.1rem 0; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; background: var(--sheet); }
+th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--display); font-weight: 600; font-size: .9rem; color: var(--muted); background: var(--paper);
+  border-bottom: 1px solid var(--ink); }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.hl td { background: var(--accent-soft); font-weight: 600; }
+figure { margin: 1.4rem 0; }
+figure .scroll { border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet); padding: .6rem; }
+figcaption { font-family: var(--display); font-size: .9rem; color: var(--muted); margin-top: .5rem; max-width: var(--measure); }
+svg text { font-family: var(--display); fill: var(--ink); }
+svg .muted { fill: var(--muted); }
+svg .box { fill: var(--sheet); stroke: var(--ink); stroke-width: 1.2; }
+svg .box-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.4; }
+svg .box-simple { fill: var(--simple-soft); stroke: var(--simple); stroke-width: 1.2; }
+svg .box-amber { fill: var(--amber-soft); stroke: var(--amber); stroke-width: 1.2; }
+svg .box-down { fill: var(--sheet); stroke: var(--down); stroke-width: 3; }
+svg .line { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+svg .line-accent { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+svg .dash { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 4 4; fill: none; }
+svg .fill-accent { fill: var(--accent); }
+svg .fill-ink { fill: var(--ink); }
+svg .fill-up { fill: var(--up); }
+svg .fill-down { fill: var(--down); }
+svg .fill-muted { fill: var(--muted); }
+svg .fill-rule { fill: var(--rule); }
+svg .fill-simple { fill: var(--simple); }
+svg .fill-amber { fill: var(--amber); }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; max-width: var(--measure); }
+.two > * { min-width: 0; }
+.steps { counter-reset: s; list-style: none; padding: 0; max-width: var(--measure); }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: .6rem; margin: .7rem 0; }
+.steps > li::before { content: counter(s); font-family: var(--mono); font-weight: 600; color: var(--accent);
+  border: 1.5px solid var(--accent); border-radius: 50%; width: 1.8rem; height: 1.8rem; display: grid; place-items: center;
+  font-size: .85rem; }
+.plan { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden;
+  max-width: var(--measure); }
+.plan div { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 1rem; background: var(--sheet); padding: .7rem 1rem; }
+.plan b { font-family: var(--mono); font-weight: 600; font-size: .9rem; }
+@media (max-width: 30rem) { .plan div { grid-template-columns: minmax(0, 1fr); gap: .2rem; } }
+
+.nbfile { font-family: var(--display); color: var(--muted); font-size: .92rem; margin-top: .3rem; }
+.secs { list-style: none; padding: 0; max-width: var(--measure); }
+.secs > li { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); gap: .6rem; margin: .8rem 0; }
+.secs .sn { font-family: var(--mono); font-weight: 600; color: var(--accent); border: 1.5px solid var(--accent);
+  border-radius: 999px; min-width: 1.8rem; height: 1.8rem; padding: 0 .25rem; display: grid; place-items: center;
+  font-size: .8rem; justify-self: start; }
+
+.words { max-width: var(--measure); margin: .6rem 0 1rem; }
+.words div { padding: .55rem 0; border-top: 1px solid var(--rule); }
+.words dt { font-family: var(--display); font-weight: 600; }
+.words dd { margin: .15rem 0 0; }
+.words .eg { display: block; color: var(--muted); font-size: .93rem; margin-top: .2rem; }
+.tcap { caption-side: top; text-align: left; font-family: var(--display); font-weight: 600; color: var(--ink);
+  padding: 0 0 .4rem; }
+.tech-index { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .25rem 1.5rem;
+  max-width: var(--measure); margin: 1rem 0; font-family: var(--display); }
+.tech-index a { text-decoration: none; padding: .2rem 0; }
+.tech-index span { display: inline-block; min-width: 1.6rem; color: var(--muted); font-family: var(--mono); font-size: .8rem; }
+.tech { max-width: var(--measure); border-top: 1px solid var(--rule); padding: .2rem 0 .5rem; scroll-margin-top: 1rem; }
+.tech h4 { margin-top: .8rem; }
+.tech p { margin: .3rem 0; }
+.lbl { display: inline-block; min-width: 8.2rem; font-family: var(--display); font-size: .74rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+table.refs tr.grp td { background: var(--paper); font-family: var(--display); font-weight: 600; color: var(--accent); }
+table.eqs td:nth-child(2) { font-family: var(--body); white-space: nowrap; }
+
+/* question bank */
+.qa-tools { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: 1rem 0; max-width: var(--measure); }
+.qa-tools input { flex: 1 1 14rem; min-width: 0; font: inherit; font-size: .95rem; padding: .5rem .7rem; border-radius: 5px;
+  border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); }
+button { font-family: var(--display); font-size: .92rem; font-weight: 600; padding: .5rem .9rem; border-radius: 5px;
+  border: 1px solid var(--accent); background: var(--sheet); color: var(--accent); cursor: pointer; }
+button[aria-pressed="true"] { background: var(--accent); color: var(--sheet); }
+.qa-group h3 { margin-top: 2rem; }
+.qa { border-top: 1px solid var(--rule); padding: .8rem 0; max-width: var(--measure); }
+.qa .q { font-family: var(--display); font-weight: 600; font-size: 1.05rem; display: flex; gap: .6rem; }
+.qa .q .id { font-family: var(--mono); color: var(--muted); font-weight: 400; font-size: .85rem; padding-top: .15rem; flex: 0 0 auto; }
+.qa .a { margin-top: .35rem; }
+.qa .a p:first-child { margin-top: 0; }
+.qa .reveal { display: none; margin-top: .4rem; font-size: .82rem; padding: .3rem .7rem; }
+body.quiz .qa .a { display: none; }
+body.quiz .qa .reveal { display: inline-block; }
+body.quiz .qa.open .a { display: block; }
+body.quiz .qa.open .reveal { display: none; }
+.qa[hidden] { display: none !important; }
+.count { font-family: var(--display); color: var(--muted); font-size: .9rem; }
+
+.glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .2rem 2rem; max-width: 60rem; }
+.glossary div { padding: .55rem 0; border-top: 1px solid var(--rule); min-width: 0; }
+.glossary dt { font-family: var(--display); font-weight: 600; }
+.glossary dd { margin: .15rem 0 0; font-size: .97rem; }
+footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-family: var(--display); color: var(--muted);
+  font-size: .9rem; max-width: var(--measure); }
+
+@page { size: A4; margin: 14mm 13mm 16mm; }
+@media print {
+  :root { --measure: 100%; }
+  body { background: #fff; color: #000; font-size: 10.5pt; }
+  .rail, .mobile-toc, .qa-tools, .qa .reveal { display: none !important; }
+  .shell { display: block; }
+  body.quiz .qa .a { display: block !important; }
+  section.part { break-before: page; padding-top: 0; }
+  section.part:first-of-type { break-before: auto; }
+  .note, figure, .qa, table, .secs > li, .tech, .words div { break-inside: avoid; }
+}
+
+/* script blocks */
+.script { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: .75rem 1.1rem .8rem;
+  border-radius: 0 6px 6px 0; margin: 1rem 0; max-width: var(--measure); }
+.script .who { display: block; font-family: var(--display); font-size: .75rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--accent); }
+.script p { margin: .45rem 0; }
+.script p:last-child { margin-bottom: 0; }
+.cue { display: inline-block; font-family: var(--display); font-size: .72rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--sheet); background: var(--ink); padding: .1rem .45rem; border-radius: 3px;
+  margin-right: .4rem; }
+.note.ask { background: var(--simple-soft); border-color: transparent; }
+.note.ask .tag { color: var(--simple); }
+@media print { .script { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="rail" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol id="toc"></ol>
+    <div class="tools">
+      <button type="button" id="quiz-side" aria-pressed="false">Quiz mode: hide answers</button>
+    </div>
+  </nav>
+
+  <main>
+    <header class="masthead col">
+      <p class="eyebrow">Deep Learning CA3 · presentation script</p>
+      <h1>CryptoGraph Presentation Script</h1>
+      <p class="lede">What to say, in what order, and what to click on the deployed dashboard: a 18-minute talk with an
+        8-minute cut, then the questions you are most likely to get, with short spoken answers. Plain words throughout; the
+        professor's technical terms are in <strong>bold</strong> so you recognise them.</p>
+      <div class="facts" role="list">
+        <div role="listitem"><b>18 min</b><span>full talk, 15 segments</span></div>
+        <div role="listitem"><b>8 min</b><span>short version</span></div>
+        <div role="listitem"><b>5 tabs</b><span>deployed dashboard demo</span></div>
+        <div role="listitem"><b>54</b><span>likely questions, with answers</span></div>
+      </div>
+    </header>
+
+    <details class="mobile-toc">
+      <summary>Contents</summary>
+      <ol id="toc-mobile"></ol>
+    </details>
+
+    <section class="part" id="prep" data-short="Before you walk in">
+      <div class="part-head">
+        <span class="eyebrow">Start here</span>
+        <h2>Before you walk in</h2>
+        <p class="goal">How to use this script, a checklist for the room, who says what, and the timetable.</p>
+      </div>
+      <div class="col">
+        <p>Read the whole script out loud once with a timer, then a second time with the dashboard open and clicking
+          along. Three kinds of boxes:</p>
+      </div>
+      <div class="two">
+        <div class="script"><span class="who">Say</span><p>Lines to say. Learn the meaning, not the exact words; your own
+          words sound more confident.</p></div>
+        <div class="note ask"><span class="tag">If asked</span><p>One- or two-line answers to follow-up questions that
+          usually come at that point.</p></div>
+      </div>
+      <div class="col">
+        <p><span class="cue">On screen</span> cues tell you what to show. Part numbers in brackets, such as (guide Part 7),
+          point to the big study guide, <code>CryptoGraph_Viva_Prep_Guide.html</code>, for depth.</p>
+
+        <h3>Checklist</h3>
+        <ol class="steps">
+          <li><div><strong>Open the deployed Streamlit link 10 minutes early</strong> and click every tab once. Free
+            Streamlit apps can fall asleep and take a minute to wake. Set <em>Look ahead</em> to 6 hours.</div></li>
+          <li><div>Use the <strong>deployed link</strong>, not the copy on your laptop: the laptop copy has extra,
+            unreleased tabs from later work.</div></li>
+          <li><div>Keep a folder of <strong>backup screenshots</strong>, one per tab, in case the internet fails.</div></li>
+          <li><div>Open the report PDF at Table III (page 5) and Figure 2 (page 4), in case the professor wants to look at
+            them.</div></li>
+          <li><div>Agree who says what (below) and who drives the mouse. Agree the answer to "who did what" so both of you
+            say the same thing.</div></li>
+          <li><div>Phones silent, water nearby. Speak slower than feels natural.</div></li>
+        </ol>
+
+        <h3>Who says what (a suggestion)</h3>
+        <p>Split by who built what: you (Hardik) built the data pipeline, the network analysis, the models, the evaluation
+          and the explanations; Dakshesh built the prediction command, the dashboard and its crisis explorer, the model
+          compression and the extra attack tests. Swap freely; what matters is that your answers match.</p>
+      </div>
+      <div class="scroll col">
+        <table>
+          <caption class="tcap">Run of show (18:00; for a 15-minute slot, move segments 6, 8 and 12 into questions and keep the demo to 3 minutes)</caption>
+          <thead><tr><th class="n">#</th><th>Segment</th><th class="n">Time</th><th class="n">Clock</th><th>Who</th><th>On screen</th></tr></thead>
+          <tbody>
+            <tr><td class="n">1</td><td><a href="#s1">Opening</a></td><td class="n">0:35</td><td class="n">0:35</td><td>Hardik</td><td>dashboard, top of page</td></tr>
+            <tr><td class="n">2</td><td><a href="#s2">The problem</a></td><td class="n">0:55</td><td class="n">1:30</td><td>Hardik</td><td>dashboard</td></tr>
+            <tr><td class="n">3</td><td><a href="#s3">The data</a></td><td class="n">0:50</td><td class="n">2:20</td><td>Hardik</td><td>dashboard</td></tr>
+            <tr><td class="n">4</td><td><a href="#snet">What the network showed</a></td><td class="n">1:30</td><td class="n">3:50</td><td>Hardik</td><td>Market map tab</td></tr>
+            <tr><td class="n">5</td><td><a href="#s4">How we turned prices into events</a></td><td class="n">1:45</td><td class="n">5:35</td><td>Hardik</td><td>"What just happened"</td></tr>
+            <tr><td class="n">6</td><td><a href="#s5">How we judge a model</a></td><td class="n">0:45</td><td class="n">6:20</td><td>Hardik</td><td>–</td></tr>
+            <tr><td class="n">7</td><td><a href="#s6">The model: TGN</a></td><td class="n">1:40</td><td class="n">8:00</td><td>Hardik</td><td>report Figure 2</td></tr>
+            <tr><td class="n">8</td><td><a href="#s7">Why this design; the other models</a></td><td class="n">0:50</td><td class="n">8:50</td><td>Hardik</td><td>–</td></tr>
+            <tr><td class="n">9</td><td><a href="#s8">Results</a></td><td class="n">1:15</td><td class="n">10:05</td><td>Hardik</td><td>report Table III</td></tr>
+            <tr><td class="n">10</td><td><a href="#s8b">After the report</a></td><td class="n">1:30</td><td class="n">11:35</td><td>Hardik</td><td>the before/after table</td></tr>
+            <tr><td class="n">11</td><td><a href="#s9">What drives an alert; how long shocks last</a></td><td class="n">0:55</td><td class="n">12:30</td><td>Dakshesh</td><td>–</td></tr>
+            <tr><td class="n">12</td><td><a href="#s10">The "Secure" part</a></td><td class="n">0:35</td><td class="n">13:05</td><td>Dakshesh</td><td>–</td></tr>
+            <tr class="hl"><td class="n">13</td><td><a href="#s11">Dashboard demo</a></td><td class="n">3:45</td><td class="n">16:50</td><td>Dakshesh</td><td>all 5 tabs</td></tr>
+            <tr><td class="n">14</td><td><a href="#s12">Limits and next steps</a></td><td class="n">0:45</td><td class="n">17:35</td><td>Dakshesh</td><td>–</td></tr>
+            <tr><td class="n">15</td><td><a href="#s13">Close</a></td><td class="n">0:25</td><td class="n">18:00</td><td>Hardik</td><td>dashboard</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <div class="note numbers"><span class="tag">The short version (about 9½ minutes)</span>
+          <p>Keep segments 1, 2, 4 (network, 1 minute), 5 (events, 1 minute), 7 (TGN, 1:30), 9 (results, 1 minute), 10 (after the report, 1 minute), the demo (2:30: opening screen, Why, the bitcoin ETF crisis) and 15: about 9:30 in all. Drop the rest; their content is in the answers at the end, ready for questions.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s1" data-short="Opening">
+      <div class="part-head">
+        <span class="eyebrow">Segment 1 · 0:35 · Hardik</span>
+        <h2>Opening: the hook</h2>
+        <p class="goal">Grab attention with real crashes, then state the question in one sentence.</p>
+      </div>
+      <div class="col">
+        <p><span class="cue">On screen</span> the deployed dashboard, top of the page.</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"Professor, this project started from your suggestion: look at crypto contagion through networks. Crypto markets never close, and they react to news within hours. When Terra's LUNA collapsed in May 2022,
+            when the FTX exchange failed in November 2022, and on 10 October 2025, most big coins fell within hours of each
+            other.</p>
+          <p>Most research, including the network measures we started from, describes how connected coins are. We took your idea one step further and asked: <strong>when one coin
+            makes a sudden big move, which other coins will be hit next, and how soon?</strong> Our project,
+            CryptoGraph-Secure, answers it with a <strong>Temporal Graph Network</strong> and shows the answer on this
+            dashboard."</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s2" data-short="The problem">
+      <div class="part-head">
+        <span class="eyebrow">Segment 2 · 0:55 · Hardik</span>
+        <h2>The problem statement</h2>
+        <p class="goal">The exact task, and why it is hard.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"Precisely: when coin <em>i</em> has a <strong>shock</strong> at hour <em>t</em>, then for every other coin
+            <em>j</em> we predict whether <em>j</em> also has a shock within the next 1, 3, 6, 12 or 24 hours. That is a
+            yes-or-no question for each pair of coins and each time window.</p>
+          <p>Three things make it hard. First, it is <strong>rare</strong>: at one hour only about 10% of the answers are
+            yes, so plain accuracy is useless. Second, everything depends on <strong>time order</strong>, so the model
+            must never see the future. Third, most shocks are driven by <strong>news</strong>, which no model can see
+            coming. So our goal is not perfect prediction. It is to rank the coins at risk clearly better than chance, and
+            to measure that honestly."</p>
+        </div>
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Who would use this?</strong> An exchange's risk team, a regulator, or a trader who wants a warning
+            before trouble spreads.</p>
+          <p><strong>Why "Secure"?</strong> Because we also test how the model holds up when inputs are missing, noisy or
+            deliberately manipulated, and whether an anomaly detector can flag unusual market days.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s3" data-short="The data">
+      <div class="part-head">
+        <span class="eyebrow">Segment 3 · 0:50 · Hardik</span>
+        <h2>The data</h2>
+        <p class="goal">Where it comes from, how it was checked, and how time was split.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"We used hourly prices from <strong>Binance's public archive</strong>: 30 major coins from January 2020 to
+            September 2026, 59,088 hours. All 3,049 files were checked against their SHA-256 fingerprints. The coins are
+            the largest by market size with enough history on Binance; stablecoins are left out.</p>
+          <p>We handled real-world traps: MATIC renamed to POL, the LUNA name reused for a new coin after the collapse,
+            delistings, and exchange maintenance gaps, which are masked rather than invented.</p>
+          <p>Time is split strictly: <strong>training</strong> up to June 2022, <strong>validation</strong> from July 2022
+            to December 2023, and a final <strong>test</strong> from January 2024 to September 2026, with a one-week gap,
+            an <strong>embargo</strong>, at each border. Everything we fitted used the training years only."</p>
+        </div>
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Why hourly, not daily?</strong> Contagion happens within hours: right after a shock, another coin is
+            2.3 times more likely to shock in the very next hour than in a random hour. Daily data would merge several
+            shocks and their order into one number.</p>
+          <p><strong>Why fixed dates, not a random split?</strong> A random split would let the model learn from the future
+            of the same crash. Fixed dates also make sure each period contains a big crash: COVID and LUNA in training, FTX
+            in validation, October 2025 in test.</p>
+          <p><strong>Why not before 2020?</strong> Binance's archive goes back to August 2017, but only 15 of our 30
+            coins were listed before 2020, so the network would be much smaller in those years.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="snet" data-short="What the network showed">
+      <div class="part-head">
+        <span class="eyebrow">Segment 4 · 1:30 · Hardik</span>
+        <h2>What the network analysis showed</h2>
+        <p class="goal">The professor's own idea, so present it as findings, including the ones that surprised you.</p>
+      </div>
+      <div class="col">
+        <p><span class="cue">On screen</span> the dashboard's Market map tab, or notebook 02's MST and FTX charts.</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"Your suggestion to look at contagion through networks shaped the whole project, so here is what the networks
+            told us. We built three: who <strong>moves together</strong> (correlation over the past week), who
+            <strong>passes uncertainty</strong> to whom (the Diebold–Yilmaz spillover network), and who <strong>shocks
+            after</strong> whom (a shock-transmission network built from time order).</p>
+          <p>Four findings. One: a single market factor explains 64% of hourly movement; the biggest eigenvalue is 19.3 out
+            of 30. Two: in all nine crises the network tightens: correlations rise, the minimum spanning tree shrinks, and
+            spreading money across coins stops protecting you. Three: groups of coins partly match their sectors, but
+            contagion ignores sectors, except meme coins.</p>
+          <p>Four, and this one surprised us: at hourly speed there is almost no leader. Bitcoin does not move first; the
+            correlation one hour later is tiny, 0.035, and the hourly spillover ranking turned out to be the same as plain
+            centrality. In the FTX collapse, 18 to 24 coins shocked in the <em>same</em> hour as FTT's biggest falls. So
+            contagion here is mostly simultaneous and news-driven, not a chain from coin to coin.</p>
+          <p>That is why we did not draw fixed 'who infects whom' arrows. We used the network as features that change over
+            time, let the TGN learn from the event stream, and turned the shock-transmission network into our baseline, an
+            independent cascade."</p>
+        </div>
+        <div class="note careful"><span class="tag">Careful</span>
+          <p>Present "no hourly leader" as a <em>finding we tested four ways</em>, not as "the network idea didn't work". The
+            network is still in the model (8 features per coin), it gave the baseline, and it explains why contagion looks the
+            way it does.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s4" data-short="Prices into events">
+      <div class="part-head">
+        <span class="eyebrow">Segment 5 · 1:45 · Hardik</span>
+        <h2>How we turned prices into events</h2>
+        <p class="goal">The answer to "how did you quantify events?", in four steps. The question comes in almost every
+          viva.</p>
+      </div>
+      <div class="col">
+        <p><span class="cue">On screen</span> "What just happened" at the top of the dashboard: it shows exactly this, a
+          shock and its size in "times its usual move".</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"<strong>Step one, define a shock.</strong> For every coin and hour we take the hourly return, remove the
+            normal rush-hour pattern of the market, and divide by the coin's typical hourly move over the previous week:
+            168 hours, ending the hour before. That gives a score called <strong>z</strong>, how many normal moves big this
+            move is. If z is bigger than 2.29, up or down, it is a shock. We chose 2.29 on training data so that about 4% of
+            hours are shocks.</p>
+          <p><strong>Step two, every shock becomes events.</strong> If SOL shocks at 2 pm, we create one event for every
+            other coin trading then: SOL to BTC, SOL to ETH, and so on, about 29 events.</p>
+          <p><strong>Step three, describe each event.</strong> Each event carries 5 numbers: how closely the two coins moved
+            over the past week, in the same hour and one hour apart; the shocking coin's return; its volatility; and a
+            shock flag. Each coin also has 14 features: 6 about its recent trading, such as volatility and volume compared
+            with its own last week, and 8 about its position in the network of coins.</p>
+          <p><strong>Step four, write down the answers.</strong> For each event, five yes-or-no labels: did coin <em>j</em>
+            have its own shock within 1, 3, 6, 12 and 24 hours? Strictly later, never in the same hour, because moving in
+            the same hour is co-movement, not contagion.</p>
+          <p>That gives <strong>1.46 million events</strong> from 2020 to 2026."</p>
+        </div>
+      </div>
+      <div class="scroll col">
+        <table>
+          <caption class="tcap">A worked example (made-up numbers, for explaining only)</caption>
+          <thead><tr><th>Event at 14:00 UTC</th><th>What happened next</th><th class="n">1 h</th><th class="n">3 h</th><th class="n">6 h</th><th class="n">12 h</th><th class="n">24 h</th></tr></thead>
+          <tbody>
+            <tr><td>SOL crashes, z = −3.4</td><td>(the trigger, not an event itself)</td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n"></td><td class="n"></td></tr>
+            <tr><td>SOL → ETH</td><td>ETH shocks at 15:00</td><td class="n">1</td><td class="n">1</td><td class="n">1</td><td class="n">1</td><td class="n">1</td></tr>
+            <tr><td>SOL → BTC</td><td>BTC shocks at 19:00</td><td class="n">0</td><td class="n">0</td><td class="n">1</td><td class="n">1</td><td class="n">1</td></tr>
+            <tr><td>SOL → DOGE</td><td>DOGE shocks only at 14:00, same hour</td><td class="n">0</td><td class="n">0</td><td class="n">0</td><td class="n">0</td><td class="n">0</td></tr>
+            <tr><td>… 26 more coins</td><td>one event each</td><td class="n">…</td><td class="n">…</td><td class="n">…</td><td class="n">…</td><td class="n">…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Why divide by the past week's volatility?</strong> So each move is judged against that coin's own
+            normal. A 3% hour is huge for Bitcoin and ordinary for a meme coin. It also follows Forbes and Rigobon's warning
+            that contagion must be measured against normal co-movement.</p>
+          <p><strong>Why up to the hour before?</strong> So a move is never judged partly against itself; our first draft
+            made exactly that mistake and we fixed it.</p>
+          <p><strong>Why 168 hours?</strong> One full week covers every weekday and weekend: long enough to be stable,
+            short enough to adapt.</p>
+          <p><strong>How often is the answer yes?</strong> On test: 10.5%, 20.6%, 31.0%, 44.7% and 62.7% for 1, 3, 6, 12
+            and 24 hours.</p>
+          <p><strong>The shock flag is always 1?</strong> Yes: every event starts with a shock, so it carries no
+            information; it marks the event type. The four informative numbers are the two correlations, the return and
+            the volatility.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s5" data-short="Judging a model">
+      <div class="part-head">
+        <span class="eyebrow">Segment 6 · 0:45 · Hardik</span>
+        <h2>How we judge a model</h2>
+        <p class="goal">Why AUPRC, and the rules that keep the comparison fair.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"Because only 10% of answers are yes, a model that always says no is 90% accurate and completely useless. So
+            we use <strong>AUPRC</strong>, the area under the precision–recall curve. It rewards putting the real yes-cases
+            at the top of the list. Random guessing scores the share of yes-cases, 0.105 at one hour, so every number is
+            compared with that.</p>
+          <p>Fairness rules: every model is scored on exactly the same events; we tuned only on validation; we scored the
+            test period once; we trained five seeds; and we tested differences with a <strong>bootstrap</strong> that
+            resamples whole days, because one crash creates hundreds of linked events."</p>
+        </div>
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Precision and recall?</strong> Precision: of our alarms, how many were right. Recall: of the real
+            events, how many we caught. AUPRC sums up the trade-off at every threshold.</p>
+          <p><strong>Why not AUROC?</strong> We report it too (0.64 to 0.69), but with rare positives AUROC can look good
+            while most alarms are false; precision–recall is more informative (Davis and Goadrich, 2006).</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s6" data-short="The TGN">
+      <div class="part-head">
+        <span class="eyebrow">Segment 7 · 1:40 · Hardik</span>
+        <h2>The model: the Temporal Graph Network</h2>
+        <p class="goal">What it is, who made it, how it works box by box, and its size.</p>
+      </div>
+      <div class="col">
+        <p><span class="cue">On screen</span> report Figure 2 (page 4), or the diagram below.</p>
+      </div>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="-36 0 796 500" width="796" height="500" role="img" aria-labelledby="tgn-title tgn-desc">
+            <title id="tgn-title">How the TGN scores one event</title>
+            <desc id="tgn-desc">An event goes in. The memories of both coins and their ten most recent events pass through an
+              attention layer into two 64-number embeddings. These are joined with both coins' 14 features and the event's
+              5 numbers into 161 numbers, which a small network turns into five chances. After the hour is scored, the
+              memories are updated.</desc>
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" class="fill-ink"/>
+              </marker>
+              <marker id="arr-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" class="fill-amber"/>
+              </marker>
+            </defs>
+            <rect x="215" y="14" width="330" height="50" rx="6" class="box"/>
+            <text x="380" y="35" text-anchor="middle" font-size="14" font-weight="600">1. Event: coin i shocks at hour t</text>
+            <text x="380" y="54" text-anchor="middle" font-size="12" class="muted">pointing at coin j · message: 5 numbers</text>
+
+            <rect x="20" y="100" width="235" height="62" rx="6" class="box-simple"/>
+            <text x="137.5" y="124" text-anchor="middle" font-size="14" font-weight="600">2. Memory bank</text>
+            <text x="137.5" y="144" text-anchor="middle" font-size="12">a 64-number diary per coin</text>
+            <rect x="505" y="100" width="235" height="62" rx="6" class="box-simple"/>
+            <text x="622.5" y="124" text-anchor="middle" font-size="14" font-weight="600">3. Recent events</text>
+            <text x="622.5" y="144" text-anchor="middle" font-size="12">each coin's last 10, + time code (16)</text>
+
+            <rect x="190" y="196" width="380" height="58" rx="6" class="box-accent"/>
+            <text x="380" y="220" text-anchor="middle" font-size="14" font-weight="600">4. Attention (graph transformer)</text>
+            <text x="380" y="240" text-anchor="middle" font-size="12">2 heads × 32 · weighs the 10 recent events</text>
+
+            <path d="M300 64 L170 98" class="line" marker-end="url(#arr)"/>
+            <path d="M460 64 L590 98" class="line" marker-end="url(#arr)"/>
+            <path d="M200 162 L270 194" class="line" marker-end="url(#arr)"/>
+            <path d="M560 162 L490 194" class="line" marker-end="url(#arr)"/>
+
+            <g font-size="12">
+              <rect x="20" y="290" width="128" height="48" rx="5" class="box-accent"/>
+              <text x="84" y="311" text-anchor="middle" font-weight="600">embedding of i</text><text x="84" y="328" text-anchor="middle">64</text>
+              <rect x="166" y="290" width="128" height="48" rx="5" class="box-accent"/>
+              <text x="230" y="311" text-anchor="middle" font-weight="600">embedding of j</text><text x="230" y="328" text-anchor="middle">64</text>
+              <rect x="312" y="290" width="128" height="48" rx="5" class="box"/>
+              <text x="376" y="311" text-anchor="middle" font-weight="600">features of i</text><text x="376" y="328" text-anchor="middle">14</text>
+              <rect x="458" y="290" width="128" height="48" rx="5" class="box"/>
+              <text x="522" y="311" text-anchor="middle" font-weight="600">features of j</text><text x="522" y="328" text-anchor="middle">14</text>
+              <rect x="604" y="290" width="136" height="48" rx="5" class="box"/>
+              <text x="672" y="311" text-anchor="middle" font-weight="600">event message</text><text x="672" y="328" text-anchor="middle">5</text>
+            </g>
+            <path d="M300 254 L110 288" class="line" marker-end="url(#arr)"/>
+            <path d="M360 254 L235 288" class="line" marker-end="url(#arr)"/>
+
+            <rect x="190" y="372" width="380" height="58" rx="6" class="box-accent"/>
+            <text x="380" y="396" text-anchor="middle" font-size="14" font-weight="600">5. Prediction head</text>
+            <text x="380" y="416" text-anchor="middle" font-size="12">161 numbers → 64 (ReLU, dropout 0.2) → 5</text>
+            <path d="M84 338 L250 370" class="line" marker-end="url(#arr)"/>
+            <path d="M230 338 L300 370" class="line" marker-end="url(#arr)"/>
+            <path d="M376 338 L376 370" class="line" marker-end="url(#arr)"/>
+            <path d="M522 338 L455 370" class="line" marker-end="url(#arr)"/>
+            <path d="M672 338 L515 370" class="line" marker-end="url(#arr)"/>
+            <text x="380" y="356" text-anchor="middle" font-size="11" class="muted">joined: 64 + 64 + 14 + 14 + 5 = 161</text>
+
+            <rect x="215" y="452" width="330" height="40" rx="6" class="box"/>
+            <text x="380" y="477" text-anchor="middle" font-size="13" font-weight="600">6. Five chances: 1 h · 3 h · 6 h · 12 h · 24 h</text>
+            <path d="M380 430 L380 450" class="line" marker-end="url(#arr)"/>
+
+            <path d="M215 472 C -6 472, -6 300, 34 165" class="dash" marker-end="url(#arr-a)" style="stroke: var(--amber)"/>
+            <text x="-20" y="318" font-size="11" class="fill-amber" transform="rotate(-90 -20 318)" text-anchor="middle">7. after the hour is scored: update memories (GRU)</text>
+          </svg>
+        </div>
+        <figcaption>How the TGN scores one event, in seven steps. The dashed amber loop is the only way the future reaches
+          the memory: an hour's events are written in only after the whole hour has been predicted.</figcaption>
+      </figure>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"Our main model is the <strong>Temporal Graph Network</strong>, published by Rossi and colleagues at Twitter
+            in 2020 for streams of time-stamped interactions. Think of it as a diary for every coin.</p>
+          <p>One: every coin has a <strong>memory</strong> of 64 numbers, its diary. Two: when an event arrives, coin
+            <em>i</em> shocked and we ask about coin <em>j</em>, the model reads both diaries. Three: it looks at each
+            coin's 10 most recent events, with how long ago they happened turned into a 16-number time code, and an
+            <strong>attention</strong> layer with two heads decides how much each one matters. That gives a 64-number
+            summary per coin. Four: it joins both summaries, both coins' 14 current features and the event's 5 numbers, 161
+            numbers in all, and a small two-layer network turns them into five chances, one per window. Five: only after
+            a batch of events has been scored does a <strong>GRU</strong> write them into the diaries, and a batch never
+            splits an hour. So the model can never use the future. (After the report we found this made the diaries lag a
+            few hours behind; the "after the report" segment explains the fix.)</p>
+          <p>It has <strong>70,021 trainable parameters</strong>: about 41,000 in the memory updater, 18,000 in attention
+            and 11,000 in the prediction head. We trained it with the Adam optimizer and a <strong>focal loss</strong>, which
+            focuses learning on the rare yes-cases: up to 100 epochs with early stopping, five times with different seeds,
+            on an ordinary CPU."</p>
+        </div>
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Rebuild 70,021.</strong> GRU 41,280: input 149 = 64 + 64 + 5 + 16, three gates × (149 × 64 + 64 × 64 +
+            64 + 64). Attention 17,984: four 64 × 64 projections with biases plus the event projection 21 × 64. Head 10,693:
+            (161 × 64 + 64) + (64 × 5 + 5). Time encoders 64.</p>
+          <p><strong>Why sigmoid, not softmax?</strong> The five windows are not alternatives: "within 6 hours" includes
+            "within 3 hours". Each window gets its own probability.</p>
+          <p><strong>Why so small?</strong> About 360,000 training events and a noisy target: a bigger network memorises
+            the training years. A smaller and a more regularised version were both worse on validation.</p>
+          <p><strong>Libraries?</strong> PyTorch and PyTorch Geometric (TGNMemory, LastNeighborLoader, TransformerConv),
+            with our own prediction head and training loop.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s7" data-short="Why this design">
+      <div class="part-head">
+        <span class="eyebrow">Segment 8 · 0:50 · Hardik</span>
+        <h2>Why this design, and the other models</h2>
+        <p class="goal">Each competitor answers one question about the main model.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"We chose the TGN because our data is a stream of time-stamped events between coins: it keeps a memory per
+            coin, reads events in time order and copes with new coins joining. An LSTM only sees one coin's history; a
+            snapshot graph network loses the exact timing.</p>
+          <p>To test that choice, we raced it against models that each answer one question. Random guessing: what is the
+            floor? An epidemic-style <strong>independent cascade</strong>: does classic network science already do it?
+            <strong>Gradient boosting</strong>: do we need deep learning at all? The TGN <strong>without memory</strong>:
+            does memory matter? <strong>DyGFormer</strong>, a 2023 Transformer: does the result depend on one
+            architecture? For the side tasks we used an LSTM and the classic HAR-RV volatility formula."</p>
+        </div>
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>What is the independent cascade?</strong> Like a cold going round a class: each shocked coin gets one
+            chance to "infect" each other coin, with chances learned from the training years (Kempe and colleagues, 2003).
+            Test AUPRC 0.159 at one hour.</p>
+          <p><strong>Sizes?</strong> DyGFormer 24,021 parameters; LSTM 5,665.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s8" data-short="Results">
+      <div class="part-head">
+        <span class="eyebrow">Segment 9 · 1:15 · Hardik</span>
+        <h2>Results</h2>
+        <p class="goal">The main numbers and five findings, told honestly.</p>
+      </div>
+      <div class="col">
+        <p><span class="cue">On screen</span> report Table III (page 5).</p>
+      </div>
+      <div class="scroll col">
+        <table>
+          <caption class="tcap">Test AUPRC, January 2024 to September 2026 (higher is better)</caption>
+          <thead><tr><th>Model</th><th class="n">1 h</th><th class="n">3 h</th><th class="n">6 h</th><th class="n">12 h</th><th class="n">24 h</th></tr></thead>
+          <tbody>
+            <tr class="hl"><td>TGN (main)</td><td class="n">0.205</td><td class="n">0.352</td><td class="n">0.464</td><td class="n">0.588</td><td class="n">0.739</td></tr>
+            <tr><td>DyGFormer</td><td class="n">0.208</td><td class="n">0.351</td><td class="n">0.463</td><td class="n">0.587</td><td class="n">0.736</td></tr>
+            <tr><td>Gradient boosting</td><td class="n">0.178</td><td class="n">0.330</td><td class="n">0.451</td><td class="n">0.581</td><td class="n">0.736</td></tr>
+            <tr><td>Independent cascade</td><td class="n">0.159</td><td class="n">0.279</td><td class="n">0.381</td><td class="n">0.507</td><td class="n">0.672</td></tr>
+            <tr><td>Random</td><td class="n">0.105</td><td class="n">0.206</td><td class="n">0.310</td><td class="n">0.447</td><td class="n">0.627</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"On the test years, at one hour the TGN scores 0.205 against 0.105 for random guessing, about twice as good,
+            and 0.159 for the cascade. Five findings.</p>
+          <p>One: every model beats random, so there is real signal. Two: the TGN beats the cascade at every window, by
+            0.046 at one hour and 0.084 at six hours, and in 1,000 bootstrap resamples the cascade never came out ahead.
+            Three: against gradient boosting the TGN is ahead at one and three hours, but only borderline, p about 0.03;
+            boosting had memorised its training years. Four: DyGFormer ties the TGN, so the result is not one
+            architecture's luck. Five: memory helps the slower spread, from 6 to 24 hours, not the next hour.</p>
+          <p>In practice, the riskiest 1% of alerts came true 32% of the time within an hour and 76% within six hours,
+            against 10% and 31% for random picks. And the graph helps most where contagion is real: after market-wide
+            crashes the TGN scores 0.245 against 0.205 for boosting."</p>
+        </div>
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Isn't 0.205 low?</strong> AUPRC is judged against random, not against 1: we are about twice random,
+            and three times random on the top alerts. Most hourly shocks come from news nobody can predict; a much higher
+            score on this task would make us suspect leakage.</p>
+          <p><strong>Which window matters most?</strong> One hour is the headline, because it is the hardest and furthest
+            ahead of random (1.95 times). Six hours is the most useful in practice: time to act, and the biggest lead over
+            the cascade.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s8b" data-short="After the report">
+      <div class="part-head">
+        <span class="eyebrow">Segment 10 · 1:30 · Hardik</span>
+        <h2>After the report: what we found and fixed</h2>
+        <p class="goal">The new work since the report: flaws found, fixes made, and the new best score, said honestly.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"After submitting, we audited our own pipeline and found real problems. Three mattered. First, the score
+            counted the same coin-hour several times, once per coin that shocked that hour, so busy crash hours dominated.
+            Second, the TGN wrote its memory only once per batch of about 200 events, so 31% of its predictions were made
+            without knowing the previous hour; that is not cheating, the model simply knew less than it could. Third, our
+            inputs were measured in the units of the wild 2020 to 2022 market, so in the calmer test years every coin looked
+            unusual.</p>
+          <p>We fixed these in a separate copy of the project, made every choice on validation, and scored the test period
+            once. Two results. Our best model is now the TGN with <strong>better inputs</strong>: volatility measured on
+            each coin's own scale, short-window volatility, the hour's price range, trade counts, features from 5-minute bars
+            inside the hour, and the time of day. It scores <strong>0.231</strong> at one hour, up from 0.205, with an AUROC
+            of 0.71. Counting each coin-hour once, it is 2.6 times random. Interestingly, the best version has its memory
+            switched off: the gain came from the inputs, not from memory.</p>
+          <p>And the biggest finding: when we ask the same contagion question on <strong>15-minute</strong> bars, even a
+            simple model reaches 2.6 times random, and that held on test. Contagion is a minutes-scale process, which is
+            exactly where your network idea should be tested next."</p>
+        </div>
+      </div>
+      <div class="scroll col">
+        <table>
+          <caption class="tcap">Before and after, test period, 1 hour</caption>
+          <thead><tr><th>Measure</th><th class="n">Report (v2 TGN)</th><th class="n">Now (v3 TGN)</th><th class="n">Random</th></tr></thead>
+          <tbody>
+            <tr class="hl"><td>AUPRC, every event</td><td class="n">0.205</td><td class="n">0.231</td><td class="n">0.105</td></tr>
+            <tr><td>AUPRC, each coin-hour once (fair)</td><td class="n">0.132</td><td class="n">0.156</td><td class="n">0.059</td></tr>
+            <tr><td>AUPRC, coins that were calm (no shock in 24 h)</td><td class="n">0.052</td><td class="n">0.070</td><td class="n">0.034</td></tr>
+            <tr><td>AUROC</td><td class="n">0.685</td><td class="n">0.709</td><td class="n">0.5</td></tr>
+            <tr><td>AUPRC at 24 hours</td><td class="n">0.739</td><td class="n">0.762</td><td class="n">0.627</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Isn't changing things after seeing results cheating?</strong> Every choice was made on validation; each
+            final model was scored on test once, and we list every test score ever taken, old and new, like Table VI.</p>
+          <p><strong>If memory is off, is it still a graph model?</strong> Partly. It still reads each event between two
+            coins, the network features and the market context, but it no longer keeps a diary per coin. Our honest reading:
+            at hourly speed the useful information is the coins' current state and the market's breadth, not their history
+            of interactions.</p>
+          <p><strong>Has 0.231 been significance-tested?</strong> Not yet with the bootstrap; the five seeds agree within
+            ±0.002, and it is ahead of the best simple model (0.218). The bootstrap test is the next step.</p>
+          <p><strong>Does the dashboard show the new model?</strong> No: the deployed dashboard still serves the report's
+            model (seed 0, 0.203). Switching it over is future work.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s9" data-short="What drives an alert">
+      <div class="part-head">
+        <span class="eyebrow">Segment 11 · 0:55 · Dakshesh</span>
+        <h2>What drives an alert, and how long shocks last</h2>
+        <p class="goal">Explanations and persistence in under a minute.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"We asked why the model raises an alert using <strong>integrated gradients</strong>, which split a
+            prediction into how much each input pushed it up or down. About 65% comes from the receiving coin's own state,
+            mainly its trading volume compared with its past week and how jumpy it was over the last day; 25% from the coin
+            that shocked; and 10% from the event itself.</p>
+          <p>We also adapted <strong>TempME</strong>, a 2023 method that looks for chains of past events behind an alert.
+            It found almost none: shocks hit the whole market in the same hour, not along chains, which matches what we saw
+            hour by hour in the FTX collapse.</p>
+          <p>And shocks are short-lived: a coin's volatility is back to normal after a median of 8 to 10 hours."</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s10" data-short="The Secure part">
+      <div class="part-head">
+        <span class="eyebrow">Segment 12 · 0:35 · Dakshesh</span>
+        <h2>The "Secure" part: can it be fooled?</h2>
+        <p class="goal">Robustness, attacks and the honest negative result.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"Losing half of the past events changes the score by under half a percent, and random noise costs little. But
+            a deliberate attack, <strong>FGSM</strong>, that nudges every input by just 0.1 standard deviations in the most
+            harmful direction cuts the one-hour score by about 35%. So a real deployment would need input checks across
+            several exchanges. We also tried a temporal graph autoencoder to flag stressed market days; it did not work, an
+            AUROC of 0.51, and we report that as a negative result."</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s11" data-short="Dashboard demo">
+      <div class="part-head">
+        <span class="eyebrow">Segment 13 · 3:45 · Dakshesh</span>
+        <h2>The dashboard demo, click by click</h2>
+        <p class="goal">Five tabs in under four minutes, with what to click, what to point at and what to say.</p>
+      </div>
+      <div class="col">
+        <div class="note careful"><span class="tag">Careful</span>
+          <ul>
+            <li>The page opens on <strong>27 September 2026, 23:00 UTC</strong>, the last hour of our data. If the deployed
+              page shows a different hour, read what is on screen; the steps stay the same.</li>
+            <li>The opening shock (QNT moving on its own) is the model's weakest situation. Use it to explain the page, then
+              move on.</li>
+            <li>Past crises opens on COVID, a training-period crisis with an amber "not a fair test" banner. Switch straight
+              to the bitcoin ETF approval.</li>
+          </ul>
+        </div>
+
+        <h3>1. Opening screen (0:55)</h3>
+        <p><span class="cue">Do</span> point at the left sidebar: <em>Look ahead</em> set to 6 hours, the model's run name,
+          "A research tool, not financial advice". Then the top of the page.</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"The page reads the newest prediction from our model. At the top, <em>What just happened</em>: at 23:00 UTC on
+            27 September, QNT dropped about 4.8 times its usual hourly move, on its own, after 9 big moves in the previous
+            day; moves like this usually calm down within about 8 hours.</p>
+          <p>Below, three numbers: the coin most likely to move next, JUP, with a 37% chance within six hours; a typical
+            coin's chance, 27%; and how many coins are at higher-than-usual risk. The bar chart in <em>Who's at risk</em>
+            ranks every coin, coloured against a typical coin, with the dotted line marking typical. '× typical coin' is
+            the chance divided by that typical chance."</p>
+        </div>
+
+        <h3>2. Why (0:40)</h3>
+        <p><span class="cue">Do</span> open <em>Why</em> and pick the riskiest coin.</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"For any coin, the page lists the five inputs that pushed its risk up or down, in plain words with real values,
+            for example trading at well above its usual volume. These come from integrated gradients on the model, so they
+            explain what the model used, not what the market will do."</p>
+        </div>
+
+        <h3>3. Past crises (1:25)</h3>
+        <p><span class="cue">Do</span> open <em>Past crises</em>, choose <strong>Jan 2024 · US spot BTC ETF
+          approval</strong> (green "fair test" banner, test period). Point at "Did the model see it coming?", then press
+          <strong>▶ Play</strong> under the network picture. Then switch to <strong>10 Oct 2025</strong>.</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"Here we replay nine real crises. Each is labelled with its period, because only the test-period ones are true
+            forecasts. For the bitcoin ETF approval in January 2024, at the worst hour, 3 of the model's 5 riskiest coins
+            made a big move within six hours, against 1.6 for five random coins, so the page says 'clearly better than
+            random'. The network replay shows the shock spreading hour by hour.</p>
+          <p>Now 10 October 2025: here almost every coin moved, so any pick is right, and the page says itself that this
+            crisis cannot judge the model. We built that honesty into the tool."</p>
+        </div>
+
+        <h3>4. Market map (0:20)</h3>
+        <p><span class="cue">Do</span> open <em>Market map</em>.</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"Coins grouped by what they are used for. Lines join coins that moved closely together over the past week;
+            bigger dots have a higher chance; the star marks the coin that just moved."</p>
+        </div>
+
+        <h3>5. How it works (0:25)</h3>
+        <p><span class="cue">Do</span> open <em>How it works</em>, scroll to "How good is it?".</p>
+        <div class="script"><span class="who">Say</span>
+          <p>"Finally, the page is honest about itself: here is the served model's score on the test years at each window
+            against random guessing, and how long different kinds of big moves usually last. That's the dashboard."</p>
+        </div>
+
+        <div class="note ask"><span class="tag">If asked</span>
+          <p><strong>Is it live?</strong> No. It shows the newest prediction on our research data, which ends on 27
+            September 2026, plus replays of nine crises. Updating means running the data pipeline on new Binance hours and
+            then the prediction command; the model itself does not change. Automatic hourly updates are future work.</p>
+          <p><strong>How is the "chance" made?</strong> The model's raw score is calibrated on validation events with an
+            always-rising curve (binned isotonic regression, bins of at least 500), made never to fall as the window grows,
+            and a coin's chance is the highest over the events pointing at it that hour.</p>
+          <p><strong>Why 0.203 on the page and 0.205 in the report?</strong> The dashboard serves one model (seed 0);
+            the report averages five seeds.</p>
+          <p><strong>Built with?</strong> Streamlit and Plotly in Python, reading saved prediction runs; nothing is
+            retrained when the page opens.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s12" data-short="Limits">
+      <div class="part-head">
+        <span class="eyebrow">Segment 14 · 0:45 · Dakshesh</span>
+        <h2>Limits and next steps</h2>
+        <p class="goal">Say the weaknesses before the professor does.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"We want to be upfront about the limits. Overall discrimination is modest, an AUROC of 0.64 to 0.69, because
+            most shocks are news-driven. We have one market and one test period, and our coins come from a 2026 ranking,
+            which brings <strong>survivorship bias</strong>.</p>
+          <p>A simple logistic regression on four numbers matched the report's TGN at one hour, which tells us that at
+            hourly speed most of the signal is in each coin's own state; the new TGN is now ahead of it, 0.231 against 0.218,
+            but that still needs a significance test. And memory, the TGN's signature part, did not help at hourly speed.</p>
+          <p>Next steps: the TGN on 15-minute bars, where contagion actually happens; a second test period; scheduled-news
+            and order-book data; a money-based backtest; and defences against manipulation."</p>
+        </div>
+        <div class="note careful"><span class="tag">Careful</span>
+          <p>Say the logistic-regression result yourself: it costs a little shine but wins trust, and being caught by it
+            costs much more. The answer, if pressed, is question C5.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="s13" data-short="Close">
+      <div class="part-head">
+        <span class="eyebrow">Segment 15 · 0:25 · Hardik</span>
+        <h2>Close</h2>
+        <p class="goal">One sentence that sums it all up.</p>
+      </div>
+      <div class="col">
+        <div class="script"><span class="who">Say</span>
+          <p>"To sum up: we turned crypto contagion into an honest prediction task, built a temporal graph network that
+            ranks the next coins to be hit more than twice as well as chance (0.231 after our fixes) and beats the classic
+            network model at every window, found that contagion is a minutes-scale process, and explained its alerts in plain words on a dashboard anyone can read. Thank you; we're happy to take
+            questions."</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="expert" data-short="Facing the expert">
+      <div class="part-head">
+        <span class="eyebrow">Expert</span>
+        <h2>Presenting to the person who gave you the idea</h2>
+        <p class="goal">How to talk to an examiner who knows the topic better than you, and the 12 topics he is most likely to
+          probe, each explained in plain words first, then answered.</p>
+      </div>
+      <div class="col">
+        <div class="note simple"><span class="tag">Simple version</span>
+          <p>He is not trying to bury you. He gave you a question and wants to see three things: that you understood it,
+            that you tested it honestly, and that you can tell what you found from what you hoped. An expert respects "here is
+            what we expected, here is what the data showed, here is the check we ran" far more than confident claims.</p>
+        </div>
+
+        <h3>Five rules</h3>
+        <ol class="steps">
+          <li><div><strong>Credit the idea, own the work.</strong> "You suggested contagion through networks; these are the
+            choices we made and why."</div></li>
+          <li><div><strong>Scope every claim.</strong> Say "at hourly resolution, on Binance, 2020 to 2026", not "crypto
+            contagion is…". Experts attack overreach, not careful claims.</div></li>
+          <li><div><strong>Surprises are findings.</strong> "We expected Bitcoin to lead; four tests said no." That is
+            research, not failure.</div></li>
+          <li><div><strong>Never bluff.</strong> "We didn't test that. Here is how we would." Then name the test. Reading a
+            number from the report beats guessing it.</div></li>
+          <li><div><strong>Ask back when it is genuine.</strong> "Would you expect lead-lag to show up at minute level?"
+            turns a grilling into a discussion with someone who knows more. Use it once or twice, not as a dodge.</div></li>
+        </ol>
+
+        <h3>Words to avoid</h3>
+        <ul>
+          <li>"The model predicts prices" (it predicts shocks of either sign).</li>
+          <li>"Accuracy" (we use AUPRC).</li>
+          <li>"It's live" (it isn't).</li>
+          <li>"The graph proves contagion" (it measures and predicts; it does not prove cause).</li>
+          <li>"The TGN is much better than everything" (it ties DyGFormer and a simple model).</li>
+        </ul>
+
+        <h3>The 12 topics he will probe</h3>
+
+        <div class="tech"><h4>1. Contagion or just moving together?</h4>
+          <p><span class="lbl">The idea</span>If all coins fall because the whole market fell, that is
+            <strong>interdependence</strong>: they are always linked. <strong>Contagion</strong> is extra spreading beyond that
+            normal link. Forbes and Rigobon (2002) showed many "contagion" findings were just normal links looking bigger in
+            wild times.</p>
+          <p><span class="lbl">Answer</span>"We judge each shock against the coin's own recent volatility and only count shocks
+            that come strictly later. Even so, much of what we see is market-wide news hitting everyone; we say that openly.
+            What we predict is excess risk of a later shock: after a shock, another coin's chance in the next hour rises from
+            4% to 9.3%, about 2.3 times."</p></div>
+
+        <div class="tech"><h4>2. Why didn't the spillover network give you directions?</h4>
+          <p><span class="lbl">The idea</span>Diebold–Yilmaz fits a <strong>VAR</strong> (each coin predicted from all
+            coins' recent past) and splits each coin's forecast uncertainty into shares caused by each coin. "Sends more than
+            it receives" = transmitter. The <strong>generalized</strong> version (Pesaran–Shin) does not depend on the order
+            of the coins.</p>
+          <p><span class="lbl">Answer</span>"At hourly speed BIC picked one lag and the lagged effects are tiny, so the
+            decomposition is driven by same-hour correlation. The NET ranking came out identical to eigenvector centrality
+            (rank correlation 1.00): it tells you how tied a coin is to the market, not who goes first. The daily version
+            (two lags, 10-day horizon) has more room for direction and gives a different ranking (agreement 0.21). Our first
+            draft used the order-dependent Cholesky version, which made Bitcoin look like a giant transmitter; we fixed
+            that."</p></div>
+
+        <div class="tech"><h4>3. How do you know there is no leader?</h4>
+          <p><span class="lbl">The idea</span>Lead-lag means one coin moves first and others follow later. You test it by
+            correlating "Bitcoin now" with "other coin one hour later".</p>
+          <p><span class="lbl">Answer</span>"Four checks. Cross-correlation: 0.65 in the same hour, at most 0.035 at any lag,
+            peaking at +24 hours, which is a daily rhythm. A circular-shift null that keeps each coin's habits but breaks
+            timing. Granger tests with Benjamini–Hochberg correction: only 8 of 45 leader-to-coin tests pass, effects about
+            0.02% of variance, with no consistent direction. And replication: the training pattern does not repeat on
+            validation. Our rule required all four, so we added no directed edges."</p></div>
+
+        <div class="tech"><h4>4. Why a threshold of 0.75 for the correlation network?</h4>
+          <p><span class="lbl">The idea</span>Draw a line between coins whose correlation is above a cut-off. Too low and
+            everything is joined to everything.</p>
+          <p><span class="lbl">Answer</span>"With week-long windows almost every pair clears 0.5, which gave a 75%-dense graph
+            with no structure. We fitted the cut-off on training data to match the daily graph's 30% density: 0.75 at one hour,
+            0.77 at two. Each coin also keeps its two strongest links. The Epps effect, correlations looking weaker over short
+            intervals, is weak in crypto (0.58 at one hour, 0.59 at a day), so one rule works at both speeds."</p></div>
+
+        <div class="tech"><h4>5. Did the network features actually help the model?</h4>
+          <p><span class="lbl">The idea</span>We fed 8 network numbers per coin (centrality, spillover, shock PageRank and so
+            on) into the TGN alongside 6 market numbers.</p>
+          <p><span class="lbl">Answer, honestly</span>"Only a little at one hour. Attribution says most of an alert comes from
+            the coin's own recent trading, and the TGN without memory is just as good at one hour. Where the network adds is
+            slower spread (memory helps at 6 to 24 hours) and broad crashes (0.245 against 0.205 for boosting after
+            market-wide crashes). Network rankings also drift over the years, which makes them weaker as fixed inputs."</p></div>
+
+        <div class="tech"><h4>6. If contagion is simultaneous, why a graph model at all?</h4>
+          <p><span class="lbl">The idea</span>A fair challenge: if everyone moves in the same hour, maybe the graph is not
+            needed.</p>
+          <p><span class="lbl">Answer</span>"At one hour, a simple model ties the TGN; we say that. But the graph model beats
+            the classic network-diffusion model at every window, its memory helps from 6 to 24 hours, and it does best exactly
+            where contagion is broad. Our honest conclusion is that hourly data hides most of the ordering; finer data, minutes
+            or order books, is where a graph model should pull ahead."</p></div>
+
+        <div class="tech"><h4>7. How was the independent cascade fitted?</h4>
+          <p><span class="lbl">The idea</span>An epidemic model: each shocked coin gets one chance to "infect" each other
+            coin, with a probability per pair.</p>
+          <p><span class="lbl">Answer</span>"For each pair, how often coin j shocked within k hours after coin i, on training
+            data only, pulled towards j's normal rate as if we had 10 extra observations, so rare pairs don't get extreme
+            numbers. With several coins shocked: 1 minus the product of the escape chances. It scores 0.159 at one hour; its
+            pair numbers alone do no better than the base rate, so its gain comes from counting how many coins shocked at
+            once. That told us the market-wide signal matters more than pairs."</p></div>
+
+        <div class="tech"><h4>8. What does the market mode mean?</h4>
+          <p><span class="lbl">The idea</span>Find the main directions in which 30 coins move; one is "everything together".
+            Random-matrix theory (Marchenko–Pastur) says how big an eigenvalue pure noise could produce.</p>
+          <p><span class="lbl">Answer</span>"The biggest eigenvalue is 19.3 of 30, so 64% of hourly movement is the market as a
+            whole; it is the only one above the noise bound of 1.08. That is why we removed it before finding communities,
+            otherwise everything is one group."</p></div>
+
+        <div class="tech"><h4>9. Do communities match sectors?</h4>
+          <p><span class="lbl">The idea</span>Louvain finds groups of coins more tied to each other than to the rest; NMI
+            measures agreement with sector labels (0 to 1).</p>
+          <p><span class="lbl">Answer</span>"Partly: NMI 0.47 against 0.32 for shuffled labels, p = 0.003. Meme coins form
+            their own group; old payment coins another. But after a shock, contagion happens equally inside and across
+            sectors (9.3% and 9.3%), except among meme coins (13.7%)."</p></div>
+
+        <div class="tech"><h4>10. Why the minimum spanning tree, and what did it show?</h4>
+          <p><span class="lbl">The idea</span>The MST keeps the 29 strongest links joining all 30 coins with no loops; its
+            average length shrinks when coins move as one (Mantegna, Onnela).</p>
+          <p><span class="lbl">Answer</span>"It shrank in every crisis, to its lowest, 0.36, in April 2024, so diversification
+            vanishes exactly when needed. DOT has the most links, but to loosely attached coins, so it is a meeting point for
+            outsiders, not a hub of influence."</p></div>
+
+        <div class="tech"><h4>11. Why not a normal graph neural network on snapshots?</h4>
+          <p><span class="lbl">The idea</span>A snapshot GNN looks at one picture of the network per hour or day.</p>
+          <p><span class="lbl">Answer</span>"Contagion is about order in time: who shocked, when, and what happened since. A
+            snapshot loses that order and every coin's history between pictures. The TGN reads events one by one in time with
+            a memory per coin. We did use snapshot graphs, for the T-GAE anomaly model, and it did not detect stress days."</p></div>
+
+        <div class="tech"><h4>12. How would you take the idea further?</h4>
+          <p><span class="lbl">The idea</span>Show you can see beyond what you built.</p>
+          <p><span class="lbl">Answer</span>"Minute-level data, to test whether a leader appears inside the hour; directed
+            networks built from that ordering; a second test period; scheduled-news timing; and a money-based test of the
+            alerts. Your network idea is strongest where time is fine enough to see who moves first, and hourly bars blur
+            that."</p></div>
+      </div>
+    </section>
+
+    <section class="part" id="models" data-short="Every model">
+      <div class="part-head">
+        <span class="eyebrow">Reference</span>
+        <h2>Every model we used, in one place</h2>
+        <p class="goal">What each model is, why it is there, and its score. Test AUPRC at 1 hour unless marked; random is
+          0.105.</p>
+      </div>
+      <div class="scroll col">
+        <table>
+          <thead><tr><th>Model</th><th>What it is, simply</th><th>Why it is there</th><th class="n">Score</th></tr></thead>
+          <tbody>
+            <tr class="grp"><td colspan="4">Contagion: will coin j shock within k hours after coin i?</td></tr>
+            <tr><td>Random / base rate</td><td>each coin's usual chance</td><td>the floor</td><td class="n">0.105</td></tr>
+            <tr><td>Independent cascade</td><td>epidemic model: each shocked coin gets one chance to "infect" each other coin, chances learned from training years</td><td>classic network-science baseline</td><td class="n">0.159</td></tr>
+            <tr><td>Gradient boosting</td><td>hundreds of small decision trees, each fixing the last; same inputs as the TGN's head</td><td>do we need deep learning?</td><td class="n">0.178</td></tr>
+            <tr><td>Boosting, retrained on train + validation</td><td>the same, more data</td><td>does recent data help?</td><td class="n">0.185</td></tr>
+            <tr><td>Ensemble of TGN, DyGFormer, boosting</td><td>ranks averaged with weights chosen on validation</td><td>does combining help?</td><td class="n">0.199</td></tr>
+            <tr><td><strong>TGN v2 (the report's main model)</strong></td><td>memory per coin (GRU), attention over 10 recent events, head 161 → 64 → 5; 70,021 parameters</td><td>main model</td><td class="n">0.205</td></tr>
+            <tr><td>TGN without memory (v2)</td><td>same with memory and attention off</td><td>does memory matter?</td><td class="n">0.208</td></tr>
+            <tr><td>TGN retrained on train + validation</td><td>fixed 77 epochs, no early stopping</td><td>does recent data help?</td><td class="n">0.188</td></tr>
+            <tr><td>TGN on 2-hour bars</td><td>same model, coarser data</td><td>is 1 hour the right speed?</td><td class="n">0.165*</td></tr>
+            <tr><td>DyGFormer</td><td>a small Transformer that rereads each coin's last 16 events (NeurIPS 2023); 24,021 parameters</td><td>does the result depend on one design?</td><td class="n">0.208</td></tr>
+            <tr><td>Logistic regression, 4 numbers</td><td>one weighted sum: volume surge, hours since last shock, market breadth, size of the move</td><td>found in our review: a very simple rival</td><td class="n">0.213</td></tr>
+            <tr><td>Boosting, new inputs + 5-minute features</td><td>after-report version</td><td>do better inputs help trees?</td><td class="n">0.210</td></tr>
+            <tr><td>Logistic regression, new inputs + 5-minute features</td><td>after-report version</td><td>do better inputs help a simple model?</td><td class="n">0.218</td></tr>
+            <tr class="hl"><td><strong>TGN v3 (best now)</strong></td><td>TGN with 20 better inputs, shock sizes in messages, time of day and market context; memory off; 5 seeds</td><td>after-report best model</td><td class="n">0.231</td></tr>
+            <tr><td>Logistic regression / boosting on 15-minute bars</td><td>the same question with 15-minute shocks and windows</td><td>is contagion faster than an hour?</td><td class="n">0.311 / 0.282†</td></tr>
+            <tr class="grp"><td colspan="4">Side tasks and tools</td></tr>
+            <tr><td>LSTM</td><td>reads one coin's last 168 hours; 5,665 parameters</td><td>next-hour shock of one coin (T2)</td><td class="n">0.109‡</td></tr>
+            <tr><td>HAR-RV</td><td>straight-line formula from last hour's, day's and week's volatility</td><td>volatility forecast (T3); beat the LSTM</td><td class="n">–</td></tr>
+            <tr><td>Diebold–Yilmaz VAR</td><td>splits each coin's forecast uncertainty into shares from each coin</td><td>spillover network, NET ranking</td><td class="n">–</td></tr>
+            <tr><td>T-GAE</td><td>graph autoencoder that predicts tomorrow's network; 3,646 parameters</td><td>flag stress days: failed (AUROC 0.51)</td><td class="n">–</td></tr>
+            <tr><td>Integrated gradients, TempME</td><td>explainers: which inputs, which past events drive an alert</td><td>why the model alerts</td><td class="n">–</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <p class="small">* first 2-hour bar. † 15-minute window, random 0.120: not comparable with hourly scores; compare
+          lift (2.6×). ‡ different task, random 0.039.</p>
+      </div>
+    </section>
+
+    <section class="part" id="notebooks" data-short="Every notebook">
+      <div class="part-head">
+        <span class="eyebrow">Reference</span>
+        <h2>Every notebook in two minutes</h2>
+        <p class="goal">If the professor says "show me notebook 02", know its question, its three findings and the chart to
+          open. (Guide Part 10 has every section.)</p>
+      </div>
+      <div class="col">
+        <div class="tech"><h4>01 · The data and a first look</h4>
+          <p><span class="lbl">Question</span>Is the data clean, and how does crypto behave?</p>
+          <p><span class="lbl">Findings</span>Prices wander, returns don't (ADF test), so models use returns. Returns have fat
+            tails (kurtosis 18) and no direction memory, but jumpiness clusters, so we predict shocks, not direction. Rush
+            hours (Wednesday 12:00 UTC is 2.17× an average hour) are removed. No coin leads at hourly speed (lagged
+            correlation 0.035). After a shock, another coin is 2.3× more likely to shock in the next hour.</p>
+          <p><span class="lbl">Show</span>the contagion-jump bar chart (section 17) and the lead-lag chart (section 15).</p></div>
+        <div class="tech"><h4>02 · The network of coins</h4>
+          <p><span class="lbl">Question</span>Who is connected, who is central, how do crises change the network?</p>
+          <p><span class="lbl">Findings</span>One market factor explains 64%. Hourly spillover ranking equals plain
+            centrality. Communities partly match sectors (NMI 0.47), contagion ignores sectors except meme coins. The tree
+            shrinks in every crisis. FTX: 18 to 24 coins shocked in the same hour as FTT. The cascade baseline scores
+            0.159.</p>
+          <p><span class="lbl">Show</span>the MST picture (section 5) and the FTX hour-by-hour chart (section 8).</p></div>
+        <div class="tech"><h4>03 · The model race</h4>
+          <p><span class="lbl">Question</span>Does the TGN beat simpler methods, honestly?</p>
+          <p><span class="lbl">Findings</span>Beats the cascade at every window (bootstrap). Ties DyGFormer. Borderline over
+            boosting at 1 to 3 hours. Memory helps only from 6 hours. Top 1% alerts: 32% at 1 hour, 76% at 6. Retraining on
+            more data hurt the TGN. HAR-RV beats the LSTM on volatility.</p>
+          <p><span class="lbl">Show</span>the main results table (section 1) and the bootstrap tables (section 4).</p></div>
+        <div class="tech"><h4>04 · Why does the TGN alert?</h4>
+          <p><span class="lbl">Question</span>Which inputs and which past events drive an alert?</p>
+          <p><span class="lbl">Findings</span>Receiving coin 65%, shocking coin 25%, event 10%. TempME barely beats random
+            (0.157 against 0.152); the TGN's attention is perfectly even; event patterns look like a shuffled stream. 13 of
+            the 15 top alerts in three crashes came true.</p>
+          <p><span class="lbl">Show</span>the attribution bar chart (section 5).</p></div>
+        <div class="tech"><h4>05 · How long does a shock last?</h4>
+          <p><span class="lbl">Question</span>How long, and does the type of shock matter?</p>
+          <p><span class="lbl">Findings</span>Back to normal in 8 to 10 hours; extra jumpiness halves in 2.5 hours. 55 to 65%
+            re-shock within a day. Market-wide crashes pull in about 8 coins within 6 hours, isolated shocks about 5. The TGN
+            beats boosting after broad shocks, not after isolated ones.</p>
+          <p><span class="lbl">Show</span>the |z| profile chart (section 2).</p></div>
+        <div class="tech"><h4>06 · Can it be fooled?</h4>
+          <p><span class="lbl">Question</span>Robustness, and can an autoencoder spot stress days?</p>
+          <p><span class="lbl">Findings</span>50% missing events: under 0.5% change. Noise of 0.5: −5.7%. FGSM attack of 0.1:
+            −35%. The T-GAE failed (0.51 against 0.89 for turbulence) but ranked 10 October 2025 as the strangest day.</p>
+          <p><span class="lbl">Show</span>the perturbation chart (section 2).</p></div>
+        <div class="tech"><h4>archive/ · Our first drafts</h4>
+          <p><span class="lbl">Why it's there</span>Kept with a list of every error: a shock measured partly against itself,
+            same-day co-occurrence counted as contagion, an order-dependent spillover method. All fixed; it shows the
+            corrections were honest.</p></div>
+        <div class="tech"><h4>After the report · the v3 scripts (sandbox branch)</h4>
+          <p><span class="lbl">What they do</span><code>fair_report.py</code> rescores models counting each coin-hour once;
+            <code>fetch_5m.py</code> downloads 19.3 million checksum-verified 5-minute bars; <code>go_nogo_5m.py</code> tests the
+            new inputs on the hourly task; <code>e2_15min.py</code> asks the contagion question at 15 minutes;
+            <code>e2_sender_check.py</code> tests whether knowing which coin shocked helps. Write-up:
+            <code>docs/accuracy_v3_notes.md</code>.</p></div>
+      </div>
+    </section>
+
+    <section class="part" id="findings" data-short="All findings">
+      <div class="part-head">
+        <span class="eyebrow">Reference</span>
+        <h2>All the findings, in one list</h2>
+        <p class="goal">Everything the project found, report and after, one line each.</p>
+      </div>
+      <div class="col">
+        <h3>About the market</h3>
+        <ol class="steps">
+          <li><div>One market factor explains 64% of hourly movement.</div></li>
+          <li><div>Coins move together within the hour; no coin leads (lagged correlation 0.035).</div></li>
+          <li><div>After a shock, another coin is 2.3× more likely to shock in the next hour; the effect fades within a day.</div></li>
+          <li><div>In every crisis, correlation rises and the network tightens; diversification disappears.</div></li>
+          <li><div>Contagion ignores sectors, except among meme coins.</div></li>
+          <li><div>Shocks fade in 8 to 10 hours, and cluster: 55 to 65% re-shock within a day.</div></li>
+          <li><div>Contagion is a minutes-scale process: at 15-minute bars even simple models reach 2.6× random.</div></li>
+          <li><div>Knowing which coin shocked adds only a little beyond how many shocked (+0.013 at 15 minutes), because the
+            coins are so correlated.</div></li>
+        </ol>
+        <h3>About the models</h3>
+        <ol class="steps">
+          <li><div>The report's TGN scores 0.205 at 1 hour (2× random) and beats the network-diffusion baseline at every
+            window.</div></li>
+          <li><div>It ties DyGFormer and a simple 4-number logistic regression at 1 hour; it is only borderline over
+            boosting.</div></li>
+          <li><div>Memory helped only from 6 hours in the report, and not at all after the fixes.</div></li>
+          <li><div>Alerts are driven by the receiving coin's own state; there are no special chains of events.</div></li>
+          <li><div>The model shrugs off missing data and noise but is fooled by deliberate attacks (−35%).</div></li>
+          <li><div>With better inputs, the TGN (memory off) reaches 0.231 on test, 2.6× random when each coin-hour counts
+            once.</div></li>
+          <li><div>Validation gains do not always survive the test: boosting's did not; the new TGN's did.</div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="part" id="future" data-short="Future improvements">
+      <div class="part-head">
+        <span class="eyebrow">Reference</span>
+        <h2>What we would do next</h2>
+        <p class="goal">Improvements in order of how much they should matter. Say the first three if asked "what next?".</p>
+      </div>
+      <div class="col">
+        <ol class="steps">
+          <li><div><strong>Run the TGN on 15-minute bars.</strong> Contagion happens within minutes, and that is where the
+            graph model and the professor's network idea should finally beat simple models.</div></li>
+          <li><div><strong>Test the new model properly.</strong> A day-block bootstrap of v3 against the simple model, and
+            report the fair score (each coin-hour once) as the standard.</div></li>
+          <li><div><strong>Train longer.</strong> The final v3 runs picked epochs 57 to 59 of 60, so they were still
+            improving.</div></li>
+          <li><div><strong>A second test period.</strong> Rolling test windows, retraining every few months as the market
+            changes; six coins had no training data at all.</div></li>
+          <li><div><strong>New information.</strong> A calendar of scheduled US news, order books and trade-by-trade data,
+            and news or social-media signals.</div></li>
+          <li><div><strong>Make memory earn its place,</strong> or drop it: other ways to combine an hour's messages, or a
+            design built for simultaneous events.</div></li>
+          <li><div><strong>Prove it is useful.</strong> Check calibration on test, and a money-based backtest: does acting
+            on alerts reduce losses?</div></li>
+          <li><div><strong>Defend it.</strong> Adversarial training and checking inputs across several exchanges.</div></li>
+          <li><div><strong>Ship it.</strong> Serve v3 on the dashboard and turn on the live scanner we built, which fetches
+            new Binance hours and logs every alert.</div></li>
+          <li><div><strong>Fix survivorship bias.</strong> Include coins that were delisted or collapsed.</div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="part" id="report" data-short="Report recap">
+      <div class="part-head">
+        <span class="eyebrow">Recap</span>
+        <h2>If the professor opens the report</h2>
+        <p class="goal">The report in one page: structure, research questions, the equations to know, and the small
+          mismatches to be ready for. (Guide Part 12 has every detail.)</p>
+      </div>
+      <div class="col">
+        <p><strong>Structure (9 pages, IEEE style, 19 October 2026, 38 references):</strong> I Introduction (problem,
+          why deep learning, four research questions, four contributions) · II Literature review (contagion and
+          spillovers, network science, temporal graph learning, explainability and evaluation, the gap) · III Methodology
+          (data and Table I, shock and label equations 1 to 3, network analysis, TGN equations 4 to 7 with Figures 1 and
+          2, training with equation 8 and Table II, scoring with equations 9 and 10) · IV Results (tuning in Figure 3, test
+          results in Table III and Figures 4 and 5, Table IV, shock types in Table V and Figure 6, explanations, robustness
+          in Figure 7, limitations, Table VI) · V Conclusion · Acknowledgment (AI use, reproducibility).</p>
+      </div>
+      <div class="scroll col">
+        <table>
+          <caption class="tcap">Research questions and answers</caption>
+          <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+          <tbody>
+            <tr><td>RQ1. Do temporal graph models beat a fitted network-diffusion model?</td><td>Yes, at every window (+0.046 at 1 h, +0.084 at 6 h).</td></tr>
+            <tr><td>RQ2. Do they beat plain machine learning, and does memory matter?</td><td>Only borderline against boosting at 1 to 3 h; memory helps from 6 h.</td></tr>
+            <tr><td>RQ3. What drives their alerts?</td><td>The receiving coin's current state (about 65%).</td></tr>
+            <tr><td>RQ4. How long do shocks last; how robust is the model?</td><td>8 to 10 hours; robust to gaps and noise, not to attacks (−35%).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="scroll col">
+        <table>
+          <caption class="tcap">The equations most worth practising</caption>
+          <thead><tr><th class="n">#</th><th>In plain words</th></tr></thead>
+          <tbody>
+            <tr><td class="n">1–2</td><td>Shock score z = adjusted return ÷ typical move over the previous 168 hours; shock if |z| &gt; 2.29.</td></tr>
+            <tr><td class="n">3</td><td>Label = 1 if coin j shocks in hours t + 1 to t + k; never the same hour.</td></tr>
+            <tr><td class="n">4</td><td>Message = i's memory (64) ‖ j's memory (64) ‖ the event's 5 numbers ‖ time code (16) = 149 numbers.</td></tr>
+            <tr><td class="n">5</td><td>New memory = GRU(old memory, message).</td></tr>
+            <tr><td class="n">6–7</td><td>Attention over 10 recent events gives 64 numbers per coin; the head turns 161 numbers into 5 chances (sigmoid).</td></tr>
+            <tr><td class="n">8</td><td>Focal loss: easy cases count less; γ 2, α 0.25.</td></tr>
+            <tr><td class="n">9–10</td><td>AUPRC as average precision; the bootstrap difference between two models over resampled days.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <p><strong>Table VI</strong> lists every version ever scored on the test period, including the ones we did not use
+          (TGN v1 0.201, three no-memory versions, the refits): it shows we did not keep trying until something scored
+          well.</p>
+        <div class="note careful"><span class="tag">Small mismatches to know</span>
+          <ul>
+            <li>Table I counts 1,463,693 events; the models read 1,463,147, because the 546 shocks in the first week of 2020
+              lack a week of history.</li>
+            <li>Section III-C says eigenvector centrality was computed on the directed networks; it was computed on the
+              correlation network (PageRank used the directed ones).</li>
+            <li>The report's 197 tests passed and 5 skipped were counted at submission; the deployed branch has 210.</li>
+            <li>Dakshesh's PRN is blank on the cover: fill it in by hand on a printed copy.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" id="questions" data-short="Questions you will get">
+      <div class="part-head">
+        <span class="eyebrow">Q&amp;A</span>
+        <h2>Questions you will get</h2>
+        <p class="goal">54 likely questions with answers short enough to say out loud. Turn on quiz mode, answer first,
+          then reveal.</p>
+      </div>
+      <div class="qa-tools">
+        <input type="search" id="qa-filter" placeholder="Filter, e.g. events, parameters, live" aria-label="Filter questions">
+        <button type="button" id="quiz-main" aria-pressed="false">Quiz mode: hide answers</button>
+        <span class="count" id="qa-count" aria-live="polite"></span>
+      </div>
+      <div class="qa-group">
+        <h3>A. Problem, data and events</h3>
+        <div class="qa"><div class="q"><span class="id">A1</span><span>How did you quantify events?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>In four steps. A shock is an hour where a coin's rush-hour-adjusted return is more than 2.29 times its
+            typical hourly move over the previous 168 hours. Each shock of coin i creates one event for every other active coin
+            j. Each event carries 5 numbers (two correlations between i and j, i's return, i's volatility, a shock flag), and each
+            coin has 14 features. Each event gets 5 labels: did j shock within 1, 3, 6, 12, 24 hours, strictly later. 1.46
+            million events in total.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A2</span><span>Why 2.29, and why 168 hours?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>2.29 was set on training data so that about 4% of hours are shocks: rare, but frequent enough to learn
+            from. 168 hours is one week, which covers every weekday and the weekend and is stable without being slow to adapt.
+            The window ends the hour before, so a move is never judged against itself.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A3</span><span>Why must the other coin's shock come strictly later?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Coins moving in the same hour is co-movement, not contagion. Forbes and Rigobon showed that confusing the
+            two makes contagion look bigger than it is. So the label counts hours t + 1 to t + k only.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A4</span><span>Why hourly data?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Contagion happens within hours: after a shock, another coin is 2.3 times more likely than usual to shock
+            in the very next hour, and the effect fades within a day. Daily data merge several shocks and their order.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A5</span><span>How did you avoid data leakage?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Fixed date splits with a 7-day embargo; every scaler, threshold and seasonal profile fitted on training
+            data only; shocks measured against the past only; labels strictly later; the model's memory updated only after an
+            hour is scored; tuning on validation; the test period scored once.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A6</span><span>Why these 30 coins?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The largest coins by market size (CoinGecko, 27 September 2026), excluding stablecoins and wrapped
+            tokens, that trade against USDT on Binance with at least two years of hourly history and 90% coverage of the test
+            period. LUNC and FTT are kept only for crash case studies. The weakness is survivorship bias, which we admit.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A7</span><span>What are the 14 coin features?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Six market features: last hour's return, volatility over 24 and 72 hours, trading volume, volume
+            compared with its own past week, and how long the coin has been listed. Eight network features: strength,
+            eigenvector centrality, minimum-spanning-tree links, community size, spillover PageRank and NET, shock PageRank and
+            shock out-lift, all from past data only.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A8</span><span>What data problems did you hit?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>MATIC renamed to POL (a 1:1 swap, gap masked); the LUNA ticker reused for a new coin after the collapse
+            (never stitched together); FTT delisted after FTX; maintenance gaps (up to 2 hours filled and flagged, longer
+            masked); timestamps switching units in 2025; four days when USDT slipped from $1 (flagged).</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A9</span><span>Why do intraday patterns matter?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Markets have rush hours: Wednesday 12:00 UTC is about twice as jumpy as an average hour, Sunday morning
+            much calmer. We divide that pattern out before measuring shocks, otherwise every busy Wednesday afternoon would look
+            like a shock.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">A10</span><span>Why can't you predict whether prices go up or down?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Direction has almost no memory (today's sign matches yesterday's 47% of the time), but jumpiness does:
+            calm follows calm and storms follow storms. So we predict shocks of either sign, which is predictable, rather than
+            direction, which is not.</p></div></div>
+      </div>
+
+      <div class="qa-group">
+        <h3>B. The model and training</h3>
+        <div class="qa"><div class="q"><span class="id">B1</span><span>What is a TGN, who made it and when?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>A Temporal Graph Network, by Rossi, Chamberlain, Frasca, Eynard, Monti and Bronstein at Twitter with
+            Imperial College London, published in June 2020. It keeps a memory per node, updated by a GRU at each event, and
+            reads recent neighbours with time-aware attention.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B2</span><span>Why did you choose the TGN?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Our data is a stream of time-stamped events between coins. The TGN keeps a memory per coin, reads events
+            in time order and handles coins joining later. An LSTM sees one coin at a time; a snapshot graph network loses the
+            exact timing; trees see one fixed snapshot of features.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B3</span><span>How many parameters, and where are they?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>70,021: the GRU memory updater 41,280, attention 17,984, the prediction head 10,693, time encoders
+            64.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B4</span><span>Explain memory, message and attention in simple words.</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Memory is a 64-number diary per coin. A message is what gets written into the diary after an event:
+            both diaries, the event's 5 numbers and how long since the last entry, 149 numbers. Attention decides how much each
+            of a coin's 10 most recent events should count when summarising the coin right now.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B5</span><span>How does the model avoid seeing the future?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Events are processed in time order in batches of about 200 that never split an hour; a batch is scored
+            before its events are written into memory, so no event sees its own hour. The catch, found after the report: a
+            batch can span several hours, so memory sometimes lagged (question F3).</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B6</span><span>What is focal loss, and why use it?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>A loss that gives less weight to easy, obvious examples and more to rare, hard ones (γ = 2, with weight
+            0.25 on the yes-cases). Only about 10% of events are yes at one hour, so ordinary loss would be dominated by easy
+            no-cases.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B7</span><span>How was it trained?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Adam, learning rate 0.0005, weight decay 0.0001, batches of about 200 events, up to 100 epochs,
+            stopping after 10 epochs without improvement in validation AUPRC at one hour, keeping the best epoch. Five seeds,
+            on a CPU, about half a minute per epoch.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B8</span><span>Why sigmoid outputs rather than softmax?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The five windows are not competing answers: a shock within 3 hours is also within 6. Each window gets
+            its own probability.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B9</span><span>What is DyGFormer and why include it?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>A 2023 Transformer model for event streams (Yu and colleagues, NeurIPS) with no memory: it rereads each
+            coin's last 16 interactions every time. We rebuilt a compact version (24,021 parameters) on exactly our events. It
+            ties the TGN, so our result does not depend on one architecture.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">B10</span><span>Did you try to improve the TGN?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Yes, on validation only. Training longer helped most (0.138 to 0.153). A learning-rate schedule, extra
+            context features, stronger regularisation, a smaller network and futures-market data did not beat that, so we kept
+            the simplest well-trained version.</p></div></div>
+      </div>
+
+      <div class="qa-group">
+        <h3>C. Results and honesty</h3>
+        <div class="qa"><div class="q"><span class="id">C1</span><span>Isn't an AUPRC of 0.205 low for deep learning?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>AUPRC is judged against random guessing, which scores the yes-rate, 0.105 here: we are about twice
+            random, and our top 1% of alerts come true 32% of the time against 10%. Most hourly shocks are triggered by news, so
+            no model can see them coming; a much higher score on this task would make us suspect leakage.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C2</span><span>Why not accuracy?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Always saying no is 89.5% accurate at one hour and catches nothing. AUPRC rewards ranking the real
+            yes-cases at the top.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C3</span><span>How do you know the TGN beats the cascade by more than luck?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>A day-block bootstrap: we rebuilt the test period 1,000 times from whole days and rescored both models
+            on the same events. The 95% interval at one hour is 0.019 to 0.074, above zero, and the cascade never won a single
+            rebuild.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C4</span><span>Does memory matter?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Not for the next hour (no difference), but yes for slower spread: +0.010 to +0.013 from 6 to 24 hours,
+            significant.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C5</span><span>Did you compare with a simple model?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Yes. The cascade and boosting are in the report, and in our final review a logistic regression on four
+            numbers (the coin's volume against its past week, hours since its last shock, how much of the market shocked in the
+            last day, and the size of its current move) matched the TGN on test. It confirms what our explanations show: at
+            hourly speed the signal is mostly in each coin's own state, because shocks hit the market in the same hour. The TGN
+            learns this from the raw event stream and clearly beats the network model; finer data such as minute bars is where
+            a graph model could pull ahead.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C6</span><span>Is the TGN overfitting?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Somewhat at short windows: its edge over random shrinks more from training to validation than the
+            cascade's (a ratio of 1.5 against 1.1), but not at 24 hours. Early stopping keeps it in check; more regularisation
+            only lowered validation scores.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C7</span><span>Why is test better than validation (0.205 against 0.153)?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The test years had more shocks and more moving together: the yes-rate is 10.5% against 8.6%, and even the
+            cascade scores higher on test. Against random, the gap is small (1.95 times against 1.78).</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C8</span><span>What drives an alert?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Integrated gradients: about 65% the receiving coin's own state (volume surge against its past week, 25%;
+            24-hour volatility, 12%; latest return, 9%), 25% the shocking coin and 10% the event. The model flags coins that are
+            already stretched when another coin moves.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C9</span><span>What did TempME find?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Almost nothing: its explanations were barely better than random picks (0.157 against 0.152), because the
+            model's attention is spread evenly and event patterns look the same as in a time-shuffled stream. Shocks spread
+            across the market in the same hour, not along chains. That is a finding about the market, not a bug.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">C10</span><span>How robust is it?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Missing up to half the events: under 0.5% change. Random noise of half a standard deviation: −5.7%. A
+            deliberate FGSM attack of 0.1 standard deviations: about −35%. The risk is manipulation, not ordinary data
+            errors.</p></div></div>
+      </div>
+
+      <div class="qa-group">
+        <h3>D. The dashboard</h3>
+        <div class="qa"><div class="q"><span class="id">D1</span><span>Is the dashboard live?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>No. It shows the latest prediction on our research data, which ends on 27 September 2026, plus replays of
+            nine crises. Updating it means running the pipeline on new Binance hours; the model does not change. Automatic
+            hourly updates are future work.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">D2</span><span>How is a coin's "chance" computed?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The TGN's raw score is calibrated on validation data with an always-rising curve (binned isotonic
+            regression), forced not to fall as the window grows; a coin's chance is the highest over that hour's events pointing
+            at it.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">D3</span><span>What does "× typical coin" mean?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The coin's chance divided by a typical coin's chance after a shock: 1.4 × means 40% more likely than
+            usual.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">D4</span><span>The model beat random clearly in only one crisis. Why?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>In big crashes almost every coin moves, so any five picks are right and nothing can be judged; the page
+            says so. Six of the nine crises were in the training or validation years, so they are not fair tests. Of the three
+            test-period crises, the bitcoin ETF approval is the one where picks could be told apart, and there the model got 3
+            of 5 against 1.6 for random.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">D5</span><span>Why does the page show 0.203 and the report 0.205?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The dashboard serves one trained model (seed 0); the report averages five seeds.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">D6</span><span>How was the dashboard built?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Streamlit and Plotly in Python. A prediction command replays the event stream through the trained TGN,
+            saves chances and reasons per coin, and the page reads those files; nothing is retrained when it opens. Reasons are
+            integrated gradients turned into plain words with the coin's real values.</p></div></div>
+      </div>
+
+      <div class="qa-group">
+        <h3>E. The report and the project</h3>
+        <div class="qa"><div class="q"><span class="id">E1</span><span>What are your research questions and answers?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>RQ1, beat a network-diffusion model? Yes, at every window. RQ2, beat plain machine learning, and does
+            memory matter? Borderline at 1 to 3 hours; memory helps from 6 hours. RQ3, what drives alerts? The receiving coin's
+            state. RQ4, how long do shocks last and how robust is it? About half a day; robust to noise, not to attacks.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">E2</span><span>What is new in your work?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Finance studies measure how connected coins are; graph-learning studies test models on "will two users
+            interact?". We built a fair, hourly, no-peeking benchmark for coin-to-coin contagion, raced temporal graph models
+            against finance, network and machine-learning baselines, and analysed what the models learn.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">E3</span><span>Explain equation 4.</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The message that updates coin i's memory: i's memory just before the event, j's memory, the event's 5
+            numbers and a 16-number code of the time since i's last update, glued together: 149 numbers. Equation 5 feeds it to
+            a GRU, which writes the new memory.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">E4</span><span>What is Table VI?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Every version we ever scored on the test period, including superseded and rejected ones. It shows we did
+            not keep trying versions until one scored well; the main model was fixed from validation evidence.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">E5</span><span>What are the main limitations?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Modest discrimination (AUROC 0.64 to 0.69); one market and one test period; survivorship bias in the
+            coin list; calibration not checked on the test period; no money-based evaluation; no news, social-media or
+            order-book data.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">E6</span><span>How would you improve the one-hour score?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Give the model the "already hot" signals directly, score each coin once per hour, and blend it with a
+            simple model: in a check after the report this raised validation AUPRC from 0.153 to about 0.168. Bigger gains
+            need new information: minute-level timing inside the hour and a calendar of scheduled news.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">E7</span><span>Who did what?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Agree this before the viva. Suggested: Hardik built the data pipeline, the network analysis, the models
+            and evaluation, the explanations and the robustness work; Dakshesh built the prediction command, the dashboard and
+            its crisis explorer, the model compression, the extra attack tests and part of the persistence analysis.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">E8</span><span>Did you use AI tools?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Yes, as the report's acknowledgment says: an AI assistant helped with code, cross-checking numbers
+            against the run logs, re-running tests and drafting the report. We set the questions, made the choices, checked the
+            results, and can explain every part.</p></div></div>
+      </div>
+
+      <div class="qa-group">
+        <h3>F. The work after the report</h3>
+        <div class="qa"><div class="q"><span class="id">F1</span><span>What changed after the report?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>We audited our own pipeline, fixed the memory timing and message handling, rebuilt the inputs on
+            each coin's own scale with short-window, price-range, trade and 5-minute features, and added a fair score that
+            counts each coin-hour once. The new TGN scores 0.231 on test at 1 hour, up from 0.205.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F2</span><span>Isn't improving after seeing the test result cheating?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Every choice was made on validation, including switching memory off (0.179 against 0.168 on
+            validation). Each final model was scored on test once, and we list every test score ever taken. Some ideas failed
+            on test, such as boosting with the 5-minute features, and we report that too.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F3</span><span>What was wrong with the memory?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>It was written once per batch of about 200 events, which can span several hours, so 31% of
+            predictions lacked the previous hour. And because an hour's events share one timestamp, only one arbitrary message
+            per coin was kept. It never used future data; it just knew less than it could. We now write memory every hour
+            and average the hour's messages.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F4</span><span>Your best model has memory switched off. Is it still a graph model?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Partly: it still scores each event between two coins, with network features and the market's
+            breadth, but it keeps no diary per coin. That is a finding: at hourly speed, what matters is the coins' current
+            state and how many coins are shocking, not their history of interactions.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F5</span><span>What are the new inputs?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>20 per coin: volatility over 24, 72 and 168 hours and over 3 and 6 hours, the same measured
+            against the coin's own weekly level (so calm years don't look odd), the hour's price range, trade counts against
+            the past week, and four features from 5-minute bars (5-minute volatility, how much of the move was one jump, and
+            the last 15 minutes' move). Plus time of day, weekend, shock sizes in the messages and the market context.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F6</span><span>What is the "fair" score?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The label depends only on the receiving coin and the hour, so one coin-hour appeared about 3.7
+            times on test, once per shocking coin. Counting each once: v2 0.132 and v3 0.156 against 0.059 random, 2.2× and
+            2.6×.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F7</span><span>What is the 15-minute result?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>The same contagion question on 15-minute bars, with shocks defined the same way. A simple logistic
+            regression reaches 0.311 against 0.120 random at 15 minutes (2.6×, AUROC 0.74), and validation agreed (0.29). It
+            uses the receiving coin's state and market-wide numbers only, so it shows contagion is fast; it is not yet a graph
+            result.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F8</span><span>Does knowing which coin shocked help?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>A little. At 15 minutes, adding the receiver's correlation and lead-lag with the coins that shocked
+            raised boosting by 0.013 (95% interval 0.002 to 0.021) on validation. Small, because these coins are so correlated
+            that who shocked says little beyond how many shocked.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F9</span><span>Why did the new inputs help the TGN on test but not boosting?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>We don't know for sure. Boosting fitted its validation gain too closely; the neural model with
+            five seeds kept its gain (0.179 on validation, 0.231 on test, seeds within ±0.002). A bootstrap test against the
+            simple model is the next step before calling it a clear win.</p></div></div>
+        <div class="qa"><div class="q"><span class="id">F10</span><span>Is the new work in the dashboard and the code?</span></div><button type="button" class="reveal">Show answer</button>
+          <div class="a"><p>Not yet. The deployed dashboard serves the report's model. The new code is on a separate branch
+            with tests (37 passing, and the old settings reproduce the original run exactly); it will be committed and the
+            dashboard switched over after review.</p></div></div>
+      </div>
+    </section>
+
+    <section class="part" id="numbers" data-short="Numbers card">
+      <div class="part-head">
+        <span class="eyebrow">Numbers</span>
+        <h2>Numbers card</h2>
+        <p class="goal">The figures to have on the tip of your tongue.</p>
+      </div>
+      <div class="scroll col">
+        <table>
+          <thead><tr><th>Topic</th><th>Number</th></tr></thead>
+          <tbody>
+            <tr><td>Data</td><td>30 coins · Binance hourly · 1 Jan 2020 to 27 Sep 2026 · 59,088 hours · 3,049 files checked</td></tr>
+            <tr><td>Splits</td><td>train to Jun 2022 · validation Jul 2022 to Dec 2023 · test Jan 2024 to Sep 2026 · 7-day embargo</td></tr>
+            <tr><td>Shock</td><td>|z| &gt; 2.29 against the previous 168 hours · about 4% of hours</td></tr>
+            <tr><td>Events</td><td>1.46 million · 5 numbers per event · 14 features per coin · 5 labels</td></tr>
+            <tr><td>Yes-rate (test)</td><td>10.5% · 20.6% · 31.0% · 44.7% · 62.7%</td></tr>
+            <tr><td>TGN</td><td>Rossi et al., Twitter, 2020 · 70,021 parameters · memory 64 · time code 16 · 10 recent events · 2 heads · head 161 → 64 → 5</td></tr>
+            <tr><td>Training</td><td>Adam, learning rate 0.0005 · focal γ 2, α 0.25 · up to 100 epochs, patience 10 · 5 seeds · CPU</td></tr>
+            <tr class="hl"><td>TGN test AUPRC</td><td>0.205 · 0.352 · 0.464 · 0.588 · 0.739 (random 0.105 · 0.206 · 0.310 · 0.447 · 0.627)</td></tr>
+            <tr><td>Against rivals at 1 h</td><td>cascade 0.159 · boosting 0.178 · DyGFormer 0.208 · no memory 0.208</td></tr>
+            <tr><td>Bootstrap</td><td>vs cascade +0.046 (0.019 to 0.074) at 1 h; vs boosting p about 0.03 (borderline)</td></tr>
+            <tr><td>Top 1% alerts</td><td>32% at 1 h · 61% at 3 h · 76% at 6 h (random 10.5% · 21% · 31%)</td></tr>
+            <tr><td>After market-wide crashes, 1 h</td><td>TGN 0.245 vs boosting 0.205</td></tr>
+            <tr><td>Explanations</td><td>receiver 65% · source 25% · event 10%</td></tr>
+            <tr><td>Persistence</td><td>back to normal in 8 to 10 h · 55 to 65% re-shock within a day</td></tr>
+            <tr><td>Robustness</td><td>50% missing events: under 0.5% · FGSM 0.1: −35% · T-GAE AUROC 0.51</td></tr>
+            <tr><td>Dashboard</td><td>5 tabs · serves the report's model, seed 0 (0.203 at 1 h) · bitcoin ETF: 3 of 5 vs 1.6 random at 6 h</td></tr>
+            <tr class="hl"><td>After the report: v3 TGN</td><td>0.231 · 0.382 · 0.499 · 0.619 · 0.762 · AUROC 0.709 · memory off · 5 seeds within ±0.002</td></tr>
+            <tr><td>Fair score (each coin-hour once), 1 h</td><td>v2 0.132 · v3 0.156 · random 0.059 (2.2× → 2.6×)</td></tr>
+            <tr><td>Simple rivals, test 1 h</td><td>logistic 0.213 (old inputs), 0.218 (new) · boosting with 5-minute features 0.210</td></tr>
+            <tr><td>Memory flaw</td><td>written per ~200-event batch; 31% of predictions missed the previous hour</td></tr>
+            <tr><td>15-minute task</td><td>0.311 vs 0.120 random (2.6×), AUROC 0.74 · validation 0.289 · sender information +0.013</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="part" id="rescue" data-short="If something goes wrong">
+      <div class="part-head">
+        <span class="eyebrow">Backup</span>
+        <h2>If something goes wrong</h2>
+        <p class="goal">Plan B for the room.</p>
+      </div>
+      <div class="col">
+        <ul>
+          <li><strong>The dashboard will not load or is asleep:</strong> "It's waking up; meanwhile, here are screenshots of
+            each tab." Carry on with the screenshots and return to the page when it loads.</li>
+          <li><strong>A question you cannot answer:</strong> "We didn't test that. Here is how we would: …" Then name the
+            experiment. Never guess a number.</li>
+          <li><strong>You forget a number:</strong> open the report at Table III or the numbers card; reading it is better
+            than inventing it.</li>
+          <li><strong>"This is not real time":</strong> agree, and give the "is it live?" answer from segment 13 (the demo).</li>
+          <li><strong>"A simple model does as well":</strong> agree, explain it (question C5), and point to what the TGN
+            adds: it learns this from the raw event stream, it beats the network-diffusion model at every window, and it
+            does best after market-wide crashes.</li>
+          <li><strong>Running out of time:</strong> jump to segment 15 and close; the questions will bring out the
+            rest.</li>
+          <li><strong>The two of you disagree on an answer:</strong> let the person who built that part answer, and support
+            them; never correct each other in front of the examiner.</li>
+        </ul>
+      </div>
+      <footer>
+        CryptoGraph Presentation Script · prepared on 28 October 2026 for the deployed dashboard (GitHub branch
+        <code>feat/hourly-network-models</code>) and the CA3 report of 19 October 2026. Local only; keep it out of the
+        repository's commits, like the viva guide.
+      </footer>
+    </section>
+  </main>
+</div>
+<script>
+(function () {
+  var parts = Array.prototype.slice.call(document.querySelectorAll("section.part"));
+  var toc = document.getElementById("toc"), tocm = document.getElementById("toc-mobile");
+  parts.forEach(function (s) {
+    var eyebrow = s.querySelector(".eyebrow").textContent.trim();
+    var m = eyebrow.match(/^Segment (\d+)/), num = m ? m[1] : "";
+    var li = document.createElement("li"), a = document.createElement("a");
+    a.href = "#" + s.id;
+    var span = document.createElement("span");
+    span.textContent = num;
+    a.appendChild(span);
+    a.appendChild(document.createTextNode(s.dataset.short));
+    li.appendChild(a);
+    toc.appendChild(li);
+    var li2 = document.createElement("li"), a2 = document.createElement("a");
+    a2.href = "#" + s.id;
+    a2.textContent = (num ? num + ". " : "") + s.dataset.short;
+    li2.appendChild(a2);
+    tocm.appendChild(li2);
+  });
+
+  var quizButtons = [document.getElementById("quiz-side"), document.getElementById("quiz-main")];
+  function setQuiz(on) {
+    document.body.classList.toggle("quiz", on);
+    quizButtons.forEach(function (b) {
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.textContent = on ? "Quiz mode on: show all answers" : "Quiz mode: hide answers";
+    });
+    if (!on) {
+      document.querySelectorAll(".qa.open").forEach(function (q) { q.classList.remove("open"); });
+    }
+  }
+  quizButtons.forEach(function (b) {
+    b.addEventListener("click", function () { setQuiz(!document.body.classList.contains("quiz")); });
+  });
+  document.querySelectorAll(".qa").forEach(function (q) {
+    q.querySelector(".reveal").addEventListener("click", function () { q.classList.add("open"); });
+  });
+
+  var input = document.getElementById("qa-filter"), count = document.getElementById("qa-count");
+  var all = Array.prototype.slice.call(document.querySelectorAll(".qa"));
+  function filter() {
+    var t = input.value.trim().toLowerCase(), shown = 0;
+    all.forEach(function (q) {
+      var hit = !t || q.textContent.toLowerCase().indexOf(t) !== -1;
+      q.hidden = !hit;
+      if (hit) { shown += 1; }
+    });
+    document.querySelectorAll(".qa-group").forEach(function (g) {
+      g.hidden = !g.querySelector(".qa:not([hidden])");
+    });
+    count.textContent = shown + " of " + all.length + " questions";
+  }
+  input.addEventListener("input", filter);
+  filter();
+})();
+</script>
+</body>
+</html>

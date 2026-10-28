@@ -73,7 +73,9 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     root, rd = predicted
     at = _app(monkeypatch, root)
     assert not at.exception, at.exception
-    assert [t.label for t in at.tabs] == ["Who's at risk", "Why", "Past crises", "Market map", "How it works"]
+    assert [t.label for t in at.tabs] == ["Who's at risk", "Why", "Replay", "Track record", "Past crises", "Market map",
+                                          "How it works"]
+    assert not any("LIVE" in m.value for m in at.markdown) and any("not live" in c.value for c in at.caption)
     as_of = pd.Timestamp(dd.load_prediction(rd).summary["as_of"])
     assert any(as_of.strftime("%d %b %Y, %H:%M UTC") in m.value for m in at.markdown)
     assert at.metric[0].label == "Most likely to move next (6 hours)" and at.metric[0].value.split(":")[0] in COINS
@@ -140,12 +142,14 @@ def test_event_explorer_renders_and_switches_events(with_events, monkeypatch):
     assert not at.exception, at.exception
     box = at.selectbox(key="event")
     assert [o.split(" · ")[1] for o in box.options] == ["early", "late"]
+    early_id, late_id = (e["id"] for e in dd.load_events_index(ev_dir)["events"])
+    assert box.value == late_id and any("A real test" in s.value for s in at.success)   # opens on a fair test
+    assert any("flagged" in m.value and "at random" in m.value for m in at.markdown)
+    box.set_value(early_id).run()
+    assert not at.exception, at.exception
     assert any("Not a fair test" in w.value for w in at.warning)
-    late_id = dd.load_events_index(ev_dir)["events"][1]["id"]
     box.set_value(late_id).run()
     assert not at.exception, at.exception
-    assert any("A real test" in s.value for s in at.success)
-    assert any("flagged" in m.value and "at random" in m.value for m in at.markdown)
     at.multiselect(key="event_sectors").select("x").run()
     assert not at.exception, at.exception
     # every chart is drawn as a chart: risk bars, all-windows heatmap, crisis replay, hourly bars, market map, duration
@@ -173,9 +177,98 @@ def test_plain_language_helpers():
     solo = dd.shock_sentence({"coin": "QNT", "direction": "crash", "z": -4.8, "breadth": 0.0},
                              {"median_hours_to_normal": 8.0})
     assert "QNT** dropped sharply" in solo and "4.8 times" in solo and "on its own" in solo and "8 hours" in solo
+    few = dd.shock_sentence({"coin": "SOL", "direction": "crash", "z": -2.4, "breadth": 2 / 29}, None)
+    assert "a few other coins (7% of the others)" in few and "no other coin" not in few
     wide = dd.shock_sentence({"coin": "BTC", "direction": "pump", "z": 3.1, "breadth": 0.6}, None)
     assert "jumped" in wide and "60% of the other coins" in wide and "market-wide" in wide and "hours" not in wide
     assert dd.crisis_verdict(5, 5, 5.0, 1.0)[0] == "neutral"                # everyone moved: says nothing
     assert dd.crisis_verdict(3, 5, 1.6, 0.32)[0] == "good"
     assert dd.crisis_verdict(2, 5, 1.9, 0.38)[0] == "neutral"
     assert dd.crisis_verdict(0, 5, 2.5, 0.5)[0] == "weak"
+
+
+@pytest.fixture
+def with_replay(predicted):
+    from cryptograph.training.runner import run_experiment
+
+    root, rd = predicted
+    cfg = {"name": "replay_toy", "model": {"name": "replay"}, "device": "cpu",
+           "replay": {"target_experiment": "toy_tgn", "ig_steps": 4, "top": 3,
+                      "windows": [{"name": "late crash", "event": "late", "start": "2026-01-10 14:00",
+                                   "end": "2026-01-11 20:00"},
+                                  {"name": "a train day", "start": "2026-01-03 00:00", "end": "2026-01-03 23:00"}]}}
+    out = run_experiment(cfg, seed=0, runs_dir=root / "runs")
+    return root, root / "runs" / out["run_id"]
+
+
+def test_replay_tab_plays_hour_by_hour(with_replay, monkeypatch):
+    root, rp = with_replay
+    at = _app(monkeypatch, root)
+    assert not at.exception, at.exception
+    assert at.selectbox(key="replay_window").value == 0 and any("A real test" in s.value for s in at.success)
+    assert at.session_state["replay_pos_0"] == 0
+    first = dd.load_replay(rp, 0)["frames"][0]["time"]
+    assert any(pd.Timestamp(first).strftime("%d %b %Y, %H:%M UTC") in m.value for m in at.markdown)
+    at.button(key="replay_next").click().run()                          # jump to the next hour with big moves
+    assert not at.exception, at.exception
+    i = at.session_state["replay_pos_0"]
+    assert i > 0 and dd.load_replay(rp, 0)["frames"][i]["shocks"]
+    assert any(m.value.startswith("**Big moves this hour") for m in at.markdown)
+    at.button(key="replay_play").click().run()                          # play: the fragment advances one hour
+    assert not at.exception, at.exception
+    assert at.session_state["replay_playing"] and at.session_state["replay_pos_0"] == i + 1
+    at.button(key="replay_pause").click().run()
+    assert not at.exception and not at.session_state["replay_playing"]
+    assert any(m.label == "Alerts decided" for m in at.metric)
+    at.toggle(key="replay_skip").set_value(True).run()
+    assert not at.exception, at.exception
+    at.selectbox(key="replay_window").set_value(1).run()                # a training-period day: flagged as unfair
+    assert not at.exception and any("Not a fair test" in w.value for w in at.warning)
+
+
+@pytest.fixture
+def live_run(toy_project):
+    """A toy live prediction in runs/live/ with its status and alert log, as `cryptograph-live` leaves them."""
+    import json
+
+    from cryptograph.serving.live import update_alert_log
+    from cryptograph.training.runner import run_experiment
+
+    root, run, _ = toy_project
+    cfg = {"name": "live_toy", "model": {"name": "predict"}, "device": "cpu",
+           "predict": {"target_experiment": "toy_tgn", "ig_steps": 4, "as_of": "2026-01-12 08:00", "live": True}}
+    out = run_experiment(cfg, seed=0, runs_dir=root / "runs" / "live")
+    rd = root / "runs" / "live" / out["run_id"]
+    panel = torch.load(root / "data" / "processed" / "v2" / "1h" / "panel.pt", weights_only=False)
+    update_alert_log(root / "runs" / "live" / "alert_log.csv", rd, 3, panel, list(range(len(COINS))))
+    (root / "runs" / "live" / "status.json").write_text(json.dumps({"status": "ok", "finished_utc": "2026-01-12 09:02"}))
+    return root, rd
+
+
+def test_live_run_is_followed_and_its_alerts_are_scored(live_run, monkeypatch):
+    root, rd = live_run
+    assert dd.live_runs(root / "runs") == [rd] and dd.live_status(root / "runs")["status"] == "ok"
+    log = dd.load_alert_log(root / "runs")
+    assert len(log) == 3 * len(K_HOURS) and log["resolved"].all()     # the toy data runs well past these windows
+    at = _app(monkeypatch, root)
+    assert not at.exception, at.exception
+    assert at.toggle(key="follow_live").value
+    assert any("● LIVE" in m.value for m in at.markdown)
+    assert any("Live scanning has paused" in w.value for w in at.warning)          # toy data is from January
+    assert any(m.label.startswith("Live alerts decided") for m in at.metric)
+    table = dd.live_alert_table(log)
+    assert set(table["what happened"].str[0]) <= {"✅", "❌"} and len(table) == len(log)
+    at.toggle(key="follow_live").set_value(False).run()                  # back to picking runs by hand
+    assert not at.exception, at.exception
+
+
+def test_track_record_tab_with_only_open_live_alerts(live_run, monkeypatch):
+    """Right after the first live cycle every alert is still inside its window: the page must say so, not fail."""
+    root, rd = live_run
+    p = root / "runs" / "live" / "alert_log.csv"
+    log = pd.read_csv(p).assign(status="pending", resolved=False, chance=None, first_shock_at=None)
+    log.to_csv(p, index=False)
+    at = _app(monkeypatch, root)
+    assert not at.exception, at.exception
+    assert any("has been decided yet" in c.value for c in at.caption)
+    assert all(t.startswith("⏳") for t in dd.live_alert_table(dd.load_alert_log(root / "runs"))["what happened"])

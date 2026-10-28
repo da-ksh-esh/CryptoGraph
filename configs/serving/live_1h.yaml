@@ -1,0 +1,17 @@
+# Live scanning with the final TGN (serving/live.py; run with `cryptograph-live --once` or `--loop`).
+# Each cycle fetches the closed 1h bars after the research data end from Binance's public REST API (no key), rebuilds
+# them with the research pipeline into data/processed/v2_live/ (fitted settings frozen: identical to v2, checked every
+# cycle), scores the latest shocks into runs/live/<run_id>/ and keeps runs/live/alert_log.csv (live track record).
+data_config: configs/data/hourly.yaml           # research data config (universe, features, splits)
+reference_version: v2                           # the live data must reproduce it on the research period
+dataset_version: v2_live                        # extended data; v2 is never written
+interim_dir: data/interim/hourly_live           # live raw/master tables, REST cache, stage reports
+predict_config: configs/experiment/predict_tgn_1h.yaml   # the model, calibration and driver settings
+runs_dir: runs/live                             # live prediction runs, alert_log.csv, status.json
+rest_base_urls:                                 # tried in order
+  - https://data-api.binance.vision             # public market data only
+  - https://api.binance.com
+max_gap_days: 90                                # longer gaps: extend the research data with the archive fetch stage
+tail_grace_bars: 3                              # last research bars allowed to change (a gap or spike resolved later)
+alerts_top: 3                                   # riskiest coins per horizon logged as alerts each cycle
+cycle_minute: 2                                 # --loop: run at hh:02 UTC, after Binance publishes the closed bar

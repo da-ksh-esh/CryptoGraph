@@ -81,9 +81,11 @@ def toy_project(tmp_path, monkeypatch):
     import cryptograph.explain.run as explain_run
     import cryptograph.serving.compress as compress
     import cryptograph.serving.events as events
+    import cryptograph.serving.live as live
     import cryptograph.serving.predict as predict
+    import cryptograph.serving.replay as replay
 
-    for mod in (config, explain_run, predict, compress, events):
+    for mod in (config, explain_run, predict, compress, events, replay, live):
         monkeypatch.setattr(mod, "PROJECT_ROOT", tmp_path)
     d, F = _write_project(tmp_path)
     ext = tmp_path / "data" / "external"

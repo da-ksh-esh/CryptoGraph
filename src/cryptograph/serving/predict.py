@@ -167,8 +167,8 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
               else _find_run(pc["target_experiment"], pc.get("target_seed", 0)))
     if not target.is_absolute():
         target = PROJECT_ROOT / target
-    tracker.log(f"predicting with {target.name}")
-    runner, D = load_trained(target, device="cpu")
+    tracker.log(f"predicting with {target.name}" + (f" on data {pc['data_version']}" if pc.get("data_version") else ""))
+    runner, D = load_trained(target, device="cpu", data_version=pc.get("data_version"))
     d, coins, K = D["d"], D["coins"], list(D["k_hours"])
     times = pd.DatetimeIndex(D["panel"]["times"])
     t_np, src, dst = d.t.numpy(), d.src.numpy(), d.dst.numpy()
@@ -220,15 +220,14 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
     alert_list = [{c: r[c] for c in alert_cols if c in r} for r in alerts.to_dict("records")]
     summary = {"target_run": target.name, "as_of": str(times[as_of]), "as_of_bar": as_of, "data_end": str(times[-1]),
                "data_version": D["cfg"]["data"]["version"], "resolution": D["cfg"]["data"]["resolution"],
+               "live": bool(pc.get("live", False)),
                "hours_since_as_of": int(len(times) - 1 - as_of), "n_events": int(len(pos)),
                "source_coins": sorted({coins[s] for s in p_src}), "k_hours": K, "calibrated": cal is not None,
                "base_rate": cal.base_rate if cal is not None else None, "rebuild_max_abs_logit_diff": err,
                "ig_completeness_max_gap": gap_max}
     if pc.get("shock_context", True):                         # source shock type + typical duration (notebook 05)
-        gidx = load_pt(PROJECT_ROOT / "data" / "processed" / D["cfg"]["data"]["version"]
-                       / D["cfg"]["data"]["resolution"] / "tgn_events.pt")["graph_index"]
         last = sorted({int(s) for s, tt in zip(p_src, p_t) if tt == as_of})
-        src_tab, hist = shock_context(D["panel"], gidx, as_of, last, coins)
+        src_tab, hist = shock_context(D["panel"], D["graph_index"], as_of, last, coins)
         src_tab.to_csv(tracker.dir / "shock_sources.csv", index=False)
         hist.to_csv(tracker.dir / "persistence.csv", index=False)
         for x in src_tab.itertuples():

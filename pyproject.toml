@@ -66,6 +66,7 @@ cryptograph-data = "cryptograph.pipelines.build_data:main"
 cryptograph-train = "cryptograph.pipelines.train:main"
 cryptograph-package = "cryptograph.pipelines.package_data:main"
 cryptograph-predict = "cryptograph.pipelines.predict:main"
+cryptograph-live = "cryptograph.pipelines.live:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

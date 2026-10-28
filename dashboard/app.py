@@ -1,11 +1,14 @@
 """CryptoGraph dashboard: after a sudden big move of one coin, which other coins are likely to follow?
 
     cryptograph-predict                 # writes runs/<run_id>/ (risk, drivers, alerts, shock context)
-    streamlit run dashboard/app.py      # shows the latest prediction run
+    cryptograph-live --loop             # live: Binance's newest hours, one prediction per hour into runs/live/
+    cryptograph-train --config configs/experiment/replay_1h.yaml    # past days hour by hour, for the Replay tab
+    streamlit run dashboard/app.py      # shows the latest live run (follows new ones), else the latest prediction run
 
 Written for readers without a data-science background: plain words first, the technical details in "Details"
 expanders. Environment: CRYPTOGRAPH_RUNS_DIR (default <project>/runs), CRYPTOGRAPH_ROOT (project root for data/).
-Nothing is computed here beyond reading and plotting; every number comes from a tracked run.
+Nothing is computed here beyond reading and plotting; every number comes from a tracked run (the Track record tab
+reads the served model's own test-period predictions).
 """
 
 from __future__ import annotations
@@ -72,12 +75,49 @@ def _event(path: str, event_id: int) -> dict:
     return dd.load_event(path, event_id)
 
 
+@st.cache_data(show_spinner=False)
+def _replay_index(path: str) -> dict:
+    return dd.load_replay_index(path)
+
+
+@st.cache_data(show_spinner=False)
+def _replay(path: str, window_id: int) -> dict:
+    return dd.load_replay(path, window_id)
+
+
+@st.cache_data(show_spinner="Reading the model's test-period predictions...", persist="disk")
+def _evidence(target_dir: str) -> dict:
+    from cryptograph.serving.evidence import evidence_on_test
+
+    return evidence_on_test(target_dir)
+
+
 STATE_LABEL = dict(zip(dd.NODE_STATES, ("big move now", "moved earlier", "calm so far", "not trading yet")))
 STATE_COLOR = dict(zip(dd.NODE_STATES, ("#d62728", "#ff9f43", "#9aa5b1", "#3a3f47")))
 UP, DOWN = ("<span style='color:#d62728; font-weight:700'>▲</span>",
             "<span style='color:#2ca02c; font-weight:700'>▼</span>")
+PRICE_UP, PRICE_DOWN = ("<span style='color:#2ca02c; font-weight:700'>▲</span>",       # price moves: up green, down red
+                        "<span style='color:#d62728; font-weight:700'>▼</span>")
+LIVE_BADGE = ("<span style='background:#d62728; color:#fff; padding:2px 9px; border-radius:4px; font-weight:700; "
+              "letter-spacing:0.05em'>● LIVE</span>")
 LEVEL_COLOR = {label: colour for label, colour, _ in dd.RISK_LEVELS} | {"Unknown": "#9aa5b1"}
 when = lambda ts: pd.Timestamp(ts).strftime("%d %b %Y, %H:%M UTC")   # noqa: E731
+PERIOD_BANNER = {
+    "test": (st.success, "**A real test.** The model never saw this period while it was built, so this shows how it "
+                         "would have done live."),
+    "after the research period": (st.success, "**Live data.** These hours came after the model was built and "
+                                              "checked, so this is exactly how it does live."),
+    "validation": (st.warning, "**Not a fully fair test.** This crisis was used to fine-tune the model."),
+    "train": (st.warning, "**Not a fair test.** The model learned from this crisis, so it looks better here than it "
+                          "would in real life."),
+}
+
+
+def ago(ts) -> str:
+    """'12 minutes ago' / '3 hours ago' / '2 days ago' for a UTC time."""
+    h = dd.hours_since(ts)
+    n, unit = (round(max(h * 60, 0)), "minute") if h < 1.5 else (round(h), "hour") if h < 48 else (round(h / 24), "day")
+    return "just now" if unit == "minute" and n == 0 else f"{n} {unit}{'' if n == 1 else 's'} ago"
 
 
 def draw_chart(fig) -> None:
@@ -103,21 +143,137 @@ def network_figure(coins: list[str], edges: pd.DataFrame, sector_of: dict, heigh
     return fig, pos
 
 
+def replay_player(R: dict, h: int, n_flag: int, skip: bool, step_s: float) -> None:
+    """The replay of one window, one hour at a time: the clock, what moved, the coins the model flags and how its
+    earlier alerts turned out. While playing, the fragment re-runs every `step_s` seconds and advances one hour."""
+    frames, H = R["frames"], dd.horizon_label(h)
+    pos_key, slider_key = f"replay_pos_{R['id']}", f"replay_slider_{R['id']}"
+    st.session_state.setdefault(pos_key, 0)
+    alerts = dd.replay_alerts(R["risk"], h, n_flag, skip)
+
+    @st.fragment(run_every=step_s if st.session_state.get("replay_playing") else None)
+    def player() -> None:
+        i = st.session_state[pos_key]
+        if st.session_state.get("replay_playing"):
+            if i >= len(frames) - 1:
+                st.session_state["replay_playing"] = False
+                st.rerun()                                     # stop the timer
+            i = st.session_state[pos_key] = i + 1
+        b1, b2, b3, _ = st.columns([1, 1, 1.4, 3])
+        if st.session_state.get("replay_playing"):
+            if b1.button("⏸ Pause", key="replay_pause", width="stretch"):
+                st.session_state["replay_playing"] = False
+                st.rerun()
+        elif b1.button("▶ Play", key="replay_play", type="primary", width="stretch"):
+            st.session_state[pos_key] = 0 if i >= len(frames) - 1 else i
+            st.session_state["replay_playing"] = True
+            st.rerun()
+        if b2.button("⏮ Start", key="replay_start", width="stretch"):
+            st.session_state[pos_key], st.session_state["replay_playing"] = 0, False
+            st.rerun()
+        nxt = next((j for j in range(i + 1, len(frames)) if frames[j]["shocks"]), None)
+        if b3.button("⏭ Next big move", key="replay_next", width="stretch", disabled=nxt is None):
+            st.session_state[pos_key], st.session_state["replay_playing"] = nxt, False
+            st.rerun()
+        if st.session_state.get("replay_playing"):               # no draggable widget while the clock moves
+            st.progress((i + 1) / len(frames), text=f"{pd.Timestamp(frames[i]['time']):%d %b %H:%M} UTC")
+        else:
+            # a new key per hour: the slider never holds a stale value of its own that could undo a move
+            j = st.select_slider("Hour", options=list(range(len(frames))), value=i, key=f"{slider_key}_{i}",
+                                 label_visibility="collapsed",
+                                 format_func=lambda x: pd.Timestamp(frames[x]["time"]).strftime("%d %b %H:%M"))
+            if j != i:
+                i = st.session_state[pos_key] = j
+        f = frames[i]
+        bar = f["bar"]
+        st.markdown(f"### 🕐 {when(f['time'])}")
+        st.caption(f"Hour {i + 1} of {len(frames)} of the replay. Outcomes appear only once they have happened.")
+        if f["shocks"]:
+            moves = sorted(f["shocks"], key=lambda m: -abs(m["ret_pct"] or 0))
+            txt = ", ".join(f"{PRICE_UP if m['direction'] == 'pump' else PRICE_DOWN} **{m['coin']}** "
+                            f"{m['ret_pct']:+.1f}%" for m in moves[:12] if m["ret_pct"] is not None)
+            more = f" and {len(moves) - 12} more" if len(moves) > 12 else ""
+            st.markdown(f"**Big moves this hour ({len(moves)} of {f['n_active']} coins):** {txt}{more}",
+                        unsafe_allow_html=True)
+        else:
+            st.markdown("**A calm hour:** no coin made a big move.")
+
+        left, right = st.columns([1, 1])
+        with left:
+            st.markdown(f"#### Coins to watch now (next {H})")
+            now = alerts[alerts["bar"] == bar]
+            if len(now):
+                for r in now.to_dict("records"):
+                    lift = f", {r['lift']:.1f}× a typical coin" if pd.notna(r.get("lift")) else ""
+                    st.markdown(f"**{r['coin']}**: {r['risk']:.0%} chance{lift}")
+                    for d in (r["drivers"] or [])[:2]:
+                        arrow = UP if d["attribution"] > 0 else DOWN
+                        st.markdown(f"&nbsp;&nbsp;{arrow} {dd.plain_driver(d, r['coin'], r['source'])}",
+                                    unsafe_allow_html=True)
+            elif f["scored"]:
+                st.caption("Every coin is already making a big move (the filter above leaves nothing to flag).")
+            else:
+                st.caption("No new alerts this hour: the model speaks only after some coin makes a big move.")
+        status = dd.alert_status(alerts, bar, h)
+        sc = dd.replay_score(R["risk"], status, h, skip)
+        with right:
+            st.markdown("#### Score so far")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Alerts decided", sc["decided"], help=f"Flagged coins whose {H} window has passed.")
+            m2.metric("Came true", sc["hits"], help=f"Of those, coins that made a big move within {H}.")
+            m3.metric("Random picks", f"{sc['expected']:.1f}",
+                      help="How many would have come true if the same number of coins had been picked at random "
+                           "at the same hours.")
+            kind, verdict = dd.score_verdict(sc["hits"], sc["expected"], sc["decided"])
+            {"good": st.success, "neutral": st.info, "weak": st.warning}[kind](verdict)
+            if sc["pending"] or sc["confirmed_early"]:
+                st.caption(f"{sc['pending']} alerts still open; {sc['confirmed_early']} of them already came true.")
+        board = status.sort_values(["bar", "risk"], ascending=[False, False]).head(12)
+        if len(board):
+            words = {"hit": "✅ big move", "miss": "❌ no big move", "unknown": "— not observed"}
+            board = board.assign(
+                at=[pd.Timestamp(t).strftime("%d %b %H:%M") for t in board["time"]],
+                result=[words.get(s, f"⏳ {int(x)} h left") if s != "hit" or pd.isna(fm)
+                        else f"✅ big move after {int(fm)} h" for s, x, fm in
+                        zip(board["status"], board["hours_left"], board["first_move_h"])])
+            st.dataframe(board[["at", "coin", "risk", "source", "result"]].rename(columns={
+                "at": "flagged at (UTC)", "risk": f"chance ({H})", "source": "after the move of",
+                "result": "what happened"}).style.format({f"chance ({H})": "{:.0%}"}), hide_index=True,
+                width="stretch")
+        times = pd.to_datetime([fr["time"] for fr in frames])          # only the hours seen so far: no spoilers
+        act = pd.DataFrame({"time": times[:i + 1], "coins moving": [len(fr["shocks"]) for fr in frames[:i + 1]]})
+        fig = px.bar(act, x="time", y="coins moving", title="Coins making a big move, hour by hour (so far)",
+                     color_discrete_sequence=["#d62728"])
+        fig.update_layout(height=240, margin=dict(t=40, b=10), xaxis_title=None,
+                          xaxis_range=[times[0] - pd.Timedelta(minutes=30), times[-1] + pd.Timedelta(minutes=30)],
+                          yaxis_range=[0, max(fr["n_active"] for fr in frames)])   # fixed axes: the bars grow
+        draw_chart(fig)
+
+    player()
+
+
 # --- header and sidebar ----------------------------------------------------------------------------------------------
 st.title("CryptoGraph")
 st.markdown("#### Who moves next?")
 st.markdown("When one cryptocurrency makes a sudden big move, others often follow within hours. This page shows "
             "**which coins are most likely to make a big move of their own next**, and why.")
-runs = dd.prediction_runs(RUNS)
+live_list = dd.live_runs(RUNS)
+runs = live_list + dd.prediction_runs(RUNS)
 if not runs:
     st.info("There is nothing to show yet. Run `cryptograph-predict` (it needs the trained model in `runs/` and the "
-            f"data in `data/processed/v2/`), then reload this page. Looked in `{RUNS}`.")
+            f"data in `data/processed/v2/`) or `cryptograph-live`, then reload this page. Looked in `{RUNS}`.")
     st.stop()
 
 with st.sidebar:
     st.header("Settings")
+    follow = bool(live_list) and st.toggle(
+        "Follow live data", value=True, key="follow_live",
+        help="Show the newest live prediction and switch to each new one as it arrives (checked every minute).")
     with st.expander("Advanced"):
-        run = st.selectbox("Prediction run", runs, format_func=lambda p: p.name)
+        picked = st.selectbox("Prediction run", runs, key="run_pick", disabled=follow,
+                              format_func=lambda p: ("LIVE · " if p.parent.name == "live" else "") + p.name)
+    run = live_list[0] if follow else picked
+    is_live = run.parent.name == "live"
     P = _prediction(str(run))
     k_hours = list(P.summary["k_hours"])
     h = st.select_slider("Look ahead", options=k_hours, value=6 if 6 in k_hours else k_hours[0],
@@ -134,15 +290,36 @@ risk_h = risk_h.sort_values(["risk", "score"], ascending=False)
 top = risk_h.iloc[0]
 H = dd.horizon_label(h)
 
+if is_live:
+    status = dd.live_status(RUNS) or {}
+    checked = f", checked {ago(status['finished_utc'])}" if status.get("finished_utc") else ""
+    st.markdown(f"{LIVE_BADGE} &nbsp; Binance prices up to the hour of **{when(S['data_end'])}**{checked}",
+                unsafe_allow_html=True)
+    if dd.hours_since(S["data_end"]) > 3:          # the newest bar closes one hour after it opens
+        st.warning(f"Live scanning has paused: the newest prices are from {when(S['data_end'])}. Run "
+                   "`cryptograph-live --loop` to keep this page current.")
+    if follow:
+        @st.fragment(run_every=60)
+        def _follow_live() -> None:
+            """Reload the page when a newer live prediction appears."""
+            newest = dd.live_runs(RUNS)
+            if newest and newest[0] != run:
+                st.rerun()
+        _follow_live()
+else:
+    st.caption(f"Research data, which ends {when(S['data_end'])}: not live. Run `cryptograph-live` to scan the "
+               "newest hours.")
+
 st.subheader("What just happened")
 with st.container(border=True):
-    st.markdown(f"**{when(S['as_of'])}** (the latest data)")
+    st.markdown(f"**{when(S['as_of'])}** " + ("(the latest hour with big moves)" if is_live else "(the latest data)"))
     for src in P.sources.to_dict("records"):
         st.markdown(dd.shock_sentence(src, dd.typical_duration(P.persistence, src["type"], src["direction"])))
     if P.sources.empty:
         st.markdown(f"Sudden big moves by: {', '.join(S['source_coins'])}.")
     if S["hours_since_as_of"]:
-        st.caption(f"The data runs {S['hours_since_as_of']} hours past this moment.")
+        st.caption(f"The data runs {S['hours_since_as_of']} hours past this moment"
+                   + (": no coin has made a big move since." if is_live else "."))
 
 c1, c2, c3 = st.columns(3)
 c1.metric(f"Most likely to move next ({H})", f"{top['coin']}: {top['risk']:.0%}",
@@ -155,8 +332,8 @@ c3.metric("Coins at higher-than-usual risk", f"{n_high} of {len(risk_h)}")
 if not S["calibrated"]:
     st.warning("These numbers are raw model scores, not chances (the model run has no validation predictions).")
 
-tab_risk, tab_why, tab_past, tab_map, tab_about = st.tabs(
-    ["Who's at risk", "Why", "Past crises", "Market map", "How it works"])
+tab_risk, tab_why, tab_replay, tab_track, tab_past, tab_map, tab_about = st.tabs(
+    ["Who's at risk", "Why", "Replay", "Track record", "Past crises", "Market map", "How it works"])
 
 # --- who's at risk -------------------------------------------------------------------------------------------------
 with tab_risk:
@@ -209,14 +386,114 @@ with tab_why:
     else:
         st.info("No explanation was saved for this coin at this time window (an older prediction run).")
 
+# --- replay ----------------------------------------------------------------------------------------------------------
+with tab_replay:
+    rp_dir = dd.latest_replay_dir(RUNS)
+    if rp_dir is None:
+        st.info("Nothing to replay yet. Run `cryptograph-train --config configs/experiment/replay_1h.yaml` (a few "
+                "minutes, no internet needed), then reload this page.")
+    else:
+        RI = _replay_index(str(rp_dir))
+        wins = {w["id"]: w for w in RI["windows"]}
+        st.markdown("Play back a past day **hour by hour, as if it were live**: at each hour you see only what the "
+                    "model knew then, which coins it flagged, and, once the time has passed, whether they moved.")
+        wid = st.selectbox("Choose a period to replay", list(wins), key="replay_window",
+                           format_func=lambda i: f"{wins[i]['name']} ({wins[i]['split']})")
+        R = _replay(str(rp_dir), wid)
+        banner, text = PERIOD_BANNER.get(R["split"], (st.warning, R["split_note"]))
+        banner(text)
+        if R["description"]:
+            st.markdown(R["description"] + (f" [Read more]({R['source_url']})" if R["source_url"] else ""))
+        o1, o2, o3 = st.columns(3)
+        n_flag = o1.select_slider("Coins flagged per hour", options=[1, 2, 3, 4, 5], value=3, key="replay_top",
+                                  help="After each hour with big moves, the model names this many coins to watch.")
+        skip = o2.toggle("Only coins that are calm right now", key="replay_skip",
+                         help="Leave out coins already making a big move: the harder question of who is hit next.")
+        speed = o3.select_slider("Speed", options=["slow", "normal", "fast"], value="normal", key="replay_speed")
+        replay_player(R, h, n_flag, skip, {"slow": 2.0, "normal": 1.0, "fast": 0.4}[speed])
+        with st.expander("Details: the whole period at once"):
+            score = pd.DataFrame(R["score"])
+            if len(score):
+                st.markdown("Over every scored hour of this period, the model's **3 coins to watch** per hour:")
+                st.dataframe(score.assign(window=score["horizon_h"].map(dd.horizon_label))
+                             [["window", "hours", "alerts", "hits", "expected_by_chance"]].rename(columns={
+                                 "hours": "hours with big moves", "alerts": "coins flagged", "hits": "came true",
+                                 "expected_by_chance": "random picks"}).round(1), hide_index=True, width="stretch")
+            st.caption(f"Model run {RI['target_run']}; replay run {rp_dir.name}. A coin's chance is its calibrated "
+                       "risk after the hour's big moves (as on the main page); outcomes are the same labels the model "
+                       "was evaluated on.")
+
+# --- track record ----------------------------------------------------------------------------------------------------
+with tab_track:
+    st.markdown(f"#### Tested on 2024–2026 data the model never saw (next {H})")
+    E = _evidence(str(dd.target_run_dir(run, S)))
+    if E:
+        pr = E["precision"].set_index("horizon_h")
+        if h in pr.index:
+            row = pr.loc[h]
+            st.markdown(f"Of the **1% of coin-hours** the model rated riskiest, **{row['top_precision']:.0%}** made a "
+                        f"big move within {H}. For a coin picked at random it was **{row['positive_rate']:.0%}**.")
+        t1, t2 = st.columns(2)
+        with t1:
+            pt = E["precision"].melt(id_vars="horizon_h", value_vars=["top_precision", "positive_rate"],
+                                     var_name="who", value_name="share")
+            pt["who"] = pt["who"].map({"top_precision": "model's riskiest 1%", "positive_rate": "random coin"})
+            pt["window"] = pt["horizon_h"].map(dd.horizon_label)
+            fig = px.bar(pt, x="window", y="share", color="who", barmode="group",
+                         color_discrete_map={"model's riskiest 1%": "#d62728", "random coin": "#7f7f7f"},
+                         title="How often flagged coins made a big move", labels={"share": "", "window": ""})
+            fig.update_layout(yaxis_tickformat=".0%", height=360, legend=dict(title=None, orientation="h", y=-0.15))
+            draw_chart(fig)
+        with t2:
+            cb = E["calibration"][E["calibration"]["horizon_h"] == h]
+            if len(cb):
+                fig = go.Figure([go.Scatter(x=[0, 1], y=[0, 1], mode="lines", line=dict(dash="dot", color="#888"),
+                                            name="perfect"),
+                                 go.Scatter(x=cb["predicted"], y=cb["observed"], mode="lines+markers",
+                                            line=dict(color="#d62728"), name="the model")])
+                hi = float(max(cb["predicted"].max(), cb["observed"].max()) * 1.1)
+                fig.update_layout(title=f"Does a {h}-hour chance of X% come true X% of the time?", height=360,
+                                  xaxis=dict(title="chance shown on this page", tickformat=".0%", range=[0, hi]),
+                                  yaxis=dict(title="how often it happened", tickformat=".0%", range=[0, hi]),
+                                  legend=dict(x=0.02, y=0.98, bgcolor="rgba(0,0,0,0)"))
+                draw_chart(fig)
+        st.caption(f"Each coin and hour counted once, as this page shows them (served model {E['run']}). The chances "
+                   "were calibrated on 2022–2023 data, never on these years.")
+    else:
+        st.info("The served model's test-period predictions are not available here.")
+
+    st.markdown("#### Live alerts")
+    log = dd.load_alert_log(RUNS)
+    if log.empty:
+        st.info("No live alerts yet. Run `cryptograph-live` (or `--loop`): every hour the riskiest coins are logged, "
+                "then checked once their time window has passed.")
+    else:
+        from cryptograph.serving.live import load_live_config, track_record
+
+        tr = track_record(log)
+        mine = tr[tr["horizon_h"].astype(str) == str(h)]
+        if len(mine):
+            a = mine.iloc[0]
+            l1, l2, l3 = st.columns(3)
+            l1.metric(f"Live alerts decided ({H})", int(a["alerts"]))
+            l2.metric("Came true", int(a["hits"]))
+            l3.metric("Random picks", f"{a['expected_by_chance']:.1f}")
+            kind, verdict = dd.score_verdict(int(a["hits"]), float(a["expected_by_chance"]), int(a["alerts"]))
+            {"good": st.success, "neutral": st.info, "weak": st.warning}[kind](verdict)
+        else:
+            st.caption(f"No live alert at {H} has been decided yet.")
+        lt = dd.live_alert_table(log)
+        st.dataframe(lt.assign(issued=[pd.Timestamp(t).strftime("%d %b %H:%M") for t in lt["issued_at"]],
+                               window=lt["horizon_h"].map(dd.horizon_label))
+                     [["issued", "coin", "window", "risk", "lift", "source", "what happened"]].rename(columns={
+                         "issued": "flagged at (UTC)", "risk": "chance", "lift": "× typical coin",
+                         "source": "after the move of"}).style.format({"chance": "{:.0%}", "× typical coin": "{:.1f}"}),
+                     hide_index=True, width="content")
+        st.caption(f"Since {pd.Timestamp(log['issued_at'].min()):%d %b %Y}: after each hour with big moves, the "
+                   f"{load_live_config().alerts_top} riskiest coins per time window are logged; an alert counts once "
+                   "its whole window has passed.")
+
 # --- past crises -----------------------------------------------------------------------------------------------------
-PERIOD_BANNER = {
-    "test": (st.success, "**A real test.** The model never saw this crisis while it was built, so this shows how it "
-                         "would have done live."),
-    "validation": (st.warning, "**Not a fully fair test.** This crisis was used to fine-tune the model."),
-    "train": (st.warning, "**Not a fair test.** The model learned from this crisis, so it looks better here than it "
-                          "would in real life."),
-}
 with tab_past:
     ev_dir = dd.latest_events_dir(RUNS)
     if ev_dir is None:
@@ -225,7 +502,8 @@ with tab_past:
     else:
         E = _events_index(str(ev_dir))
         label_of = {e["id"]: f"{pd.Timestamp(e['date']):%b %Y} · {e['name']}" for e in E["events"]}
-        eid = st.selectbox("Choose a past crisis", list(label_of), format_func=label_of.get, key="event")
+        fair = next((k for k, e in enumerate(E["events"]) if e["split"] == "test"), 0)   # open on a genuine forecast
+        eid = st.selectbox("Choose a past crisis", list(label_of), index=fair, format_func=label_of.get, key="event")
         ev = _event(str(ev_dir), eid)
         rp, sector_of = ev["replay"], _sectors()
         coins_ev = [x["coin"] for x in rp["sequence"]]
@@ -371,7 +649,11 @@ with tab_about:
         "move of its own within 1 to 24 hours. Its scores are turned into chances using past data the model was not "
         "trained on.\n\n"
         "**What do the reasons mean?** For each coin the model lists the inputs that changed its score the most, "
-        "compared with an average situation. They explain the model's reasoning, not what will happen in the market.")
+        "compared with an average situation. They explain the model's reasoning, not what will happen in the market."
+        "\n\n**Is it live?** `cryptograph-live` adds Binance's newest hourly prices every hour (public data, no "
+        "account), prepares them exactly as the research data (every setting frozen; each update checks that the past "
+        "is unchanged) and scores the newest big moves. Hours after September 2026 were never used to build or tune "
+        "the model. The **Replay** tab plays back a past day hour by hour, as if live, and keeps score.")
     tm = dd.model_test_metrics(P.model_metrics, k_hours)
     if not tm.empty:
         st.markdown("**How good is it?** On 2024–2026 data it never saw, scored once:")
