@@ -73,7 +73,8 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     root, rd = predicted
     at = _app(monkeypatch, root)
     assert not at.exception, at.exception
-    assert [t.label for t in at.tabs] == ["Who's at risk", "Why", "Past crises", "Market map", "How it works"]
+    assert [t.label for t in at.tabs] == ["Who's at risk", "Why", "What if?", "Past crises", "Market map",
+                                          "How it works"]
     as_of = pd.Timestamp(dd.load_prediction(rd).summary["as_of"])
     assert any(as_of.strftime("%d %b %Y, %H:%M UTC") in m.value for m in at.markdown)
     assert at.metric[0].label == "Most likely to move next (6 hours)" and at.metric[0].value.split(":")[0] in COINS
@@ -81,12 +82,20 @@ def test_dashboard_renders_a_prediction_run(predicted, monkeypatch):
     assert any(e.label.startswith("Details: every time window") for e in at.expander)
     words = " ".join(m.value for m in at.markdown)
     assert "dropped sharply" in words or "jumped sharply" in words
-    at.select_slider(key="horizon").set_value(1).run()          # switch the time window
+    assert not at.sidebar.children and not at.selectbox(key="why_coin").disabled   # no sidebar, no run picker
+    assert at.segmented_control(key="horizon").value == 6
+    at.segmented_control(key="horizon").set_value(1).run()      # switch the time window in the navbar
     assert not at.exception, at.exception
     assert at.metric[0].label == "Most likely to move next (1 hour)"
     at.selectbox(key="why_coin").set_value(at.selectbox(key="why_coin").options[-1]).run()
     assert not at.exception, at.exception
     assert any("the risk)" in m.value for m in at.markdown)                 # plain-language reasons
+    assert any("would move most" in m.value for m in at.markdown)           # the what-if tab
+    at.selectbox(key="whatif_coin").set_value("CCC").run()
+    at.slider(key="whatif_shock").set_value(20).run()
+    at.selectbox(key="whatif_window").set_value("past week").run()
+    assert not at.exception, at.exception
+    assert any("**CCC** jumped **20%**" in m.value for m in at.markdown)
 
 
 def test_dashboard_without_runs_explains_what_to_do(tmp_path, monkeypatch):
@@ -140,17 +149,18 @@ def test_event_explorer_renders_and_switches_events(with_events, monkeypatch):
     assert not at.exception, at.exception
     box = at.selectbox(key="event")
     assert [o.split(" · ")[1] for o in box.options] == ["early", "late"]
-    assert any("Not a fair test" in w.value for w in at.warning)
+    assert not any("fair test" in w.value for w in at.warning)          # no banner for crises the model learned from
     late_id = dd.load_events_index(ev_dir)["events"][1]["id"]
     box.set_value(late_id).run()
     assert not at.exception, at.exception
-    assert any("A real test" in s.value for s in at.success)
+    assert not at.success and not any("fair test" in w.value for w in at.warning)   # no banner for any crisis
     assert any("flagged" in m.value and "at random" in m.value for m in at.markdown)
     at.multiselect(key="event_sectors").select("x").run()
     assert not at.exception, at.exception
-    # every chart is drawn as a chart: risk bars, all-windows heatmap, crisis replay, hourly bars, market map, duration
-    # (a chart passed to a banner by mistake would show its source text instead, megabytes of it for the replay)
-    assert len(at.get("plotly_chart")) == 6
+    # every chart is drawn as a chart: risk bars, all-windows heatmap, what-if map and paths, crisis replay, hourly
+    # bars, market map, duration (a chart passed to a banner by mistake would show its source text instead, megabytes
+    # of it for the replay)
+    assert len(at.get("plotly_chart")) == 8
     banners = [b.value for kind in (at.warning, at.success, at.info, at.error) for b in kind]
     assert banners and not any("Figure(" in b or len(b) > 400 for b in banners)
 

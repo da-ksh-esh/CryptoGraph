@@ -5,7 +5,8 @@
 
 Written for readers without a data-science background: plain words first, the technical details in "Details"
 expanders. Environment: CRYPTOGRAPH_RUNS_DIR (default <project>/runs), CRYPTOGRAPH_ROOT (project root for data/).
-Nothing is computed here beyond reading and plotting; every number comes from a tracked run.
+Nothing is computed here beyond reading and plotting; every number comes from a tracked run, except in the
+"What if?" tab, which fits a small VAR on the run's trailing hourly returns (serving/what_if.py).
 """
 
 from __future__ import annotations
@@ -15,7 +16,9 @@ from pathlib import Path
 
 from cryptograph.data.config import PROJECT_ROOT          # torch before pandas (Windows DLL order, see README)
 from cryptograph.serving import dashboard_data as dd
+from cryptograph.serving import what_if as wi
 
+import numpy as np                                        # noqa: E402
 import pandas as pd                                       # noqa: E402
 import plotly.express as px                               # noqa: E402
 import plotly.graph_objects as go                         # noqa: E402
@@ -29,8 +32,12 @@ st.set_page_config(page_title="CryptoGraph | who moves next", page_icon="🕸️
 # Minimal dark look: a black-to-grey gradient behind everything (base colours in .streamlit/config.toml)
 st.markdown("""<style>
 .stApp {background: linear-gradient(160deg, #07080a 0%, #111317 45%, #1c1f25 100%); background-attachment: fixed;}
-[data-testid="stHeader"] {background: transparent;}
-[data-testid="stSidebar"] {background: rgba(10, 11, 14, 0.72); border-right: 1px solid rgba(255, 255, 255, 0.06);}
+[data-testid="stHeader"] {background: rgba(9, 10, 12, 0.94);}
+.stMainBlockContainer {padding-top: 3.75rem;}
+[data-testid="stLayoutWrapper"]:has(> .st-key-navbar) {position: sticky; top: 3.75rem; z-index: 99;}
+.st-key-navbar {padding: 0.6rem 1rem; border-radius: 0.75rem; background: rgba(12, 13, 16, 0.92);
+    backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.06);}
+.st-key-navbar p {margin: 0;}
 [data-testid="stVerticalBlockBorderWrapper"] {border-color: rgba(255, 255, 255, 0.08) !important;
     background: rgba(255, 255, 255, 0.02);}
 h1 {font-weight: 600; letter-spacing: -0.02em;}
@@ -60,6 +67,17 @@ def _rankings(version: str):
 @st.cache_data(show_spinner=False)
 def _sectors() -> dict:
     return dd.load_sectors(ROOT)
+
+
+@st.cache_data(show_spinner="Loading hourly prices...")
+def _returns(summary: dict):
+    return wi.load_returns(summary, ROOT)
+
+
+@st.cache_data(show_spinner=False)
+def _shock_model(summary: dict, window: int, horizon: int) -> wi.ShockModel:
+    r, times, coins, thr = _returns(summary)
+    return wi.fit_shock_model(r, times, coins, int(summary["as_of_bar"]), window, horizon, threshold=thr)
 
 
 @st.cache_data(show_spinner=False)
@@ -103,28 +121,25 @@ def network_figure(coins: list[str], edges: pd.DataFrame, sector_of: dict, heigh
     return fig, pos
 
 
-# --- header and sidebar ----------------------------------------------------------------------------------------------
-st.title("CryptoGraph")
-st.markdown("#### Who moves next?")
-st.markdown("When one cryptocurrency makes a sudden big move, others often follow within hours. This page shows "
-            "**which coins are most likely to make a big move of their own next**, and why.")
+# --- navbar: name and the time window; the tabs follow right below -------------------------------------------------
 runs = dd.prediction_runs(RUNS)
 if not runs:
+    st.title("CryptoGraph")
     st.info("There is nothing to show yet. Run `cryptograph-predict` (it needs the trained model in `runs/` and the "
-            f"data in `data/processed/v2/`), then reload this page. Looked in `{RUNS}`.")
+            f"data in `data/processed/`), then reload this page. Looked in `{RUNS}`.")
     st.stop()
 
-with st.sidebar:
-    st.header("Settings")
-    with st.expander("Advanced"):
-        run = st.selectbox("Prediction run", runs, format_func=lambda p: p.name)
-    P = _prediction(str(run))
-    k_hours = list(P.summary["k_hours"])
-    h = st.select_slider("Look ahead", options=k_hours, value=6 if 6 in k_hours else k_hours[0],
-                         format_func=dd.horizon_label, key="horizon",
-                         help="How far ahead to look: the chance of a big move within this many hours.")
-    st.caption(f"Model run {P.summary['target_run']}")
-    st.caption("A research tool, not financial advice.")
+P = _prediction(str(runs[0]))                             # always the latest prediction run
+k_hours = list(P.summary["k_hours"])
+default_h = 6 if 6 in k_hours else k_hours[0]
+with st.container(key="navbar"):
+    brand, look = st.columns([2, 3], vertical_alignment="center")
+    brand.markdown("### CryptoGraph &nbsp;<span style='color:#9a9fa8; font-size:1rem; font-weight:400'>"
+                   "Who moves next?</span>", unsafe_allow_html=True)
+    h = look.segmented_control("Look ahead", k_hours, default=default_h, format_func=dd.horizon_label,
+                               key="horizon", width="stretch",
+                               help="How far ahead to look: the chance of a big move within this many hours.")
+h = default_h if h is None else h                         # clicking the selected window again clears it
 
 S = P.summary
 risk_h = P.risk[P.risk["horizon_h"] == h].copy()
@@ -134,34 +149,36 @@ risk_h = risk_h.sort_values(["risk", "score"], ascending=False)
 top = risk_h.iloc[0]
 H = dd.horizon_label(h)
 
-st.subheader("What just happened")
-with st.container(border=True):
-    st.markdown(f"**{when(S['as_of'])}** (the latest data)")
-    for src in P.sources.to_dict("records"):
-        recent = P.context.set_index("coin")["shocks_24h"].get(src["coin"]) if "shocks_24h" in P.context else None
-        st.markdown(dd.shock_sentence(src, dd.typical_duration(P.persistence, src["type"], src["direction"]),
-                                      None if recent is None or pd.isna(recent) else int(recent)))
-    if P.sources.empty:
-        st.markdown(f"Sudden big moves by: {', '.join(S['source_coins'])}.")
-    if S["hours_since_as_of"]:
-        st.caption(f"The data runs {S['hours_since_as_of']} hours past this moment.")
-
-c1, c2, c3 = st.columns(3)
-c1.metric(f"Most likely to move next ({H})", f"{top['coin']}: {top['risk']:.0%}",
-          help=f"The coin with the highest chance of a big move within {H}.")
-if typical is not None:
-    c2.metric("A typical coin", f"{typical:.0%} chance",
-              help=f"How often a coin made a big move within {H} after a shock elsewhere, in past data.")
-n_high = int(risk_h["level"].isin(["Much higher than usual", "Higher than usual"]).sum())
-c3.metric("Coins at higher-than-usual risk", f"{n_high} of {len(risk_h)}")
-if not S["calibrated"]:
-    st.warning("These numbers are raw model scores, not chances (the model run has no validation predictions).")
-
-tab_risk, tab_why, tab_past, tab_map, tab_about = st.tabs(
-    ["Who's at risk", "Why", "Past crises", "Market map", "How it works"])
+tab_risk, tab_why, tab_what_if, tab_past, tab_map, tab_about = st.tabs(
+    ["Who's at risk", "Why", "What if?", "Past crises", "Market map", "How it works"])
 
 # --- who's at risk -------------------------------------------------------------------------------------------------
 with tab_risk:
+    st.markdown("When one cryptocurrency makes a sudden big move, others often follow within hours. This page shows "
+                "**which coins are most likely to make a big move of their own next**, and why.")
+    st.subheader("What just happened")
+    with st.container(border=True):
+        st.markdown(f"**{when(S['as_of'])}** (the latest data)")
+        for src in P.sources.to_dict("records"):
+            recent = P.context.set_index("coin")["shocks_24h"].get(src["coin"]) if "shocks_24h" in P.context else None
+            st.markdown(dd.shock_sentence(src, dd.typical_duration(P.persistence, src["type"], src["direction"]),
+                                          None if recent is None or pd.isna(recent) else int(recent)))
+        if P.sources.empty:
+            st.markdown(f"Sudden big moves by: {', '.join(S['source_coins'])}.")
+        if S["hours_since_as_of"]:
+            st.caption(f"The data runs {S['hours_since_as_of']} hours past this moment.")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric(f"Most likely to move next ({H})", f"{top['coin']}: {top['risk']:.0%}",
+              help=f"The coin with the highest chance of a big move within {H}.")
+    if typical is not None:
+        c2.metric("A typical coin", f"{typical:.0%} chance",
+                  help=f"How often a coin made a big move within {H} after a shock elsewhere, in past data.")
+    n_high = int(risk_h["level"].isin(["Much higher than usual", "Higher than usual"]).sum())
+    c3.metric("Coins at higher-than-usual risk", f"{n_high} of {len(risk_h)}")
+    if not S["calibrated"]:
+        st.warning("These numbers are raw model scores, not chances (the model run has no validation predictions).")
+
     st.markdown(f"The chance that each coin makes **a big move of its own within the next {H}**, most likely first.")
     fig = px.bar(risk_h.iloc[::-1], x="risk", y="coin", orientation="h", color="level",
                  color_discrete_map=LEVEL_COLOR, category_orders={"level": [x[0] for x in dd.RISK_LEVELS]},
@@ -211,14 +228,119 @@ with tab_why:
     else:
         st.info("No explanation was saved for this coin at this time window (an older prediction run).")
 
+# --- what if? ---------------------------------------------------------------------------------------------------------
+MOVE_SCALE = [[0.0, "#d62728"], [0.5, "#3a3f47"], [1.0, "#2ca02c"]]          # price down red, up green
+with tab_what_if:
+    st.markdown("Pick a coin and a sudden price move, and see **how the move would spread to the other coins**, hour "
+                "by hour, judging by how the coins moved together recently.")
+    M = None
+    if _returns(S) is None:
+        st.info("The hourly prices are missing (`panel.pt` in `data/processed/`), so there is nothing to simulate.")
+    else:
+        ranks_w = _rankings(S.get("data_version", "v2"))
+        net = ranks_w.set_index("coin")["dy_net"] if "dy_net" in ranks_w else pd.Series(dtype=float)
+        c1, c2, c3 = st.columns([1.2, 2, 1.2])
+        w_name = c3.selectbox("Learn from", list(wi.WINDOWS), index=1, key="whatif_window",
+                              help="Which recent prices to learn from: how coins moved together over this period.")
+        try:
+            M = _shock_model(S, wi.WINDOWS[w_name], max(k_hours))
+        except ValueError as err:
+            st.warning(f"Not enough recent prices to simulate ({err}). Try a longer period.")
+    if M is not None:
+        options = wi.coin_options(M.coins, ranks_w)
+        src = c1.selectbox("Coin that moves", options, index=options.index("BTC") if "BTC" in options else 0,
+                           key="whatif_coin", help="Coins that tend to spread price swings to others are listed first.",
+                           format_func=lambda c: f"{c} (spreads swings)" if net.get(c, 0) > 0 else c)
+        shock = c2.slider("Its price move in one hour (%)", -50, 50, -2, 1, key="whatif_shock",
+                          help="Negative: a sudden drop. Positive: a sudden jump.")
+        sim = wi.simulate(M, src, shock)
+        last = int(sim["hour"].max())
+        final = wi.at_hour(sim, last)
+        others = final[~final["source"]]
+        st.markdown(wi.what_if_sentence(sim, src, shock, 0))
+        m1, m2, m3 = st.columns(3)
+        swing = float(M.usual_swing[M.coins.index(src)])
+        m1.metric(f"{src}'s move", f"{abs(np.log1p(shock / 100)) / swing:.0f}× usual" if swing > 0 else "—",
+                  help=f"{src}'s usual hourly price swing over the past week is about {swing:.2%}.")
+        m2.metric("Coins pushed into a big move", f"{int(others['big'].sum())} of {len(others)}",
+                  help=f"A big move: more than {M.threshold:.2f} times the coin's usual hourly swing.")
+        if len(others):
+            m3.metric(f"Hardest hit after {dd.horizon_label(last)}",
+                      f"{others.iloc[0]['coin']}: {others.iloc[0]['change_pct']:+.1f}%")
+
+        sector_w = ranks_w.set_index("coin")["sector"].to_dict() if not ranks_w.empty else _sectors()
+        fig, pos = network_figure(M.coins, pd.DataFrame(columns=["a", "b"]), sector_w, height=640)
+        lim = max(sim["change_pct"].abs().max(), 1e-9)              # colour and size range: the largest change
+        same_hour = wi.at_hour(sim, 0).set_index("coin")["change_pct"]
+        for c in M.coins:                                         # spokes from the shocked coin, wider = moves more
+            if c != src and abs(same_hour[c]) > 0.05 * lim:
+                fig.add_trace(go.Scatter(x=[pos[src][0], pos[c][0]], y=[pos[src][1], pos[c][1]], mode="lines",
+                                         line=dict(width=0.5 + 4 * min(abs(same_hour[c]) / lim, 1.5),
+                                                   color="rgba(214,39,40,0.35)" if same_hour[c] < 0
+                                                   else "rgba(44,160,44,0.35)"),
+                                         hoverinfo="none", showlegend=False))
+        xs, ys = [pos[c][0] for c in M.coins], [pos[c][1] for c in M.coins]
+
+        def move_tr(hour):
+            t = sim[sim["hour"] == hour].set_index("coin").loc[M.coins]
+            return go.Scatter(
+                x=xs, y=ys, mode="markers+text", text=M.coins, textposition="top center", showlegend=False,
+                marker=dict(size=[10 + 16 * min(abs(v) / lim, 1.5) for v in t["change_pct"]], color=t["change_pct"],
+                            colorscale=MOVE_SCALE, cmin=-lim, cmax=lim,
+                            colorbar=dict(title="price change (%)", thickness=12),
+                            symbol=["star" if s else "circle" for s in t["source"]],
+                            line=dict(width=[3 if b else 1 for b in t["big"]],
+                                      color=["#fafafa" if b else "#222" for b in t["big"]])),
+                hovertext=[f"{c}: {v:+.1f}% so far" + (" (big move)" if b else "")
+                           for c, v, b in zip(M.coins, t["change_pct"], t["big"])], hoverinfo="text")
+
+        fig.add_trace(move_tr(0))
+        node_i = len(fig.data) - 1
+        fig.frames = [go.Frame(data=[move_tr(hh)], traces=[node_i], name=str(hh)) for hh in range(last + 1)]
+        play = dict(frame=dict(duration=300, redraw=True), fromcurrent=True, transition=dict(duration=0))
+        fig.update_layout(
+            margin=dict(t=40, b=120),
+            updatemenus=[dict(type="buttons", direction="left", x=0, xanchor="left", y=0, yanchor="top",
+                              pad=dict(t=45), bgcolor="#262730", bordercolor="#888", font=dict(color="#fafafa"),
+                              showactive=False,
+                              buttons=[dict(label="▶ Play", method="animate", args=[None, play]),
+                                       dict(label="⏸ Pause", method="animate",
+                                            args=[[None], dict(frame=dict(duration=0, redraw=False),
+                                                               mode="immediate")])])],
+            sliders=[dict(active=0, x=0.16, len=0.84, y=0, yanchor="top", pad=dict(t=30),
+                          currentvalue=dict(prefix="hours after the move: "),
+                          steps=[dict(label=str(hh), method="animate",
+                                      args=[[str(hh)], dict(mode="immediate", frame=dict(duration=0, redraw=True))])
+                                 for hh in range(last + 1)])])
+        draw_chart(fig)
+        st.caption("Colour: each coin's price change so far (red down, green up). Bigger dots move more; a white ring "
+                   f"marks a big move of the coin's own; ★ is {src}. Lines from {src} show where its move goes in "
+                   "the same hour (wider = a larger move).")
+
+        top = others.head(8)["coin"].tolist()
+        fl = px.line(sim[sim["coin"].isin([src] + top)], x="hour", y="change_pct", color="coin", markers=True,
+                     category_orders={"coin": [src] + top},
+                     labels={"hour": f"hours after {src}'s move", "change_pct": "price change so far (%)", "coin": ""},
+                     title=f"{src} and the {len(top)} coins hit hardest, hour by hour")
+        fl.update_layout(height=360, margin=dict(t=50, b=10))
+        draw_chart(fl)
+        st.caption("Almost all of the spread happens in the same hour: crypto prices move together at once rather "
+                   "than one after another, and later hours add little.")
+
+        with st.expander("Details: every coin, and how this is worked out"):
+            tab = final.assign(sector=final["coin"].map(sector_w).fillna("other"),
+                               same_hour=final["coin"].map(same_hour))
+            st.dataframe(tab[["coin", "sector", "same_hour", "change_pct", "big"]].rename(columns={
+                "same_hour": "same hour (%)", "change_pct": f"after {dd.horizon_label(last)} (%)",
+                "big": "big move of its own"}).round(2), hide_index=True, width="stretch")
+            st.caption(f"A vector autoregression on {M.n_hours:,} hourly returns of {len(M.coins)} coins "
+                       f"({pd.Timestamp(M.start):%d %b %Y} to {pd.Timestamp(M.end):%d %b %Y}, {M.lags} lag), read "
+                       "through generalized impulse responses: the same-hour move is how much each coin's price has "
+                       f"moved with {src}'s on average, and later hours follow the lags. Moves scale in proportion "
+                       "with the shock, so very large shocks are a rough guide only (in a real crash coins move even "
+                       "more alike). A statistical what-if, separate from the model's risk scores.")
+
 # --- past crises -----------------------------------------------------------------------------------------------------
-PERIOD_BANNER = {
-    "test": (st.success, "**A real test.** The model never saw this crisis while it was built, so this shows how it "
-                         "would have done live."),
-    "validation": (st.warning, "**Not a fully fair test.** This crisis was used to fine-tune the model."),
-    "train": (st.warning, "**Not a fair test.** The model learned from this crisis, so it looks better here than it "
-                          "would in real life."),
-}
 with tab_past:
     ev_dir = dd.latest_events_dir(RUNS)
     if ev_dir is None:
@@ -231,8 +353,6 @@ with tab_past:
         ev = _event(str(ev_dir), eid)
         rp, sector_of = ev["replay"], _sectors()
         coins_ev = [x["coin"] for x in rp["sequence"]]
-        banner, text = PERIOD_BANNER.get(ev["split"], (st.warning, ev["split_note"]))
-        banner(text)
         st.markdown(ev["description"] + (f" [Read more]({ev['source_url']})" if ev["source_url"] else ""))
         m = rp["metrics"]
         c1, c2, c3 = st.columns(3)
@@ -365,7 +485,7 @@ with tab_map:
 
 # --- how it works -----------------------------------------------------------------------------------------------------
 with tab_about:
-    st.markdown(dd.about_text(S.get("data"), k_hours))
+    st.markdown(dd.about_text(S.get("data"), k_hours, S.get("uses_memory", True)))
     tm = dd.model_test_metrics(P.model_metrics, k_hours)
     if not tm.empty:
         st.markdown(f"**How good is it?** On {dd.test_period_phrase(S.get('data'))} it never saw, scored once:")
