@@ -46,6 +46,18 @@ def test_contagion_jump_is_the_rate_over_the_base_rate(tmp_path):
     assert cj["k_hours"].tolist() == [1, 24] and np.allclose(cj["lift"], [2.5, 1.2])
 
 
+def test_network_story_communities_and_crisis_changes():
+    from cryptograph.serving import story_network as sn
+
+    rk = pd.DataFrame({"coin": list("ABCDEF"), "sector": list("xxxyyy"), "community": [0, 0, 0, 1, 1, 1]})
+    c = sn.communities(rk, n_null=200)
+    assert np.isclose(c["nmi"], 1.0) and c["p"] < 0.1 and len(c["groups"]) == 2      # groups = sectors exactly
+    assert sn.communities(pd.DataFrame()) is None
+    ts = pd.DataFrame({"time": pd.date_range("2022-01-01", periods=40), "mean_corr": [0.3] * 20 + [0.5] * 20})
+    cc = sn.crisis_changes(ts, pd.DataFrame({"date": [pd.Timestamp("2022-01-21")], "name": ["Crash / detail"]}))
+    assert cc["crisis"].iloc[0] == "Jan 2022 · Crash" and np.isclose(cc["average correlation"].iloc[0], 0.2)
+
+
 def test_market_mode_finds_one_common_factor():
     rng = np.random.default_rng(0)
     market = rng.normal(size=(2000, 1))

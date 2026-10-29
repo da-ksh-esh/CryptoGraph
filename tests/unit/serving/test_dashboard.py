@@ -72,16 +72,20 @@ def _app(monkeypatch, root):
 def test_dashboard_renders_the_story(predicted, monkeypatch):
     at = _app(monkeypatch, predicted[0])
     assert not at.exception, at.exception
-    assert [t.label for t in at.tabs] == ["Home", "Past crises", "The network", "The model", "Results",
-                                          "Explain & stress tests"]
+    assert [t.label for t in at.tabs] == ["1 · The problem", "2 · How we built it", "3 · How coins move",
+                                          "4 · The network", "5 · Model & results", "6 · Why, how long, how safe",
+                                          "7 · Crises & what if"]
     words = " ".join(m.value for m in at.markdown)
-    assert "which coins are hit next" in words and "How it works, in five steps" in words
-    assert "pumpes" not in words
+    assert "which coins fall next" in words and "Our objective" in words and "STEP 8" in words
+    assert "pumpes" not in words and "🎤 Say:" not in words                 # speaker notes start hidden
     assert not at.sidebar.children                                            # no sidebar, no run picker
-    assert at.segmented_control(key="horizon").value == 6
-    at.segmented_control(key="horizon").set_value(1).run()      # switch the time window in the navbar
+    assert at.segmented_control(key="horizon").value == 1
+    at.segmented_control(key="horizon").set_value(6).run()      # switch the time window in the navbar
+    at.toggle(key="notes").set_value(True).run()
+    at.segmented_control(key="arch").set_value("v2: full TGN (memory on)").run()
     assert not at.exception, at.exception
-    assert any("would move most" in m.value for m in at.markdown)           # the what-if, on the network page
+    assert any("🎤 Say:" in m.value for m in at.markdown)
+    assert any("would move most" in m.value for m in at.markdown)           # the what-if, on the last page
     at.selectbox(key="whatif_coin").set_value("CCC").run()
     at.slider(key="whatif_shock").set_value(20).run()
     at.selectbox(key="whatif_window").set_value("past week").run()

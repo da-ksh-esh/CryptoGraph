@@ -17,15 +17,15 @@ K_HOURS = [1, 3, 6, 12, 24]
 
 # model id in the report files -> (label on the page, family) ; the order is the leaderboard's
 MODELS = {
-    "independent cascade": ("Independent cascade", "network baseline"),
+    "independent cascade": ("Cascade (classic spreading model)", "network baseline"),
     "gbm_1h_final": ("Gradient boosting", "machine learning"),
-    "v2|logreg": ("Logistic regression (4-number rules)", "machine learning"),
-    "v3-5m|gbm": ("Boosting, new inputs + 5-minute data", "machine learning"),
-    "v3-5m|logreg": ("Logistic regression, new inputs + 5-minute data", "machine learning"),
-    "dygformer_1h_final": ("DyGFormer (Transformer)", "temporal graph"),
-    "tgn_1h_nomem_final_v3": ("TGN without memory (report)", "temporal graph"),
-    "tgn_1h_final_v2": ("TGN, the report's model", "temporal graph"),
-    "tgn_1h_v3_final": ("TGN v3, after the report", "temporal graph"),
+    "v2|logreg": ("Logistic regression", "machine learning"),
+    "v3-5m|gbm": ("Gradient boosting + new inputs", "machine learning"),
+    "v3-5m|logreg": ("Logistic regression + new inputs", "machine learning"),
+    "dygformer_1h_final": ("DyGFormer (transformer)", "temporal graph"),
+    "tgn_1h_nomem_final_v3": ("TGN v2, memory off", "temporal graph"),
+    "tgn_1h_final_v2": ("TGN v2 (in the report)", "temporal graph"),
+    "tgn_1h_v3_final": ("TGN v3 (final model)", "temporal graph"),
 }
 
 
@@ -211,6 +211,30 @@ def find_run(runs_dir: Path | str, experiment: str, seed: int = 0) -> Path | Non
     runs = sorted(Path(runs_dir).glob(f"*_{experiment}_{seed}_*")) if Path(runs_dir).exists() else []
     runs = [r for r in runs if (r / "checkpoint.pt").exists()]
     return runs[-1] if runs else None
+
+
+def tgae_summary(runs_dir: Path | str) -> dict | None:
+    """The T-GAE anomaly detector (notebook 06): test AUROCs for stress days and its daily scores."""
+    run = find_run(runs_dir, "tgae_1h_final")
+    if run is None or not (run / "metrics.json").exists() or not (run / "tgae_scores.csv").exists():
+        return None
+    m = _json(run / "metrics.json")
+    scores = pd.read_csv(run / "tgae_scores.csv", parse_dates=["time"])
+    return {"same_day": {"T-GAE anomaly score": m["test_auroc_stress_score"],
+                         "plain turbulence": m["test_auroc_stress_turbulence"]},
+            "next_day": {"T-GAE anomaly score": m["test_auroc_stress_next_day_score"],
+                         "plain turbulence": m["test_auroc_stress_next_day_turbulence"]},
+            "scores": scores}
+
+
+def five_minute_rows(root: Path = PROJECT_ROOT) -> int | None:
+    """Rows in the stacked 5-minute Binance bars (scripts/fetch_5m.py), read from the parquet footer only."""
+    p = Path(root) / "data" / "interim" / "hourly" / "klines_5m.parquet"
+    if not p.exists():
+        return None
+    import pyarrow.parquet as pq
+
+    return int(pq.ParquetFile(p).metadata.num_rows)
 
 
 def run_settings(run_dir: Path | str | None) -> dict:
