@@ -186,6 +186,7 @@ EVENT_PLAIN = {"src_vol_z": "the shocking coin's recent jumpiness", "src_return_
                "src_shock": "shock flag"}
 MARKET_WINDOW_START = "2024-04-02"                        # all 30 coins listed (ENA), as in notebook 02
 RANKINGS_VERSION = "v2"                                   # notebook 02 wrote the rankings; v3 keeps the same prices
+EMBEDDING_DIM = 64                                        # configs/model/tgn.yaml: embedding_dim
 MOVE_SCALE = [[0.0, "#d62728"], [0.5, "#3a3f47"], [1.0, "#2ca02c"]]          # price down red, up green
 
 
@@ -476,7 +477,9 @@ with tab_built:
                                 default="v3: final model (memory off)", key="arch")
     is_v3 = arch != "v2: full TGN (memory on)"
     _, in3, _ = _params("tgn_1h_v3_final")
-    head_text = (f"{in3 or 206} numbers: both coins, the shock, the market, the time → 64 → 5" if is_v3
+    n3 = in3 - 2 * EMBEDDING_DIM if in3 else 78           # with memory off the two embedding slots are always zero
+    w3 = 64 * n3 + 64 + 64 * 5 + 5                        # head weights that multiply a real input
+    head_text = (f"{n3} numbers: both coins, the shock, the market, the time → 64 → 5" if is_v3
                  else "diaries + both coins' numbers + the event → 64 → 5")
     svg = (TGN_SVG.replace("MEMORY_OPACITY", "0.18" if is_v3 else "1").replace("SHORTCUT_OPACITY", "1" if is_v3 else "0")
            .replace("HEAD_TEXT", head_text))
@@ -498,7 +501,8 @@ with tab_built:
 - In **v3** we fixed how the memory updates and gave the model better inputs: each coin's jumpiness compared with
   its *own* normal, the 5-minute summaries, the time of day, and the mood of the whole market.
 - Then we tested memory on and off. **Off was slightly better**, so the final model uses only the prediction head:
-  {f"{in3}" if in3 else "206"} input numbers, about 13,600 learned numbers.
+  a small 2-layer network reading **{n3} numbers** about the two coins (8 of them network numbers each), the shock and
+  the market, with about {w3:,} learned numbers that matter.
 - Notebook 03 had already shown memory did not help at 1 hour (the "memory off" test).""")
     say("The full TGN has a memory per coin and attention over recent events. In version 3 we fixed the memory and gave "
         "the model better inputs, then tested memory on and off. Memory off was slightly better, so the final model "
@@ -518,6 +522,10 @@ with tab_built:
                             color_discrete_sequence=[TEAL, VIOLET, AMBER, GREY])
                 fp.update_traces(textinfo="label+value")
                 fp.update_layout(showlegend=False, margin=dict(t=10, b=10))
+                if pv is pv3 and in3:
+                    st.caption(f"The head is {in3} inputs wide, but with memory off the two {EMBEDDING_DIM}-number "
+                               f"memory slots are always zero: {n3} inputs carry information, and about {w3:,} of "
+                               "these learned numbers act on them.")
                 draw_chart(fp, 280)
 
         def settings(cfg: dict) -> dict:
