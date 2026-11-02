@@ -867,7 +867,7 @@ with tab_results:
     if not bt.empty:
         section("v3", "From v2 to v3: a real improvement",
                 "Same questions, same test. v3 scores higher at every time window. To check it is not luck, we "
-                "re-ran the comparison 1,000 times on randomly re-drawn test days (a bootstrap). Whole days are "
+                "re-ran the comparison 300 times on randomly re-drawn test weeks (a bootstrap). Whole weeks are "
                 "drawn together, because one crash creates hundreds of linked events.")
         c1, c2 = st.columns(2)
         long = pd.concat([bt.assign(model="v2 (report)", score=bt["v2"]), bt.assign(model="v3 (final)", score=bt["v3"])])
@@ -888,10 +888,10 @@ with tab_results:
             draw_chart(fb, 360)
         b1 = bt[bt["k_hours"] == 1].iloc[0] if (bt["k_hours"] == 1).any() else bt.iloc[0]
         st.caption(f"At 1 hour: {b1['v2']:.3f} → {b1['v3']:.3f} (+{b1['diff']:.3f}; 95% range {b1['ci_lo']:+.3f} to "
-                   f"{b1['ci_hi']:+.3f}). v3 was ahead in {b1['share_v3_better']:.1%} of the 1,000 re-runs. Every range "
+                   f"{b1['ci_hi']:+.3f}). v3 was ahead in {b1['share_v3_better']:.1%} of the 300 re-runs. Every range "
                    "stays above zero.")
         say(f"Version 3 beats version 2 at every window. At one hour it goes from {b1['v2']:.3f} to {b1['v3']:.3f}, and "
-            f"it wins in {b1['share_v3_better']:.1%} of a thousand re-runs, so the improvement is real.")
+            f"it wins in {b1['share_v3_better']:.1%} of 300 re-runs, so the improvement is real.")
 
     if not lb.empty:
         section("Notebook 03", "How much better than guessing, at every window",

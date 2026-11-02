@@ -14,14 +14,17 @@ shock next, with motif-based explanations (TempME) and robustness tests.
 |---|---|
 | Daily data (20 coins, 2016–2026; Yahoo + Coin Metrics) | done — `data/processed/v1/` |
 | Hourly data (30 coins, 2020–2026; Binance, 1h + 2h) | done — `data/processed/v2/` |
+| v3 inputs (v2 + volatility ratios, short-window volatility, trades, 5-minute features) | done — `data/processed/v3/` |
 | EDA (notebook 01) and network analysis (notebook 02) | done |
 | Independent cascade baseline, Diebold–Yilmaz rankings, network node features | done |
 | Run tracking, data packaging, Colab runner | done (smoke-tested) |
 | Models: TGN (main), DyGFormer, LSTM, gradient boosting, ensemble; 5 seeds, test scored once (notebook 03) | done |
+| **Final model: `tgn_1h_v3_final`** (TGN head on the v3 inputs, no memory; 5 seeds, test scored once) | done: ahead of v2 at every horizon, see [Final model](#-final-model-v3) |
 | Explanations: TempME ported to the TGN, integrated gradients, case studies (notebook 04) | done |
 | Shock persistence by type (notebook 05) | done |
 | Robustness: T-GAE anomaly scores, noise / missing-data / FGSM stress tests (notebook 06) | done |
-| Serving: `cryptograph-predict` (calibrated risk per coin + integrated-gradient drivers), Streamlit dashboard, TGN compression for CPU | done: final runs on `tgn_1h_final_v2` seed 0; serve fp32 (int8 is 3x smaller but slower and costs ~0.005 AUPRC; `reports/compression/`, `docs/merge_notes.md`) |
+| Serving: `cryptograph-predict` (calibrated risk per coin + integrated-gradient drivers), Streamlit dashboard | done: v2 and v3 configs; the dashboard runs on `tgn_1h_v3_final` seed 0 |
+| TGN compression for CPU | done on `tgn_1h_final_v2` seed 0; serve fp32 (int8 is 3x smaller but slower and costs ~0.005 AUPRC; `reports/compression/`, `docs/merge_notes.md`) |
 
 ---
 
@@ -30,24 +33,28 @@ shock next, with motif-based explanations (TempME) and robustness tests.
 ```text
 CryptoGraph/
 ├── configs/
-│   ├── data/daily.yaml, hourly.yaml   # windows, universe, quality, features, labels, splits, graphs, network
+│   ├── data/daily.yaml, hourly.yaml, hourly_v3.yaml   # windows, universe, quality, features, labels, splits, graphs
 │   ├── model/                # architecture of lstm, tgn, dygformer (training settings in experiment/)
 │   └── experiment/           # one YAML per run: *_dev (validation only), *_final (test), tempme, tgae, robustness,
-│                             #   predict_tgn_1h, compress_tgn_1h
+│                             #   predict_tgn_1h(_v3), predict_events_1h(_v3), compress_tgn_1h
 ├── colab/                    # self-contained Colab notebooks + runner.ipynb + README (Colab / Kaggle)
 ├── data/                     # raw / interim / processed (gitignored) + curated external/events.csv, sectors.csv
-├── dashboard/                # Streamlit UI over cryptograph-predict runs (risk, alerts + drivers, duration, network)
-├── docs/                     # model_plan.md, hourly_data_notes.md, merge_notes.md
+├── dashboard/                # Streamlit app: the project's story in 8 tabs, from the problem to the latest warnings
+├── docs/                     # model_plan.md, hourly_data_notes.md, merge_notes.md, accuracy_v3_notes.md,
+│                             #   challenges_and_solutions.md, viva_additions.md
 ├── notebooks/                # 01 data & EDA, 02 networks, 03 models, 04 explanations, 05 persistence, 06 robustness
 ├── reports/                  # audit, quality, baseline, network, explain/ and robustness/ tables, figures
+├── presentation/             # project slides
 ├── runs/                     # local experiment runs + results.csv (gitignored)
+├── scripts/                  # v3 work: 5-minute fetch, fair re-scoring, go/no-go, 15-minute task, sender check
 ├── src/cryptograph/
 │   ├── data/                 # sources, quality, features, graphs, datasets, universe (daily + hourly)
 │   ├── network/              # centrality, communities, MST, topology, spillover, independent cascade, node features
 │   ├── models/               # LSTM, TGN, DyGFormer, T-GAE (SnapshotTGAE); snapshot GNN not built
 │   ├── explain/              # TempME port, TGN capture, fidelity baselines, integrated gradients
 │   ├── robustness/           # stress tests (noise, missing events, FGSM / PGD), driver stability, anomaly scoring
-│   ├── serving/              # predict (risk + drivers), compress (int8 / pruning vs fp32), dashboard data
+│   ├── serving/              # predict (risk + drivers), events (crisis replays), what_if (VAR), story + dashboard
+│   │                         #   data, compress (int8 / pruning vs fp32)
 │   ├── training/             # runner + tasks (TGN, DyGFormer, LSTM, boosting, T-GAE), refit, tracking, metrics
 │   ├── analysis/             # statistics, lead-lag, Diebold-Yilmaz, event studies, persistence, evaluation, baselines
 │   ├── pipelines/            # build_data (cryptograph-data), train (cryptograph-train), predict (cryptograph-predict),
@@ -66,8 +73,10 @@ pip install -e .
 pytest
 cryptograph-data --stage all                                        # daily data (needed by the hourly clean stage)
 cryptograph-data --config configs/data/hourly.yaml --stage all      # audit -> fetch -> clean -> build -> network -> baselines
-cryptograph-train --config configs/experiment/tgn_1h_final_v2.yaml --seed 0   # one final TGN run -> runs/<run_id>/
+cryptograph-train --config configs/experiment/tgn_1h_final_v2.yaml --seed 0   # one v2 TGN run -> runs/<run_id>/
 ```
+
+For the final model, continue with [Final model](#-final-model-v3).
 
 ---
 
@@ -126,7 +135,7 @@ Raw downloads are write-once snapshots under `data/raw/` and are reused on later
 - Choosing coins by today's ranking introduces survivorship bias.
 - The sample is small by DL standards (about 3,650 days × 20 nodes).
 
-## ⏱️ Hourly data (`data/processed/v2/`) — the modelling dataset
+## ⏱️ Hourly data (`data/processed/v2/`) — the base modelling dataset (v3 adds inputs)
 
 ```bash
 cryptograph-data --stage all                                        # daily data first (hourly clean cross-checks it)
@@ -148,6 +157,31 @@ cryptograph-data --config configs/data/hourly.yaml --stage all      # = audit, f
   `splits.json`, `metadata.json`, `data_dictionary.md`. `v2/rankings.csv`: coin rankings for explanation validation only.
 - **Splits:** same dates as daily (train → 2022-06-30, val → 2023-12-31, test → 2026-09-27) with a 7-day embargo.
 
+## 🏁 Final model (v3)
+
+`tgn_1h_v3_final` keeps v2's labels, events and splits and changes the inputs. Its inputs are the v3 coin features,
+calendar features, the shock sizes of both coins in the event message, and the event context (recent shocks of both
+coins, market breadth). It runs **without memory**: on validation that variant was the best TGN (mean AUPRC 0.400, 0.398
+with memory), so past relations reach the model through rolling features (7-day pair correlations, 30-day spillover and
+90-day shock-transmission network features) and not through a learned memory.
+
+| Test AUPRC (2024-01 → 2026-09, scored once) | 1h | 3h | 6h | 12h | 24h |
+|---|---|---|---|---|---|
+| v2 TGN | 0.206 | 0.353 | 0.465 | 0.589 | 0.740 |
+| **v3 TGN** | **0.232** | **0.383** | **0.500** | **0.620** | **0.762** |
+| v3 minus v2 (95% range) | +0.026 (0.007, 0.052) | +0.030 (0.012, 0.047) | +0.035 (0.019, 0.050) | +0.031 (0.015, 0.045) | +0.023 (0.012, 0.034) |
+
+Probabilities averaged over 5 seeds, same test events, week-block bootstrap with 300 resamples
+(`reports/final_tgn_v3_vs_v2_test.csv`). Random guessing scores 0.105 at 1 hour, so v3 is 2.2× better there. Fair metrics
+are in `reports/fair_eval_v3.csv`; the full account, including what did not help, is in `docs/accuracy_v3_notes.md`.
+
+```bash
+python scripts/fetch_5m.py                                              # 5-minute klines, checksum verified
+cryptograph-data --config configs/data/hourly_v3.yaml --stage build     # data/processed/v3/
+cryptograph-data --config configs/data/hourly_v3.yaml --stage network
+cryptograph-train --config configs/experiment/tgn_1h_v3_final.yaml --seed 0   # seeds 0-4 for the reported numbers
+```
+
 ## 🧪 Training runs, Colab and data packages
 
 - `cryptograph-train --config configs/experiment/<name>.yaml --seed <n> --device auto|cpu|cuda` writes
@@ -160,15 +194,15 @@ cryptograph-data --config configs/data/hourly.yaml --stage all      # = audit, f
 
 ## 🔮 Serving: predictions, dashboard, compression
 
-Needs the final TGN run (`runs/*_tgn_1h_final_v2_0_*`, with its `predictions_val.pt`) and `data/processed/v2/`.
+Needs the trained run (`runs/*_tgn_1h_v3_final_0_*`, with its `predictions_val.pt`) and `data/processed/v3/`; the same commands without the `_v3` configs use `tgn_1h_final_v2` and `data/processed/v2/`. Runs and data are not in git, so the dashboard needs them locally.
 
 ```bash
-cryptograph-predict                                   # latest shock bar -> runs/<run_id>/risk.csv, alerts.json, ...
-cryptograph-predict --as-of "2025-10-10 21:00"        # the risk as it stood at that hour
-streamlit run dashboard/app.py                        # shows the latest prediction run
+cryptograph-predict --config configs/experiment/predict_tgn_1h_v3.yaml   # latest shock bar -> runs/<run_id>/risk.csv, ...
+cryptograph-predict --config configs/experiment/predict_tgn_1h_v3.yaml --as-of "2025-10-10 21:00"   # risk at that hour
+cryptograph-train --config configs/experiment/predict_events_1h_v3.yaml  # catalogued crises for the dashboard
+streamlit run dashboard/app.py                        # shows the latest runs
 cryptograph-train --config configs/experiment/compress_tgn_1h.yaml        # int8 / pruning vs fp32 on the test events
 cryptograph-train --config configs/experiment/robustness_extra_1h.yaml    # PGD attacks + driver stability
-cryptograph-train --config configs/experiment/predict_events_1h.yaml     # catalogued crises for the dashboard
 ```
 
 - **Risk** per coin and horizon (1–24 h) = the highest calibrated probability over the most recent shock events that
@@ -176,6 +210,11 @@ cryptograph-train --config configs/experiment/predict_events_1h.yaml     # catal
   the test period) and made non-decreasing in the horizon. Alerts are ranked by lift over each horizon's base rate.
 - **Drivers** = integrated gradients on the prediction head for the coin's top event (completeness checked per run).
 - **Shock context** = type of the source shock (notebook 05) and how long such shocks lasted before the as-of hour.
+- **Dashboard tabs:** 1 The problem, 2 How we built it, 3 How coins move, 4 The network, 5 Model & results, 6 Why, how
+  long, how safe, 7 Crises & what if, 8 Who's next now (the latest ranking, the reasons for a coin, and the steps from
+  its score to its chance, using the run's `calibration.json`).
+- **What if?** (`serving/what_if.py`): move one coin's price and watch the spread, from a small VAR with generalised
+  impulse responses on recent hourly returns. It is a statistical what-if, separate from the TGN.
 - **Event explorer** (dashboard tab, `serving/events.py`): each catalogued crisis in the hourly data, anchored at the
   hour of its date with the most shocks: an hour-by-hour replay of the shock network, coins shocking per hour, the
   per-coin shock sequence, and the model's risk at the crisis hour next to what happened (hits vs chance). Each event

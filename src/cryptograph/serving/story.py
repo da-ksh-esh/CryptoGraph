@@ -107,7 +107,7 @@ def leaderboard(root: Path = PROJECT_ROOT) -> pd.DataFrame:
 
 
 def bootstrap_v3_vs_v2(root: Path = PROJECT_ROOT) -> pd.DataFrame:
-    """Day-block bootstrap of the v3 TGN against the report's TGN on the test events."""
+    """Week-block bootstrap (300 resamples) of the v3 TGN against the report's TGN on the test events."""
     return _csv(root, "reports/final_tgn_v3_vs_v2_test.csv")
 
 
