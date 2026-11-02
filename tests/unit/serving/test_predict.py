@@ -125,6 +125,15 @@ def test_predict_task_end_to_end(toy_project):
     assert set(shocks.coin) == {COINS[s] for s in d.src[d.t == last].unique().tolist()}
     assert latest_prediction_dir(root / "runs") == rd and latest_prediction_dir(root / "runs", "other") is None
     assert (root / "runs" / "results.csv").exists()
+    cal = json.loads((rd / "calibration.json").read_text())                 # the score -> chance table, per horizon
+    assert set(cal) == {str(k) for k in K_HOURS}
+    for k in K_HOURS:
+        t = cal[str(k)]
+        assert len(t["score"]) == len(t["rate"]) == len(t["events"]) and sum(t["events"]) == 400
+        assert np.all(np.diff(t["rate"]) >= 0) and np.isclose(t["base_rate"], summary["base_rate"][K_HOURS.index(k)])
+    first = risk[risk.horizon_h == K_HOURS[0]]           # the shortest window's chance is its score looked up there
+    t = cal[str(K_HOURS[0])]                              # (longer windows may be raised to a shorter one's chance)
+    assert np.allclose(np.interp(first.score, t["score"], t["rate"]), first.risk, atol=2e-3)
 
 
 def test_predict_matches_the_stream_scores(toy_project):

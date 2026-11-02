@@ -60,7 +60,7 @@ class Calibrator:
     def __init__(self, prob: np.ndarray, y: np.ndarray, mask: np.ndarray, min_bin: int = 500):
         from sklearn.isotonic import IsotonicRegression
 
-        self.x, self.fx, self.base_rate = [], [], []
+        self.x, self.fx, self.n, self.base_rate = [], [], [], []
         for k in range(prob.shape[1]):
             m = mask[:, k].astype(bool)
             s, yk = prob[m, k].astype(np.float64), y[m, k].astype(np.float64)
@@ -72,6 +72,7 @@ class Calibrator:
             fx = IsotonicRegression(y_min=0.0, y_max=1.0).fit(xs, ys, sample_weight=w).predict(xs)
             self.x.append(xs)
             self.fx.append(fx)
+            self.n.append(w.astype(int))
             self.base_rate.append(float(yk.mean()))
 
     @classmethod
@@ -81,6 +82,13 @@ class Calibrator:
             return None
         pv = load_pt(p)
         return cls(pv["prob"].float().numpy(), pv["y"].numpy(), pv["mask"].numpy(), min_bin=min_bin)
+
+    def to_dict(self, k_hours: list[int]) -> dict:
+        """The table per horizon (bin mean score, observed rate after isotonic, events per bin) and the base rate, for
+        the dashboard's step-by-step explanation of a chance (calibration.json)."""
+        return {str(int(kh)): {"score": x.round(6).tolist(), "rate": fx.round(6).tolist(), "events": n.tolist(),
+                               "base_rate": b}
+                for kh, x, fx, n, b in zip(k_hours, self.x, self.fx, self.n, self.base_rate)}
 
     def __call__(self, prob: np.ndarray) -> np.ndarray:
         """(N, K) scores -> (N, K) calibrated risk, non-decreasing in k ("within 6 h" includes "within 3 h")."""
@@ -252,6 +260,8 @@ def predict_task(cfg: dict, seed: int, device: torch.device, tracker) -> dict[st
             typical = f"typically back to normal in {h['median_hours_to_normal'].iloc[0]:.0f} h" if len(h) else ""
             tracker.log(f"source {x.coin}: {x.type} {x.direction} (z {x.z:+.1f}, breadth {x.breadth:.0%}) {typical}")
     (tracker.dir / "alerts.json").write_text(json.dumps(alert_list, indent=1, default=float), encoding="utf-8")
+    if cal is not None:                                       # the score -> chance table (dashboard explanation)
+        (tracker.dir / "calibration.json").write_text(json.dumps(cal.to_dict(K)), encoding="utf-8")
     (tracker.dir / "summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
 
     for kh in K:

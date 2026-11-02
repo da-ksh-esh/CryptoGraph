@@ -5,7 +5,8 @@
     streamlit run dashboard/app.py
 
 Written for listeners without a finance or deep-learning background: short sentences, everyday words, every technical
-term explained once. "Speaker notes" in the top bar shows a ready-to-say line under each chart. Environment:
+term explained once. Speaker notes (a ready-to-say line under each chart) are kept in the code, switched off by
+NOTES. Environment:
 CRYPTOGRAPH_RUNS_DIR (default <project>/runs), CRYPTOGRAPH_ROOT (project root for data/ and reports/). Every number is
 read from the report files and runs (serving/story.py) or recomputed from the processed data with the notebooks'
 own functions (serving/story_network.py); "What if?" fits a small VAR on recent hourly returns (serving/what_if.py).
@@ -69,6 +70,7 @@ footer {{visibility: hidden;}}
 .step .n {{color: {TEAL}; font-weight: 700; font-size: .78rem; letter-spacing: .1em;}}
 .step b {{display: block; margin: .2rem 0 .3rem; font-size: 1.05rem;}}
 .step span {{color: #b4bac3; font-size: .9rem; line-height: 1.45;}}
+.step span b {{display: inline; margin: 0; font-size: inherit; color: #fafafa;}}
 .step code {{font-size: .78rem; color: #9a9fa8; background: none; padding: 0;}}
 .cards {{display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; margin: .6rem 0 1.4rem;}}
 .card {{border: 1px solid rgba(255,255,255,.08); border-radius: .9rem; padding: 1rem 1.1rem; background: rgba(255,255,255,.025);}}
@@ -171,6 +173,11 @@ def _params(experiment: str):
 
 
 @st.cache_data(show_spinner=False)
+def _calibration(path: str):
+    return dd.load_calibration(path, _prediction(path).summary)
+
+
+@st.cache_data(show_spinner=False)
 def _tgae():
     return sy.tgae_summary(RUNS)
 
@@ -208,7 +215,7 @@ def section(notebook: str, title: str, plain: str) -> None:
 
 
 def say(text: str) -> None:
-    """A speaker note, shown only when 'Speaker notes' is on."""
+    """A speaker note, shown only when NOTES is on."""
     if NOTES:
         st.markdown(f"<div class='say'><b>🎤 Say:</b> {text}</div>", unsafe_allow_html=True)
 
@@ -248,14 +255,14 @@ version = S.get("data_version", "v3")
 k_hours = list(S.get("k_hours", sy.K_HOURS))
 default_h = 1 if 1 in k_hours else k_hours[0]
 with st.container(key="navbar"):
-    brand, look, notes = st.columns([1.3, 4, 1], vertical_alignment="center")
+    brand, look = st.columns([1.3, 5], vertical_alignment="center")
     brand.markdown("### CryptoGraph", help="Crypto shock contagion: which coins fall next, and how soon?")
     h = look.segmented_control("Look ahead", k_hours, default=default_h, format_func=lambda k: f"{k} h",
                                key="horizon", width="stretch",
                                help="How far ahead we ask: will the coin shock within this time? Used by the results "
                                     "and the crisis replays.")
-    NOTES = notes.toggle("🎤 Notes", key="notes", help="Speaker notes: a ready-to-say line under each part.")
 h = default_h if h is None else h                         # clicking the selected window again clears it
+NOTES = False                                             # speaker notes off (no toggle in the navbar)
 H = dd.horizon_label(h)
 
 facts = sy.dataset_facts(ROOT, version)
@@ -267,9 +274,9 @@ v3, m15 = head.get("v3"), head.get("m15")
 pers = P.persistence if P is not None else pd.DataFrame()
 mm = _market_mode(version, MARKET_WINDOW_START)
 
-(tab_problem, tab_built, tab_moves, tab_net, tab_results, tab_why, tab_crises) = st.tabs(
+(tab_problem, tab_built, tab_moves, tab_net, tab_results, tab_why, tab_crises, tab_next) = st.tabs(
     ["1 · The problem", "2 · How we built it", "3 · How coins move", "4 · The network", "5 · Model & results",
-     "6 · Why, how long, how safe", "7 · Crises & what if"])
+     "6 · Why, how long, how safe", "7 · Crises & what if", "8 · Who's next now"])
 
 # --- 1. the problem -------------------------------------------------------------------------------------------------
 with tab_problem:
@@ -933,13 +940,6 @@ with tab_results:
         st.caption("Test years, scored once, with a simple model (logistic regression) on the receiving coin's state and "
                    "the market's mood.")
 
-    section("Being honest", "What the results do not show",
-            "A simple model (logistic regression) comes close at 1 hour. That tells us most of the hourly signal is "
-            "in each coin's own state: is it already busy and jumpy? The graph adds most after market-wide shocks "
-            "(notebook 05). And most shocks start with news nobody can predict, so no model gets near a perfect "
-            "score.")
-    say("We are honest about the limits. A simple model comes close at one hour, because most of the signal is in the "
-        "coin's own state. The graph model helps most when the shock is market-wide.")
     takeaway("the final TGN is the best model at every window, about twice as good as guessing, and the v3 gain over v2 "
              "is statistically real; contagion is fast, so finer data is the next step.")
 
@@ -1313,3 +1313,123 @@ with tab_crises:
             "little. That is the same-hour contagion we found in the data.")
     takeaway("real crises spread across almost the whole market within hours, and the what-if shows the same thing: "
              "the spread happens in the same hour.")
+
+
+# --- 8. who's next now: the latest prediction, its reasons, and how a chance is worked out ----------------------------
+LEVEL_COLOR = {label: colour for label, colour, _ in dd.RISK_LEVELS} | {"Unknown": GREY}
+with tab_next:
+    st.markdown("### Who's next now: the model's latest warnings")
+    if P is None:
+        st.info("No prediction yet. Run `cryptograph-predict`, then reload this page.")
+    else:
+        risk_h = P.risk[P.risk["horizon_h"] == h].copy()
+        typical = (float(risk_h["base_rate"].iloc[0])
+                   if "base_rate" in risk_h and risk_h["base_rate"].notna().any() else None)
+        risk_h["level"] = [dd.risk_level(x)[0] for x in (risk_h["lift"] if "lift" in risk_h else [None] * len(risk_h))]
+        risk_h = risk_h.sort_values(["risk", "score"], ascending=False)
+        when = lambda ts: pd.Timestamp(ts).strftime("%d %b %Y, %H:%M UTC")   # noqa: E731
+        st.markdown(f"<div class='plain'>The latest hour in our data is <b>{when(S['as_of'])}</b>. This is what "
+                    "happened, and what the final model expects next.</div>", unsafe_allow_html=True)
+        for src_ in P.sources.to_dict("records"):
+            recent = (P.context.set_index("coin")["shocks_24h"].get(src_["coin"])
+                      if "shocks_24h" in P.context else None)
+            st.markdown(dd.shock_sentence(src_, dd.typical_duration(pers, src_["type"], src_["direction"]),
+                                          None if recent is None or pd.isna(recent) else int(recent)))
+
+        section("Live", f"Who is most likely to shock next (within {H})",
+                "Every other coin gets a chance of its own shock within the time window you picked in <b>Look "
+                "ahead</b>. Colours compare each coin with a typical coin (the dotted line).")
+        fr = px.bar(risk_h.iloc[::-1], x="risk", y="coin", orientation="h", color="level",
+                    color_discrete_map=LEVEL_COLOR, category_orders={"level": [x[0] for x in dd.RISK_LEVELS]},
+                    labels={"risk": f"chance of a shock within {H}", "coin": "", "level": ""},
+                    hover_data={"risk": ":.0%", "level": True, "coin": False})
+        if typical is not None:
+            fr.add_vline(x=typical, line_dash="dot", line_color=GREY, annotation_text="typical coin",
+                         annotation_position="bottom right")
+        fr.update_layout(xaxis_tickformat=".0%", legend=dict(orientation="h", y=1.04, yanchor="bottom", title=None),
+                         yaxis=dict(categoryorder="array", categoryarray=risk_h["coin"].tolist()[::-1]),
+                         margin=dict(t=60))
+        draw_chart(fr, max(460, 24 * len(risk_h) + 90))
+        top = risk_h.iloc[0]
+        say(f"Right now the model's top warning is {top['coin']}: a {top['risk']:.0%} chance of its own shock within "
+            f"{H}, against {typical:.0%} for a typical coin." if typical is not None else
+            f"Right now the model's top warning is {top['coin']}.")
+
+        section("Live", "Why this coin?",
+                "Pick a coin to see the inputs that pushed its score up or down the most (integrated gradients), "
+                "with the coin's real values where they read naturally.")
+        coin = st.selectbox("Choose a coin", risk_h["coin"].tolist(), key="next_coin",
+                            help="Coins are listed from most to least likely to shock next.")
+        r = risk_h[risk_h["coin"] == coin].iloc[0]
+        label, colour = dd.risk_level(r.get("lift"))
+        rel = f", <b>{r['lift']:.1f}×</b> a typical coin" if pd.notna(r.get("lift")) else ""
+        st.markdown(f"#### {coin}: {r['risk']:.0%} chance of a shock within {H}")
+        st.markdown(f"<span style='color:{colour}; font-weight:600'>{label}</span>{rel}. This follows the shock of "
+                    f"<b>{r['source']}</b> at {when(r['event_time'])}.", unsafe_allow_html=True)
+        drivers = P.drivers.get(f"{coin}|{h}", [])
+        for d in drivers:
+            arrow = (f"<span style='color:{RED}; font-weight:700'>▲</span>" if d["attribution"] > 0
+                     else f"<span style='color:{GREEN}; font-weight:700'>▼</span>")
+            st.markdown(f"- {arrow} {dd.plain_driver(d, coin, r['source'], P.context)}", unsafe_allow_html=True)
+        if not drivers:
+            st.info("No reasons were saved for this coin at this time window (an older prediction run).")
+
+        cal = _calibration(str(runs[0]))
+        if cal is None or str(h) not in cal:
+            st.info("This prediction run has no calibration table, so the steps behind the chance cannot be shown.")
+        else:
+            b = dd.chance_breakdown(cal, P.risk[P.risk["coin"] == coin], h)
+            val = ((S.get("data") or {}).get("periods") or {}).get("validation")
+            val_years = (f"{pd.Timestamp(val[0]):%b %Y} – {pd.Timestamp(val[1]):%b %Y}" if val
+                         else "the validation years")
+            lift = b["chance"] / b["base_rate"] if b["base_rate"] else float("nan")
+            section("Live", f"How the {r['risk']:.0%} is worked out",
+                    "The model does not output a chance directly. It gives a score, and the score is turned into a "
+                    "chance by looking up how often coins with that score really shocked, in years the model did not "
+                    "learn from.")
+            steps = [
+                ("STEP 1", "The trigger", f"{r['source']} shocked at {when(r['event_time'])}. The model reads the pair "
+                 f"{r['source']} → {coin}: both coins' recent behaviour, how they have moved together, and the "
+                 "market's mood. Everything is known at that hour."),
+                ("STEP 2", "The model's score", f"Out comes a raw score of <b>{b['score']:.3f}</b> for 'shock within "
+                 f"{H}'. It ranks coins well, but it is not a chance yet."),
+                ("STEP 3", "Score → chance", f"In {b['n_events']:,} past cases from {val_years}, the ones scored near "
+                 f"{b['score']:.3f} were followed by a shock within {H} <b>{b['chance']:.0%}</b> of the time."),
+                ("STEP 4", "Compare", f"A typical coin: <b>{b['base_rate']:.0%}</b>. So {coin} is <b>{lift:.1f}×</b> "
+                 f"a typical coin: {label.lower()}."),
+            ]
+            st.markdown("<div class='flow'>" + "".join(f"<div class='step'><div class='n'>{n}</div><b>{t}</b>"
+                                                       f"<span>{x}</span></div>" for n, t, x in steps) + "</div>",
+                        unsafe_allow_html=True)
+            c1, c2 = st.columns([1.4, 1])
+            t = cal[str(h)]
+            fc = go.Figure(go.Scatter(x=t["score"], y=t["rate"], mode="lines", line=dict(color=TEAL, width=2),
+                                      name="how often coins shocked", hovertemplate="score %{x:.3f} → %{y:.0%}"))
+            fc.add_hline(y=b["base_rate"], line_dash="dot", line_color=GREY, annotation_text="typical coin",
+                         annotation_position="bottom right")
+            fc.add_trace(go.Scatter(x=[b["score"]], y=[b["chance"]], mode="markers+text", text=[coin],
+                                    textposition="top left", marker=dict(size=13, color=AMBER), name=coin,
+                                    hovertemplate=f"{coin}: score %{{x:.3f}} → %{{y:.0%}}"))
+            fc.update_layout(showlegend=False, xaxis_title=f"model score (shock within {H})",
+                             yaxis_title="how often coins really shocked", yaxis_tickformat=".0%", margin=dict(t=20))
+            with c1:
+                draw_chart(fc, 340)
+            win = b["windows"]
+            note = lambda x: "raised to the shorter window's chance" if x else ""   # noqa: E731
+            with c2:
+                st.dataframe(pd.DataFrame({"within": win["horizon_h"].map(dd.horizon_label),
+                                           "model score": win["score"].round(3),
+                                           "chance": win["chance"].map("{:.1%}".format),
+                                           "note": win["raised"].map(note)}),
+                             hide_index=True, width="stretch")
+                st.caption("A shock within 6 hours includes a shock within 3 hours, so a longer window's chance is "
+                           "never lower than a shorter one's.")
+            st.caption(f"The curve is the lookup table of step 3 ({b['n_bins']} groups of about "
+                       f"{b['n_events'] // max(b['n_bins'], 1):,} past cases each, sorted by score). Each coin's "
+                       f"chance comes from its strongest trigger; here {r['source']} "
+                       f"({int(r['n_events'])} trigger{'s' if int(r['n_events']) != 1 else ''} for {coin}).")
+            say(f"How do we get {r['risk']:.0%}? The model scores {coin} {b['score']:.3f}. In past years it never "
+                f"learned from, coins with that score shocked {b['chance']:.0%} of the time, against "
+                f"{b['base_rate']:.0%} for a typical coin.")
+        takeaway("the model ranks every coin the moment a shock happens; its score becomes a chance by checking how "
+                 "often coins with the same score really shocked in years it never learned from.")

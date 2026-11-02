@@ -74,23 +74,28 @@ def test_dashboard_renders_the_story(predicted, monkeypatch):
     assert not at.exception, at.exception
     assert [t.label for t in at.tabs] == ["1 · The problem", "2 · How we built it", "3 · How coins move",
                                           "4 · The network", "5 · Model & results", "6 · Why, how long, how safe",
-                                          "7 · Crises & what if"]
+                                          "7 · Crises & what if", "8 · Who's next now"]
     words = " ".join(m.value for m in at.markdown)
     assert "which coins fall next" in words and "Our objective" in words and "STEP 8" in words
-    assert "pumpes" not in words and "🎤 Say:" not in words                 # speaker notes start hidden
+    assert "pumpes" not in words and "🎤 Say:" not in words                 # speaker notes are off
     assert not at.sidebar.children                                            # no sidebar, no run picker
     assert at.segmented_control(key="horizon").value == 1
     at.segmented_control(key="horizon").set_value(6).run()      # switch the time window in the navbar
-    at.toggle(key="notes").set_value(True).run()
+    assert not at.toggle                                                      # no Notes toggle in the navbar
     at.segmented_control(key="arch").set_value("v2: full TGN (memory on)").run()
     assert not at.exception, at.exception
-    assert any("🎤 Say:" in m.value for m in at.markdown)
     assert any("would move most" in m.value for m in at.markdown)           # the what-if, on the last page
     at.selectbox(key="whatif_coin").set_value("CCC").run()
     at.slider(key="whatif_shock").set_value(20).run()
     at.selectbox(key="whatif_window").set_value("past week").run()
     assert not at.exception, at.exception
     assert any("**CCC** jumped **20%**" in m.value for m in at.markdown)
+    box = at.selectbox(key="next_coin")                                     # who's next now: reasons and the steps
+    box.set_value(box.options[-1]).run()
+    assert not at.exception, at.exception
+    words = " ".join(m.value for m in at.markdown)
+    assert f"#### {box.options[-1]}:" in words and "STEP 3" in words and "Score → chance" in words
+    assert any("the risk)" in m.value for m in at.markdown)                 # the plain-language reasons
 
 
 def test_dashboard_without_runs_explains_what_to_do(tmp_path, monkeypatch):
@@ -211,3 +216,16 @@ def test_about_text_reads_every_number_from_the_run():
     assert dd.test_period_phrase(facts) == "2024–2026 data"
     assert dd.test_period_phrase({"periods": {"test": ["2025-01-01", "2025-12-31"]}}) == "2025 data"
     assert dd.test_period_phrase(None) == "data"
+
+
+def test_chance_breakdown_reads_the_lookup_table():
+    cal = {"1": {"score": [0.1, 0.2, 0.3], "rate": [0.05, 0.10, 0.20], "events": [500, 500, 600], "base_rate": 0.1},
+           "6": {"score": [0.1, 0.2, 0.3], "rate": [0.08, 0.12, 0.18], "events": [500, 500, 600], "base_rate": 0.12}}
+    risk = pd.DataFrame({"coin": ["A", "A"], "horizon_h": [1, 6], "score": [0.25, 0.15], "risk": [0.15, 0.15]})
+    b = dd.chance_breakdown(cal, risk, 1)
+    assert np.isclose(b["chance"], 0.15) and b["bin_scores"] == (0.2, 0.3) and b["bin_events"] == 1100
+    assert b["n_events"] == 1600 and b["n_bins"] == 3 and b["base_rate"] == 0.1
+    w = b["windows"].set_index("horizon_h")
+    assert np.isclose(w.loc[6, "calibrated"], 0.10) and w.loc[6, "raised"] and not w.loc[1, "raised"]
+    low = dd.chance_breakdown(cal, risk.assign(score=[0.05, 0.05]), 1)        # below the first bin: its rate
+    assert np.isclose(low["chance"], 0.05) and low["bin_scores"] == (0.1, 0.1) and low["bin_events"] == 500

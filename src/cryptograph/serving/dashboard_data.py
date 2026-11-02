@@ -53,6 +53,46 @@ def load_prediction(run_dir: Path | str) -> Prediction:
                       opt("context.csv"))
 
 
+def load_calibration(run_dir: Path | str, summary: dict) -> dict | None:
+    """The run's score -> chance table per horizon (calibration.json). Older runs did not save it: it is then rebuilt
+    from the model run's validation predictions, with the run's own bin size. None when neither is available."""
+    run_dir = Path(run_dir)
+    p = run_dir / "calibration.json"
+    if p.exists():
+        return json.loads(p.read_text(encoding="utf-8"))
+    from .predict import Calibrator
+
+    min_bin = 500
+    cfg = run_dir / "config.resolved.yaml"
+    if cfg.exists():
+        import yaml
+
+        min_bin = (yaml.safe_load(cfg.read_text(encoding="utf-8")).get("predict") or {}).get("calibration_min_bin", 500)
+    cal = Calibrator.from_run(run_dir.parent / summary["target_run"], min_bin)
+    return cal.to_dict(summary["k_hours"]) if cal is not None else None
+
+
+def chance_breakdown(cal: dict, coin_risk: pd.DataFrame, horizon: int) -> dict:
+    """How one coin's chance at `horizon` came out of its raw score, step by step: the calibration bins around the
+    score (score range, observed rate, events) and, per horizon, the raw score, its calibrated chance and the final
+    chance after "within 6 h includes within 3 h" (raised when a shorter window's chance was higher)."""
+    t = cal[str(int(horizon))]
+    x, fx, n = np.asarray(t["score"]), np.asarray(t["rate"]), np.asarray(t["events"])
+    score = float(coin_risk.loc[coin_risk["horizon_h"] == horizon, "score"].iloc[0])
+    i = int(np.searchsorted(x, score))
+    lo, hi = max(i - 1, 0), min(i, len(x) - 1)
+    rows = []
+    for r in coin_risk.sort_values("horizon_h").itertuples():
+        tk = cal[str(int(r.horizon_h))]
+        direct = float(np.interp(r.score, tk["score"], tk["rate"]))
+        rows.append({"horizon_h": int(r.horizon_h), "score": float(r.score), "calibrated": direct,
+                     "chance": float(r.risk), "raised": bool(r.risk > direct + 5e-4)})   # > 0.05 points: not rounding
+    return {"score": score, "chance": float(np.interp(score, x, fx)), "base_rate": float(t["base_rate"]),
+            "bin_scores": (float(x[lo]), float(x[hi])), "bin_rates": (float(fx[lo]), float(fx[hi])),
+            "bin_events": int(n[lo] + (n[hi] if hi != lo else 0)), "n_events": int(n.sum()), "n_bins": len(x),
+            "windows": pd.DataFrame(rows)}
+
+
 def risk_matrix(risk: pd.DataFrame) -> pd.DataFrame:
     """coin x horizon (hours) risk, coins ordered by their mean lift over the base rates (by mean risk without
     base rates; the longest horizon would otherwise decide the order)."""
